@@ -1,0 +1,63 @@
+{
+    "name": "ComparisonOnContractTypes",
+    "file": "./test/samples/solidity/ComparisonOnContractTypes.sol",
+    "compilerVersion": "0.8.6",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Some",
+            "location": "storage",
+            "address": {
+                "kind": "literal",
+                "type": "address",
+                "value": "0x0000000000000000000000000000000000000000"
+            },
+            "name": "some"
+        },
+        {
+            "act": "define",
+            "type": "Token",
+            "location": "storage",
+            "address": {
+                "kind": "literal",
+                "type": "address",
+                "value": "0x0000000000000000000000000000000000000001"
+            },
+            "name": "token"
+        },
+        {
+            "act": "define",
+            "type": "Test",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Test",
+            "mdc": "Test",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Test",
+            "mdc": "Test",
+            "method": "verify()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

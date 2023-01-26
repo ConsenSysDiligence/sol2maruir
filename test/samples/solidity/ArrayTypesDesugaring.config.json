@@ -1,0 +1,40 @@
+{
+    "name": "ArrayTypesDesugaring",
+    "file": "./test/samples/solidity/ArrayTypesDesugaring.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "ArrayTypesDesugaring",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "ArrayTypesDesugaring",
+            "mdc": "ArrayTypesDesugaring",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ArrayTypesDesugaring",
+            "mdc": "ArrayTypesDesugaring",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/NoArgPush.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "NoArgPush",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "NoArgPush",
+            "mdc": "NoArgPush",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "NoArgPush",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "NoArgPush",
+            "mdc": "NoArgPush",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "NoArgPush",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

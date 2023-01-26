@@ -1,0 +1,45 @@
+{
+    "file": "./test/samples/solidity/Solidity06AddressCast.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Foo",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Foo",
+            "mdc": "Foo",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Foo",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Foo",
+            "mdc": "Foo",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Foo",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "address",
+                    "value": "0x0"
+                }
+            ]
+        }
+    ]
+}

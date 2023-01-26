@@ -1,0 +1,99 @@
+{
+    "name": "Shadowing",
+    "file": "./test/samples/solidity/Shadowing.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Shadowing",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Shadowing",
+            "mdc": "Shadowing",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Shadowing",
+            "mdc": "Shadowing",
+            "method": "shadow(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "6"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "8"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Shadowing",
+            "mdc": "Shadowing",
+            "method": "shadowReturn1()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "0"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Shadowing",
+            "mdc": "Shadowing",
+            "method": "shadowReturn2Harness()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Shadowing",
+            "mdc": "Shadowing",
+            "method": "shadowReturn2Harness2()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

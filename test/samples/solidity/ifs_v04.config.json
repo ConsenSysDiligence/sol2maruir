@@ -1,0 +1,109 @@
+{
+    "file": "./test/samples/solidity/ifs_v04.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Ifs",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Ifs",
+            "mdc": "Ifs",
+            "method": "ifElseStatementNested()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Ifs",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Ifs",
+            "mdc": "Ifs",
+            "method": "ifElseStatement()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Ifs",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Ifs",
+            "mdc": "Ifs",
+            "method": "ifStatement()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Ifs",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Ifs",
+            "mdc": "Ifs",
+            "method": "ifElseStatementWithExpressions()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Ifs",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Ifs",
+            "mdc": "Ifs",
+            "method": "ifStatementWithExpression()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Ifs",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Ifs",
+            "mdc": "Ifs",
+            "method": "ifStatementWithReturn()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Ifs",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Ifs",
+            "mdc": "Ifs",
+            "method": "ifStatementWithThrow()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Ifs",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

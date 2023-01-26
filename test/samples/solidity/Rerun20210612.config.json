@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/Rerun20210612.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Rerun20210612",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Rerun20210612",
+            "mdc": "Rerun20210612",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Rerun20210612",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Rerun20210612",
+            "mdc": "Rerun20210612",
+            "method": "test()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Rerun20210612",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

@@ -1,0 +1,51 @@
+{
+    "name": "A",
+    "file": "./test/samples/solidity/simple.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "A",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "A",
+            "mdc": "A",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "A",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "A",
+            "mdc": "A",
+            "method": "inc()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "A",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+	    ]
+        }
+    ]
+}

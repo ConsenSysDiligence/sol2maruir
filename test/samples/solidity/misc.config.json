@@ -1,0 +1,178 @@
+{
+    "name": "Misc",
+    "file": "./test/samples/solidity/misc.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Misc",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Misc",
+            "mdc": "Misc",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Misc",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Misc",
+            "mdc": "Misc",
+            "method": "types()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Misc",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Misc",
+            "mdc": "Misc",
+            "method": "types()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Misc",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Misc",
+            "mdc": "Misc",
+            "method": "divisionBy(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Misc",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "6"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Misc",
+            "mdc": "Misc",
+            "method": "divisionBy(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Misc",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "5"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Misc",
+            "mdc": "Misc",
+            "method": "modBy(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Misc",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "3"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Misc",
+            "mdc": "Misc",
+            "method": "expressionNoAssignment()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Misc",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Misc",
+            "mdc": "Misc",
+            "method": "expAssoc(uint256,uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Misc",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "3"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "64"
+                }
+            ]
+        }
+    ]
+}

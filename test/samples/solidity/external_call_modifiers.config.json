@@ -1,0 +1,45 @@
+{
+    "name": "ExternalCallModifiers",
+    "file": "./test/samples/solidity/external_call_modifiers.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "ExternalCallModifiers",
+            "location": "storage",
+            "name": "this",
+            "balance": {
+                "kind": "literal",
+                "type": "uint256",
+                "value": "20"
+            }
+        },
+        {
+            "act": "call",
+            "definingContract": "ExternalCallModifiers",
+            "mdc": "ExternalCallModifiers",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ExternalCallModifiers",
+            "mdc": "ExternalCallModifiers",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

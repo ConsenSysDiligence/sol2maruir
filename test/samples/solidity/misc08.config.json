@@ -1,0 +1,47 @@
+{
+    "name": "Misc08",
+    "file": "./test/samples/solidity/misc08.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Misc08",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Misc08",
+            "mdc": "Misc08",
+            "method": "expAssoc(uint256,uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Misc",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "3"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "512"
+                }
+            ]
+        }
+    ]
+}

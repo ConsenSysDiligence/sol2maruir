@@ -1,0 +1,40 @@
+{
+    "name": "UntypedVars",
+    "file": "./test/samples/solidity/UntypedVars.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "UntypedVars",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "UntypedVars",
+            "mdc": "UntypedVars",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "UntypedVars",
+            "mdc": "UntypedVars",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

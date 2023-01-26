@@ -1,0 +1,40 @@
+{
+    "name": "LibToLibCall",
+    "file": "./test/samples/solidity/LibToLibCall.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "LibToLibCall",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "LibToLibCall",
+            "mdc": "LibToLibCall",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "LibToLibCall",
+            "mdc": "LibToLibCall",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

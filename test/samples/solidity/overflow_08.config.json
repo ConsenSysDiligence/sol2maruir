@@ -1,0 +1,1381 @@
+{
+    "file": "./test/samples/solidity/overflow_08.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Overflow08",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "add_u8(uint8,uint8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "254"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "1"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "255"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "add_u8(uint8,uint8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "254"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "2"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "add_u8_unchecked(uint8,uint8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "254"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "2"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "0"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "add_i8(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "126"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "1"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "127"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "add_i8(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-127"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-1"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-128"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "add_i8(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "126"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "2"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "add_i8_unchecked(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "126"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "2"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-128"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "add_i8(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-127"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-2"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "add_i8_unchecked(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-127"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-2"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "127"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "sub_u8(uint8,uint8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "3"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "1"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "2"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "sub_u8(uint8,uint8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "1"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "3"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "sub_u8_unchecked(uint8,uint8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "1"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "3"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "254"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "sub_i8(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "1"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "3"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-2"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "sub_i8(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "127"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "sub_i8_unchecked(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "127"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "127"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "sub_i8(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "0"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-128"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "sub_i8_unchecked(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "0"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-128"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-128"
+                }
+            ]
+        },
+
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "mul_u8_unchecked(uint8,uint8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "128"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "0"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "mul_u8(uint8,uint8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "127"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "254"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "mul_u8(uint8,uint8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "128"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "mul_i8_unchecked(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "64"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-128"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "mul_i8(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "64"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "mul_i8_unchecked(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "65"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "126"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "mul_i8(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "65"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "div_i8(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-128"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-1"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "div_i8_unchecked(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-128"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-1"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-128"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "neg_i8_unchecked(int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-128"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-128"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "neg_i8(int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-127"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "127"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "neg_i8(int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-127"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "127"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "neg_i8(int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "127"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-127"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "neg_i8(int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-128"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "exp_i8_unchecked(int8,uint8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "7"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-128"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "exp_i8_unchecked(int8,uint8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "8"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "0"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "exp_i8(int8,uint8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "7"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "exp_i8(int8,uint8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "7"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-128"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "exp_i8_unchecked(int8,uint8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-3"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "5"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "13"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "exp_i8(int8,uint8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-3"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint8",
+                    "value": "5"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "inc_i8_unchecked(int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "127"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "127"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "inc_i8(int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "126"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "126"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "inc_i8(int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "127"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "dec_i8_unchecked(int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-128"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "127"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "dec_i8(int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-127"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-128"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "dec_i8(int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-128"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "comp_assign_add(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "127"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "1"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "comp_assign_sub(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-127"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "2"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "comp_assign_mul(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "65"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "2"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Overflow08",
+            "mdc": "Overflow08",
+            "method": "comp_assign_div(int8,int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Overflow08",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-128"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "-1"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "define",
+            "type": "InlineInitializerArithmetic",
+            "location": "storage",
+            "name": "this1"
+        },
+        {
+            "act": "call",
+            "definingContract": "InlineInitializerArithmetic",
+            "mdc": "InlineInitializerArithmetic",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "InlineInitializerArithmetic",
+                    "name": "this1"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "define",
+            "type": "ModifierArgArithmetic",
+            "location": "storage",
+            "name": "this2"
+        },
+        {
+            "act": "call",
+            "definingContract": "ModifierArgArithmetic",
+            "mdc": "ModifierArgArithmetic",
+            "method": "foo(int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ModifierArgArithmetic",
+                    "name": "this2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "126"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ModifierArgArithmetic",
+            "mdc": "ModifierArgArithmetic",
+            "method": "foo(int8)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ModifierArgArithmetic",
+                    "name": "this2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "127"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "define",
+            "type": "BaseConstructorArgArithmetic",
+            "location": "storage",
+            "name": "this3"
+        },
+        {
+            "act": "call",
+            "definingContract": "BaseConstructorArgArithmetic",
+            "mdc": "BaseConstructorArgArithmetic",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "BaseConstructorArgArithmetic",
+                    "name": "this3"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "126"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "define",
+            "type": "BaseConstructorArgArithmetic",
+            "location": "storage",
+            "name": "this4"
+        },
+        {
+            "act": "call",
+            "definingContract": "BaseConstructorArgArithmetic",
+            "mdc": "BaseConstructorArgArithmetic",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "BaseConstructorArgArithmetic",
+                    "name": "this4"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int8",
+                    "value": "127"
+                }
+            ],
+            "expectedAssertFail": true
+        }
+    ]
+}

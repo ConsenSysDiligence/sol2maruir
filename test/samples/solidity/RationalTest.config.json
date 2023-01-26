@@ -1,0 +1,82 @@
+{
+    "name": "RationalTest",
+    "file": "./test/samples/solidity/RationalTest.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "RationalTest",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "RationalTest",
+            "mdc": "RationalTest",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "RationalTest",
+            "mdc": "RationalTest",
+            "method": "subdenominationEtherTest()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "RationalTest",
+            "mdc": "RationalTest",
+            "method": "subdenominationTimeTest()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "RationalTest",
+            "mdc": "RationalTest",
+            "method": "mathTest()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "RationalTest",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "RationalTest",
+            "mdc": "RationalTest",
+            "method": "extremeDenominatedValues()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "RationalTest",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

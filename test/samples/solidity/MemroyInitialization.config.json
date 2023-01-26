@@ -1,0 +1,54 @@
+{
+    "name": "MemoryInitialization",
+    "file": "./test/samples/solidity/MemoryInitialization.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "MemoryInitialization",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "MemoryInitialization",
+            "mdc": "MemoryInitialization",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "MemoryInitialization",
+            "mdc": "MemoryInitialization",
+            "method": "memoryArrays()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "MemoryInitialization",
+            "mdc": "MemoryInitialization",
+            "method": "storageArrays()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

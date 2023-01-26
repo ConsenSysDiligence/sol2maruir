@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/Fallback08.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Fallback08",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Fallback08",
+            "mdc": "Fallback08",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Fallback08",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Fallback08",
+            "mdc": "Fallback08",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Fallback08",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

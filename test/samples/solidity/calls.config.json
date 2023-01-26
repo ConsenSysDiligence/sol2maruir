@@ -1,0 +1,125 @@
+{
+    "name": "Call public getter of another contract",
+    "file": "./test/samples/solidity/calls.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Calls",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "define",
+            "type": "TokenCreator",
+            "location": "storage",
+            "name": "tc"
+        },
+        {
+            "act": "call",
+            "definingContract": "TokenCreator",
+            "mdc": "TokenCreator",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TokenCreator",
+                    "name": "tc"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "TokenCreator",
+            "mdc": "TokenCreator",
+            "method": "createToken(bytes32)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TokenCreator",
+                    "name": "tc"
+                },
+                {
+                    "kind": "literal",
+                    "type": "bytes32",
+                    "value": [
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0",
+                        "0x0"
+                    ]
+                }
+            ],
+            "nameReturns": [
+                "token"
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "functionCallPublicGetter(address)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                },
+                {
+                    "kind": "object",
+                    "type": "OwnedToken",
+                    "name": "token"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "address",
+                    "value": "0x2"
+                }
+            ]
+        }
+    ]
+}

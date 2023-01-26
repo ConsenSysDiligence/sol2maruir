@@ -1,0 +1,67 @@
+{
+    "file": "./test/samples/solidity/ConstructorModifiers.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Validator",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Validator",
+            "mdc": "Validator",
+            "method": "validateA()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Validator",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Validator",
+            "mdc": "Validator",
+            "method": "validateB()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Validator",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Validator",
+            "mdc": "Validator",
+            "method": "validateCDEG()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Validator",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Validator",
+            "mdc": "Validator",
+            "method": "validateF()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Validator",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

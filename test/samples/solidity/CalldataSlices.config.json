@@ -1,0 +1,85 @@
+{
+    "file": "./test/samples/solidity/CalldataSlices.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "CalldataSlices",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "CalldataSlices",
+            "mdc": "CalldataSlices",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "CalldataSlices",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "CalldataSlices",
+            "mdc": "CalldataSlices",
+            "method": "first(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "CalldataSlices",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "42"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "13"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "42"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "CalldataSlices",
+            "mdc": "CalldataSlices",
+            "method": "second(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "CalldataSlices",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "42"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "13"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "13"
+                }
+            ]
+        }
+    ]
+}

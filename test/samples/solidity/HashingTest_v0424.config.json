@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/HashingTest_v0424.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "HashingTest",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "HashingTest",
+            "mdc": "HashingTest",
+            "method": "usesKeccak256()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "HashingTest",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "HashingTest",
+            "mdc": "HashingTest",
+            "method": "usesSha3()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "HashingTest",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

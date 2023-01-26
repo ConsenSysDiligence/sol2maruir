@@ -1,0 +1,40 @@
+{
+    "name": "UntypedVarsStorageInference",
+    "file": "./test/samples/solidity/UntypedVarsStorageInference.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "UntypedVarsStorageInference",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "UntypedVarsStorageInference",
+            "mdc": "UntypedVarsStorageInference",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "UntypedVarsStorageInference",
+            "mdc": "UntypedVarsStorageInference",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

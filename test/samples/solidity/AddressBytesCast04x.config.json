@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/AddressBytesCast04x.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "AddressBytesCast04x",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "AddressBytesCast04x",
+            "mdc": "AddressBytesCast04x",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "AddressBytesCast04x",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "AddressBytesCast04x",
+            "mdc": "AddressBytesCast04x",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "AddressBytesCast04x",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

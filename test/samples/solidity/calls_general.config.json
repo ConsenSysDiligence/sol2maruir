@@ -1,0 +1,104 @@
+{
+    "name": "General function call tests (note: should be merged with previous suite after bug fixes)",
+    "file": "./test/samples/solidity/calls.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Calls",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "sqrt(int32)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int32",
+                    "value": "25"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int32",
+                    "value": "5"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "sqrt(int32)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int32",
+                    "value": "35"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int32",
+                    "value": "5"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "complexExpressionsNesting()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "functionCallInExpression()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/TryCatch08.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "TryCatch08",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatch08",
+            "mdc": "TryCatch08",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatch08",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatch08",
+            "mdc": "TryCatch08",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatch08",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

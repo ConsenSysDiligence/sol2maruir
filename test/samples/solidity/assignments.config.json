@@ -1,0 +1,53 @@
+{
+    "file": "./test/samples/solidity/assignments.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Assignments",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Assignments",
+            "mdc": "Assignments",
+            "method": "simpleAssignment()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Assignments",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Assignments",
+            "mdc": "Assignments",
+            "method": "multipleAssignmentsLong()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Assignments",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Assignments",
+            "mdc": "Assignments",
+            "method": "multipleAssignmentsShort()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Assignments",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

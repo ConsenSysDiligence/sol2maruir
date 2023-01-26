@@ -1,0 +1,95 @@
+{
+    "file": "./test/samples/solidity/while_v04.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "While",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "While",
+            "mdc": "While",
+            "method": "whileStatementWithBlock()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "While",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "While",
+            "mdc": "While",
+            "method": "whileStatementWithExpression()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "While",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "While",
+            "mdc": "While",
+            "method": "whileStatementWithLoopControlStatements()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "While",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "While",
+            "mdc": "While",
+            "method": "doWhileStatementWithBlock()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "While",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "While",
+            "mdc": "While",
+            "method": "doWhileStatementWithExpression()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "While",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "While",
+            "mdc": "While",
+            "method": "doWhileStatementWithLoopControlStatements()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "While",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

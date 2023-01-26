@@ -1,0 +1,40 @@
+{
+    "file": "./test/samples/solidity/ReturnStorageRef.sol",
+    "compilerVersion": "0.7.6",
+    "steps": [
+        {
+            "act": "define",
+            "type": "ReturnStorageRef",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "ReturnStorageRef",
+            "mdc": "ReturnStorageRef",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ReturnStorageRef",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ReturnStorageRef",
+            "mdc": "ReturnStorageRef",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ReturnStorageRef",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

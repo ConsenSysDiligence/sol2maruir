@@ -1,0 +1,60 @@
+{
+    "file": "./test/samples/solidity/UnknownVar.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "UnknownVar",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "UnknownVar",
+            "mdc": "UnknownVar",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "UnknownVar",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int256",
+                    "value": "3"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int256",
+                    "value": "4"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int256",
+                    "value": "7"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "UnknownVar",
+            "mdc": "UnknownVar",
+            "method": "getA()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "UnknownVar",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int256",
+                    "value": "7"
+                }
+            ]
+        }
+    ]
+}

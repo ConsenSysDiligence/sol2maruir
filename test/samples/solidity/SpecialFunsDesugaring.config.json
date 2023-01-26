@@ -1,0 +1,29 @@
+{
+    "file": "./test/samples/solidity/SpecialFunsDesugaring.sol",
+    "steps": [
+        {
+            "act": "validateBySnapshot",
+            "definingContract": "Test",
+            "method": "fallback",
+            "dotFile": "./test/samples/dot/SpecialFunsDesugaring_fallback.dot"
+        },
+        {
+            "act": "validateBySnapshot",
+            "definingContract": "Test",
+            "method": "receive",
+            "dotFile": "./test/samples/dot/SpecialFunsDesugaring_receive.dot"
+        },
+        {
+            "act": "validateBySnapshot",
+            "definingContract": "Test",
+            "method": "fallback()",
+            "dotFile": "./test/samples/dot/SpecialFunsDesugaring_fallback_552079dc.dot"
+        },
+        {
+            "act": "validateBySnapshot",
+            "definingContract": "Test",
+            "method": "receive()",
+            "dotFile": "./test/samples/dot/SpecialFunsDesugaring_receive_a3e76c0f.dot"
+        }
+    ]
+}

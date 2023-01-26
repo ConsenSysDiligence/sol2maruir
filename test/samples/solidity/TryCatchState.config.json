@@ -1,0 +1,81 @@
+{
+    "file": "./test/samples/solidity/TryCatchState.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "TryCatchState",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatchState",
+            "mdc": "TryCatchState",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatchState",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatchState",
+            "mdc": "TryCatchState",
+            "method": "successfulModifySelf()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatchState",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatchState",
+            "mdc": "TryCatchState",
+            "method": "revertingModifySelf()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatchState",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatchState",
+            "mdc": "TryCatchState",
+            "method": "successfulModifyOther()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatchState",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatchState",
+            "mdc": "TryCatchState",
+            "method": "revertingModifyOther()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatchState",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

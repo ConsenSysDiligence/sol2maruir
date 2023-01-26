@@ -1,0 +1,25 @@
+{
+    "file": "./test/samples/solidity/TopLevelEnums.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Foo",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Foo",
+            "mdc": "Foo",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Foo",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

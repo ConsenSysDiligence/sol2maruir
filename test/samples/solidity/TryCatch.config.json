@@ -1,0 +1,136 @@
+{
+    "file": "./test/samples/solidity/TryCatch.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "TryCatch",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatch",
+            "mdc": "TryCatch",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatch",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatch",
+            "mdc": "TryCatch",
+            "method": "catchHighLevelException()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatch",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "string",
+                    "value": "test"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatch",
+            "mdc": "TryCatch",
+            "method": "catchLowLevelException()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatch",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "42"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatch",
+            "mdc": "TryCatch",
+            "method": "catchHighLevelExceptionUnnamedArgs()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatch",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatch",
+            "mdc": "TryCatch",
+            "method": "successUnnamed()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatch",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatch",
+            "mdc": "TryCatch",
+            "method": "successNamed()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatch",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "43"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatch",
+            "mdc": "TryCatch",
+            "method": "reThrowTest()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatch",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "string",
+                    "value": "hihi"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "11"
+                }
+            ]
+        }
+    ]
+}

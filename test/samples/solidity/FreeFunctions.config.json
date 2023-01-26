@@ -1,0 +1,101 @@
+{
+    "name": "FreeFunctions",
+    "file": "./test/samples/solidity/FreeFunctions.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Foo",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Foo",
+            "mdc": "Foo",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Foo",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Foo",
+            "mdc": "Foo",
+            "method": "double(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Foo",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "5"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "10"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Foo",
+            "mdc": "Foo",
+            "method": "indirectReentry(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Foo",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "7"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "14"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Foo",
+            "mdc": "Foo",
+            "method": "quadruple(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Foo",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "5"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "20"
+                }
+            ]
+        }
+    ]
+}

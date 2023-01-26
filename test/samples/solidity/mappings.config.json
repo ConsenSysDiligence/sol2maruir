@@ -1,0 +1,40 @@
+{
+    "name": "Mappings",
+    "file": "./test/samples/solidity/mappings.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Mappings",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Mappings",
+            "mdc": "Mappings",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Mappings",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Mappings",
+            "mdc": "Mappings",
+            "method": "mappings()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Mappings",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

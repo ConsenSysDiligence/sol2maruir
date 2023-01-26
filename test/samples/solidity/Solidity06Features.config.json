@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/Solidity06Features.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "NegativeExponentiation",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "NegativeExponentiation",
+            "mdc": "NegativeExponentiation",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "NegativeExponentiation",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "NegativeExponentiation",
+            "mdc": "NegativeExponentiation",
+            "method": "testSignedBaseExponentiation()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "NegativeExponentiation",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

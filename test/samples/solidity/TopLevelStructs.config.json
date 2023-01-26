@@ -1,0 +1,67 @@
+{
+    "file": "./test/samples/solidity/TopLevelStructs.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Foo",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Foo",
+            "mdc": "Foo",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Foo",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Foo",
+            "mdc": "Foo",
+            "method": "foo()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Foo",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int256",
+                    "value": "10"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Foo",
+            "mdc": "Foo",
+            "method": "boo()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Foo",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "byte",
+                    "value": [
+                        "66"
+                    ]
+                }
+            ]
+        }
+    ]
+}

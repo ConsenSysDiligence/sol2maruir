@@ -1,0 +1,210 @@
+{
+    "file": "./test/samples/solidity/casting.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Casting",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Casting",
+            "mdc": "Casting",
+            "method": "testIntToInt()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Casting",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Casting",
+            "mdc": "Casting",
+            "method": "testIntToAddress()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Casting",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Casting",
+            "mdc": "Casting",
+            "method": "testBytesToAddress()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Casting",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Casting",
+            "mdc": "Casting",
+            "method": "testBytesToInt()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Casting",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Casting",
+            "mdc": "Casting",
+            "method": "testStringToBytes()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Casting",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Casting",
+            "mdc": "Casting",
+            "method": "testStringToBytesFixed()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Casting",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Casting",
+            "mdc": "Casting",
+            "method": "stringByteMemToMemCastAliasing()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Casting",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "string",
+                    "value": "a2cd"
+                },
+                {
+                    "kind": "bytes",
+                    "elements": ["0x61", "0x32", "0x63", "0x64"]
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Casting",
+            "mdc": "Casting",
+            "method": "stringByteMemToStorageCastAliasing()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Casting",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "string",
+                    "value": "abcd"
+                },
+                {
+                    "kind": "bytes",
+                    "elements": ["0x61", "0x32", "0x63", "0x64"]
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Casting",
+            "mdc": "Casting",
+            "method": "stringByteStorageToStorageCastAliasing()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Casting",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "string",
+                    "value": "abcd"
+                },
+                {
+                    "kind": "bytes",
+                    "elements": ["0x61", "0x32", "0x63", "0x64"]
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Casting",
+            "mdc": "Casting",
+            "method": "stringByteStorageToMemCastAliasing()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Casting",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "string",
+                    "value": "abcd"
+                },
+                {
+                    "kind": "bytes",
+                    "elements": ["0x61", "0x32", "0x63", "0x64"]
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Casting",
+            "mdc": "Casting",
+            "method": "stringByteStorageToStorageLocalCastAliasing()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Casting",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "string",
+                    "value": "2bc"
+                },
+                {
+                    "kind": "bytes",
+                    "elements": ["0x32", "0x62", "0x63"]
+                }
+            ]
+        }
+    ]
+}

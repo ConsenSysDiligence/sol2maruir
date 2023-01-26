@@ -1,0 +1,332 @@
+{
+    "name": "ImplicitParentConstructors",
+    "file": "./test/samples/solidity/implicit_parent_constructors.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Child1",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Child1",
+            "mdc": "Child1",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Child1",
+            "mdc": "Child1",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "define",
+            "type": "Child2",
+            "location": "storage",
+            "name": "this2"
+        },
+        {
+            "act": "call",
+            "definingContract": "Child2",
+            "mdc": "Child2",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this2"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Child2",
+            "mdc": "Child2",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this2"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "define",
+            "type": "Child3",
+            "location": "storage",
+            "name": "this3"
+        },
+        {
+            "act": "call",
+            "definingContract": "Child3",
+            "mdc": "Child3",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this3"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Child3",
+            "mdc": "Child3",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this3"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "define",
+            "type": "Child4",
+            "location": "storage",
+            "name": "this4"
+        },
+        {
+            "act": "call",
+            "definingContract": "Child4",
+            "mdc": "Child4",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this4"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Child4",
+            "mdc": "Child4",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this4"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "define",
+            "type": "Child5",
+            "location": "storage",
+            "name": "this5"
+        },
+        {
+            "act": "call",
+            "definingContract": "Child5",
+            "mdc": "Child5",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this5"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Child5",
+            "mdc": "Child5",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this5"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "define",
+            "type": "Child6",
+            "location": "storage",
+            "name": "this6"
+        },
+        {
+            "act": "call",
+            "definingContract": "Child6",
+            "mdc": "Child6",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this6"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Child6",
+            "mdc": "Child6",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this6"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "define",
+            "type": "Child7",
+            "location": "storage",
+            "name": "this7"
+        },
+        {
+            "act": "call",
+            "definingContract": "Child7",
+            "mdc": "Child7",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this7"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Child7",
+            "mdc": "Child7",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this7"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "define",
+            "type": "Child8",
+            "location": "storage",
+            "name": "this8"
+        },
+        {
+            "act": "call",
+            "definingContract": "Child8",
+            "mdc": "Child8",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this8"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Child8",
+            "mdc": "Child8",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this8"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "define",
+            "type": "Child9",
+            "location": "storage",
+            "name": "this9"
+        },
+        {
+            "act": "call",
+            "definingContract": "Child9",
+            "mdc": "Child9",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this9"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Child9",
+            "mdc": "Child9",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this9"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "define",
+            "type": "Child10",
+            "location": "storage",
+            "name": "this10"
+        },
+        {
+            "act": "call",
+            "definingContract": "Child10",
+            "mdc": "Child10",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this10"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

@@ -1,0 +1,55 @@
+{
+    "file": "./test/samples/solidity/EmptyArgNames.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "EmptyArgNames",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "EmptyArgNames",
+            "mdc": "EmptyArgNames",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "EmptyArgNames",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "EmptyArgNames",
+            "mdc": "EmptyArgNames",
+            "method": "main(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "EmptyArgNames",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "42"
+                }
+            ]
+        }
+    ]
+}

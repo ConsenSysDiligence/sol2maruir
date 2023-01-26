@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/PackedEncodingTest.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "PackedEncodingTest",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "PackedEncodingTest",
+            "mdc": "PackedEncodingTest",
+            "method": "usesEncodePacked()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "PackedEncodingTest",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "PackedEncodingTest",
+            "mdc": "PackedEncodingTest",
+            "method": "usesEncodePackedNestedArray()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "PackedEncodingTest",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

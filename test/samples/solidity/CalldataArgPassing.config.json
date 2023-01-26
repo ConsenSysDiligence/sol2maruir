@@ -1,0 +1,40 @@
+{
+    "file": "./test/samples/solidity/CalldataArgPassing.sol",
+    "compilerVersion": "0.7.6",
+    "steps": [
+        {
+            "act": "define",
+            "type": "CalldataArgPassing",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "CalldataArgPassing",
+            "mdc": "CalldataArgPassing",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "CalldataArgPassing",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "CalldataArgPassing",
+            "mdc": "CalldataArgPassing",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "CalldataArgPassing",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

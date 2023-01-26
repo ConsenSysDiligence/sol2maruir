@@ -1,0 +1,209 @@
+{
+    "name": "MemoryAliasing",
+    "file": "./test/samples/solidity/MemoryAliasing.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "MemoryAliasing",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "MemoryAliasing",
+            "mdc": "MemoryAliasing",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "MemoryAliasing",
+            "mdc": "MemoryAliasing",
+            "method": "primitiveValuesDontAlias()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "MemoryAliasing",
+            "mdc": "MemoryAliasing",
+            "method": "arrays()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "MemoryAliasing",
+            "mdc": "MemoryAliasing",
+            "method": "nestedArrays()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "MemoryAliasing",
+            "mdc": "MemoryAliasing",
+            "method": "structs()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "MemoryAliasing",
+            "mdc": "MemoryAliasing",
+            "method": "arraysInMemoryStructs()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 4,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "42"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "80"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "3"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "4"
+                        }
+                    ]
+                },
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 4,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "42"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "80"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "3"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "4"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "MemoryAliasing",
+            "mdc": "MemoryAliasing",
+            "method": "structInMemoryStructs()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "MemoryAliasing",
+            "mdc": "MemoryAliasing",
+            "method": "structsInMemoryArrays()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "MemoryAliasing",
+            "mdc": "MemoryAliasing",
+            "method": "structReAssignment()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "MemoryAliasing",
+            "mdc": "MemoryAliasing",
+            "method": "structReAssignmentFromStorage()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

@@ -1,0 +1,344 @@
+{
+    "name": "Returns",
+    "file": "./test/samples/solidity/returns.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Returns",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Returns",
+            "mdc": "Returns",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Returns",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Returns",
+            "mdc": "Returns",
+            "method": "mixedReturn1(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Returns",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "777"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Returns",
+            "mdc": "Returns",
+            "method": "mixedReturn2(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Returns",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "777"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "0"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "10"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Returns",
+            "mdc": "Returns",
+            "method": "returnImplicitCopy()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Returns",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "0"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "0"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "0"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Returns",
+            "mdc": "Returns",
+            "method": "addOne(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Returns",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "8"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "9"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Returns",
+            "mdc": "Returns",
+            "method": "addOneTwice(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Returns",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "5"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "9"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "6"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "10"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Returns",
+            "mdc": "Returns",
+            "method": "deadCodeAfterReturn(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Returns",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "100"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "100"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Returns",
+            "mdc": "Returns",
+            "method": "paramReturnSwap()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Returns",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Returns",
+            "mdc": "Returns",
+            "method": "noArgReturn()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Returns",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Returns",
+            "mdc": "Returns",
+            "method": "noArgReturnDefaults()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Returns",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "0"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int16",
+                    "value": "0"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Returns",
+            "mdc": "Returns",
+            "method": "paramReturnSwap2()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Returns",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Returns",
+            "mdc": "Returns",
+            "method": "paramReturnAssignments(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Returns",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "100"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ]
+        }
+    ]
+}

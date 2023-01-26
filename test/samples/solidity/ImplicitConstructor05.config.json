@@ -1,0 +1,40 @@
+{
+    "file": "./test/samples/solidity/ImplicitConstructor05.sol",
+    "compilerVersion": "0.7.6",
+    "steps": [
+        {
+            "act": "define",
+            "type": "T",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "T",
+            "mdc": "T",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "T",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "T",
+            "mdc": "T",
+            "method": "test()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "T",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

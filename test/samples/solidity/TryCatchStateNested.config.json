@@ -1,0 +1,53 @@
+{
+    "file": "./test/samples/solidity/TryCatchStateNested.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "TryCatchStateNested",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatchStateNested",
+            "mdc": "TryCatchStateNested",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatchStateNested",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatchStateNested",
+            "mdc": "TryCatchStateNested",
+            "method": "callerFail()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatchStateNested",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatchStateNested",
+            "mdc": "TryCatchStateNested",
+            "method": "calleeFail()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatchStateNested",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

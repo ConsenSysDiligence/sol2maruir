@@ -1,0 +1,542 @@
+{
+    "name": "AliasingAndCopying",
+    "file": "./test/samples/solidity/aliasing_and_copying.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "AliasingAndCopying",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "AliasingAndCopying",
+            "mdc": "AliasingAndCopying",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "AliasingAndCopying",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "AliasingAndCopying",
+            "mdc": "AliasingAndCopying",
+            "method": "arrayStorageToMemory()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "AliasingAndCopying",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "1"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "2"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "3"
+                        }
+                    ]
+                },
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "4"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "2"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "3"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "AliasingAndCopying",
+            "mdc": "AliasingAndCopying",
+            "method": "arrayMemoryToStorage()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "AliasingAndCopying",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "4"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "2"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "3"
+                        }
+                    ]
+                },
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "1"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "2"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "3"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "AliasingAndCopying",
+            "mdc": "AliasingAndCopying",
+            "method": "arrayMemoryToMemory()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "AliasingAndCopying",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "4"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "2"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "3"
+                        }
+                    ]
+                },
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "4"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "2"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "3"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "AliasingAndCopying",
+            "mdc": "AliasingAndCopying",
+            "method": "arrayStorageToStorage()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "AliasingAndCopying",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "1"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "2"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "3"
+                        }
+                    ]
+                },
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "4"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "2"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "3"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "AliasingAndCopying",
+            "mdc": "AliasingAndCopying",
+            "method": "twoDimArrayMemoryToMemory()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "AliasingAndCopying",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "42"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "4"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "4"
+                        }
+                    ]
+                },
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "42"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "4"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "4"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "AliasingAndCopying",
+            "mdc": "AliasingAndCopying",
+            "method": "twoDimArrayStorageToStorage()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "AliasingAndCopying",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "42"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "4"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "4"
+                        }
+                    ]
+                },
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "4"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "4"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "4"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "AliasingAndCopying",
+            "mdc": "AliasingAndCopying",
+            "method": "structStorageToStorage()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "AliasingAndCopying",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "5"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "5"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "AliasingAndCopying",
+            "mdc": "AliasingAndCopying",
+            "method": "structStorageToMemory()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "AliasingAndCopying",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "5"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "AliasingAndCopying",
+            "mdc": "AliasingAndCopying",
+            "method": "structMemoryToStorage()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "AliasingAndCopying",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "5"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "AliasingAndCopying",
+            "mdc": "AliasingAndCopying",
+            "method": "structMemoryToMemory()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "AliasingAndCopying",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "5"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "5"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "AliasingAndCopying",
+            "mdc": "AliasingAndCopying",
+            "method": "copyNestedStruct()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "AliasingAndCopying",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "6"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "4"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "AliasingAndCopying",
+            "mdc": "AliasingAndCopying",
+            "method": "structOperations()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "AliasingAndCopying",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int256",
+                    "value": "1"
+                },
+                {
+                    "kind": "literal",
+                    "type": "int256",
+                    "value": "2"
+                }
+            ]
+        }
+    ]
+}

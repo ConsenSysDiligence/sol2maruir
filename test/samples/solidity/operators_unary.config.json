@@ -1,0 +1,81 @@
+{
+    "file": "./test/samples/solidity/operators_unary.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "OperatorsUnary",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "OperatorsUnary",
+            "mdc": "OperatorsUnary",
+            "method": "testArithmeticOperators()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "OperatorsUnary",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "OperatorsUnary",
+            "mdc": "OperatorsUnary",
+            "method": "testBitwiseOperators()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "OperatorsUnary",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "OperatorsUnary",
+            "mdc": "OperatorsUnary",
+            "method": "testLogicOperators()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "OperatorsUnary",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "OperatorsUnary",
+            "mdc": "OperatorsUnary",
+            "method": "testDelete()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "OperatorsUnary",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "OperatorsUnary",
+            "mdc": "OperatorsUnary",
+            "method": "testTupleArgs()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "OperatorsUnary",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

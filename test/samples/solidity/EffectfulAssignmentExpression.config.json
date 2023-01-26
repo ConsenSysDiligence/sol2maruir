@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/EffectfulAssignmentExpression.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "EffectfulAssignmentExpression",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "EffectfulAssignmentExpression",
+            "mdc": "EffectfulAssignmentExpression",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "EffectfulAssignmentExpression",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "EffectfulAssignmentExpression",
+            "mdc": "EffectfulAssignmentExpression",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "EffectfulAssignmentExpression",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

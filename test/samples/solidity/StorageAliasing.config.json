@@ -1,0 +1,82 @@
+{
+    "name": "StorageAliasing",
+    "file": "./test/samples/solidity/StorageAliasing.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "StorageAliasing",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "StorageAliasing",
+            "mdc": "StorageAliasing",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "StorageAliasing",
+            "mdc": "StorageAliasing",
+            "method": "arrays()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "StorageAliasing",
+            "mdc": "StorageAliasing",
+            "method": "arraysInStructs()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "StorageAliasing",
+            "mdc": "StorageAliasing",
+            "method": "maps()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "StorageAliasing",
+            "mdc": "StorageAliasing",
+            "method": "structInStructCopy()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

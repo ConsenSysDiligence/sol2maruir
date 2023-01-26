@@ -1,0 +1,40 @@
+{
+    "name": "ConstantFolding",
+    "file": "./test/samples/solidity/ConstantFolding.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "ConstantFolding",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "ConstantFolding",
+            "mdc": "ConstantFolding",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ConstantFolding",
+            "mdc": "ConstantFolding",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

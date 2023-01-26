@@ -1,0 +1,40 @@
+{
+    "name": "IntByteCasts",
+    "file": "./test/samples/solidity/IntByteCasts.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "IntByteCasts",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "IntByteCasts",
+            "mdc": "IntByteCasts",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "IntByteCasts",
+            "mdc": "IntByteCasts",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

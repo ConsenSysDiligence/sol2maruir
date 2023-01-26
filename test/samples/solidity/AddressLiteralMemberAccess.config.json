@@ -1,0 +1,12 @@
+{
+    "file": "./test/samples/solidity/AddressLiteralMemberAccess.sol",
+    "compilerVersion": "0.7.6",
+    "steps": [
+        {
+            "act": "validateBySnapshot",
+            "definingContract": "AddressLiteralMemberAccess",
+            "method": "verify()",
+            "dotFile": "./test/samples/dot/AddressLiteralMemberAccess_verify.dot"
+        }
+    ]
+}

@@ -1,0 +1,206 @@
+{
+    "file": "./test/samples/solidity/DoubleUnderscore.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "DoubleUnderscore",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "DoubleUnderscore",
+            "mdc": "DoubleUnderscore",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "DoubleUnderscore",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "DoubleUnderscore",
+            "mdc": "DoubleUnderscore",
+            "method": "singleMod(bool)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "DoubleUnderscore",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "bool",
+                    "value": true
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "DoubleUnderscore",
+            "mdc": "DoubleUnderscore",
+            "method": "reset()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "DoubleUnderscore",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "DoubleUnderscore",
+            "mdc": "DoubleUnderscore",
+            "method": "singleMod(bool)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "DoubleUnderscore",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "bool",
+                    "value": false
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "DoubleUnderscore",
+            "mdc": "DoubleUnderscore",
+            "method": "reset()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "DoubleUnderscore",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "DoubleUnderscore",
+            "mdc": "DoubleUnderscore",
+            "method": "doubleMod(bool)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "DoubleUnderscore",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "bool",
+                    "value": true
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "DoubleUnderscore",
+            "mdc": "DoubleUnderscore",
+            "method": "reset()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "DoubleUnderscore",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "DoubleUnderscore",
+            "mdc": "DoubleUnderscore",
+            "method": "doubleMod(bool)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "DoubleUnderscore",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "bool",
+                    "value": false
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "4"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "DoubleUnderscore",
+            "mdc": "DoubleUnderscore",
+            "method": "reset()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "DoubleUnderscore",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "DoubleUnderscore",
+            "mdc": "DoubleUnderscore",
+            "method": "twoMods(bool)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "DoubleUnderscore",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "bool",
+                    "value": false
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "10"
+                }
+            ]
+        }
+    ]
+}

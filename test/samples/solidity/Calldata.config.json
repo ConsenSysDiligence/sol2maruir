@@ -1,0 +1,138 @@
+{
+    "file": "./test/samples/solidity/Calldata.sol",
+    "compilerVersion": "0.7.6",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Calldata",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Calldata",
+            "mdc": "Calldata",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calldata",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Calldata",
+            "mdc": "Calldata",
+            "method": "stringArgCopy(string)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calldata",
+                    "name": "this"
+                },
+                {
+                    "kind": "string",
+                    "location": "calldata",
+                    "value": "abcd"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "string",
+                    "value": "abcd"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Calldata",
+            "mdc": "Calldata",
+            "method": "byteArg(bytes1[])",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calldata",
+                    "name": "this"
+                },
+                {
+                    "kind": "array",
+                    "location": "calldata",
+                    "type": "byte",
+                    "sized": false,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "byte",
+                            "value": ["43"]
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "byte",
+                            "value": ["2"]
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "byte",
+                            "value": ["3"]
+                        }
+                    ]
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "byte",
+                    "value": ["43"]
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Calldata",
+            "mdc": "Calldata",
+            "method": "byteArgCopy(bytes1[])",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calldata",
+                    "name": "this"
+                },
+                {
+                    "kind": "array",
+                    "location": "calldata",
+                    "type": "byte",
+                    "sized": false,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "byte",
+                            "value": ["43"]
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "byte",
+                            "value": ["2"]
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "byte",
+                            "value": ["3"]
+                        }
+                    ]
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "byte",
+                    "value": ["66"]
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,40 @@
+{
+    "file": "./test/samples/solidity/PublicGetterSelectorAccess.sol",
+    "compilerVersion": "0.7.6",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Test",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Test",
+            "mdc": "Test",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Test",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Test",
+            "mdc": "Test",
+            "method": "verify()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Test",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

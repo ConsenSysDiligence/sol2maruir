@@ -1,0 +1,73 @@
+{
+    "file": "./test/samples/solidity/ShadowingStateVar.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Base",
+            "location": "storage",
+            "name": "b"
+        },
+        {
+            "act": "define",
+            "type": "Child",
+            "location": "storage",
+            "name": "c"
+        },
+        {
+            "act": "call",
+            "definingContract": "Base",
+            "mdc": "Base",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Base",
+                    "name": "b"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Child",
+            "mdc": "Child",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Child",
+                    "name": "c"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Base",
+            "mdc": "Base",
+            "method": "shadowed()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Base",
+                    "name": "b"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Child",
+            "mdc": "Child",
+            "method": "shadowed()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Child",
+                    "name": "c"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

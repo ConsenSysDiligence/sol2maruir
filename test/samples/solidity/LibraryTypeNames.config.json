@@ -1,0 +1,40 @@
+{
+    "name": "LibraryTypeNames",
+    "file": "./test/samples/solidity/LibraryTypeNames.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "LibraryTypeNames",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "LibraryTypeNames",
+            "mdc": "LibraryTypeNames",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "LibraryTypeNames",
+            "mdc": "LibraryTypeNames",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

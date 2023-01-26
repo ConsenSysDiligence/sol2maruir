@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/VirtualModifierOverridenFunction.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Test",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Test",
+            "mdc": "Test",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Test",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Test",
+            "mdc": "Test",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Test",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

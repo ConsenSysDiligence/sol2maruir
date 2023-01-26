@@ -1,0 +1,11 @@
+{
+    "file": "./test/samples/solidity/CodeSize081.sol",
+    "steps": [
+        {
+            "act": "validateBySnapshot",
+            "definingContract": "CodeSize",
+            "method": "f()",
+            "dotFile": "test/samples/dot/CodeSize081_f_26121ff0.dot"
+        }
+    ]
+}

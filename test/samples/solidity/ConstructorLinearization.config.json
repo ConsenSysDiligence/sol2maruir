@@ -1,0 +1,91 @@
+{
+    "name": "ConstructorLinearization",
+    "file": "./test/samples/solidity/ConstructorLinearization.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "ConstructorLinearization",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "ConstructorLinearization",
+            "mdc": "ConstructorLinearization",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ConstructorLinearization",
+            "mdc": "ConstructorLinearization",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "5"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "3"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "4"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "7"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "6"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "8"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "9"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "10"
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,93 @@
+{
+    "file": "./test/samples/solidity/lowlevel_calls_08.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Test",
+            "location": "storage",
+            "name": "this",
+            "balance": {
+                "kind": "literal",
+                "type": "uint256",
+                "value": "20"
+            }
+        },
+        {
+            "act": "define",
+            "type": "Test",
+            "location": "storage",
+            "name": "this1",
+            "balance": {
+                "kind": "literal",
+                "type": "uint256",
+                "value": "20"
+            }
+        },
+        {
+            "act": "call",
+            "definingContract": "Test",
+            "mdc": "Test",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Test",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Test",
+            "mdc": "Test",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Test",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Test",
+            "mdc": "Test",
+            "method": "callTests(address)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Test",
+                    "name": "this"
+                },
+                {
+                    "kind": "object",
+                    "type": "Test",
+                    "name": "this1"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Test",
+            "mdc": "Test",
+            "method": "delegatecallTests(address)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Test",
+                    "name": "this"
+                },
+                {
+                    "kind": "object",
+                    "type": "Test",
+                    "name": "this1"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

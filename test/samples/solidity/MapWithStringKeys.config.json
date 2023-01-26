@@ -1,0 +1,40 @@
+{
+    "file": "./test/samples/solidity/MapWithStringKeys.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "MapWithStringKeys",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "MapWithStringKeys",
+            "mdc": "MapWithStringKeys",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "MapWithStringKeys",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "MapWithStringKeys",
+            "mdc": "MapWithStringKeys",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "MapWithStringKeys",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+            ]
+        }
+    ]
+}

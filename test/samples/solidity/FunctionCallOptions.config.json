@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/FunctionCallOptions.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "FunctionCallOptions",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "FunctionCallOptions",
+            "mdc": "FunctionCallOptions",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "FunctionCallOptions",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "FunctionCallOptions",
+            "mdc": "FunctionCallOptions",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "FunctionCallOptions",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

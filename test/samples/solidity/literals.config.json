@@ -1,0 +1,40 @@
+{
+    "name": "Literals",
+    "file": "./test/samples/solidity/literals.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Literals",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Literals",
+            "mdc": "Literals",
+            "method": "literals()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Literals",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Literals",
+            "mdc": "Literals",
+            "method": "literalsWithSeparators()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Literals",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

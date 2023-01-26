@@ -1,0 +1,40 @@
+{
+    "file": "./test/samples/solidity/EncodingTest.sol",
+    "compilerVersion": "0.7.6",
+    "steps": [
+        {
+            "act": "define",
+            "type": "EncodingTest",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "EncodingTest",
+            "mdc": "EncodingTest",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "EncodingTest",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "EncodingTest",
+            "mdc": "EncodingTest",
+            "method": "test()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "EncodingTest",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

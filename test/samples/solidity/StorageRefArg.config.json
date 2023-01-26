@@ -1,0 +1,85 @@
+{
+    "file": "./test/samples/solidity/StorageRefArg.sol",
+    "compilerVersion": "0.7.6",
+    "steps": [
+        {
+            "act": "define",
+            "type": "StorageRefArg",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "StorageRefArg",
+            "mdc": "StorageRefArg",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "StorageRefArg",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "StorageRefArg",
+            "mdc": "StorageRefArg",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "StorageRefArg",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "1"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "2"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "3"
+                        }
+                    ]
+                },
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "42"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "5"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "6"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

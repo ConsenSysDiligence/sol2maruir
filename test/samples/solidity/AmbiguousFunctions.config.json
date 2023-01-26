@@ -1,0 +1,40 @@
+{
+    "name": "AmbiguousFunctions",
+    "file": "./test/samples/solidity/AmbiguousFunctions.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "AmbiguousFunctions",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "AmbiguousFunctions",
+            "mdc": "AmbiguousFunctions",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "AmbiguousFunctions",
+            "mdc": "AmbiguousFunctions",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

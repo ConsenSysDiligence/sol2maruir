@@ -1,0 +1,40 @@
+{
+    "name": "PrivateFuncsAreVirtual",
+    "file": "./test/samples/solidity/private_funcs_are_virtual.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "PrivateFuncsAreVirtual",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "PrivateFuncsAreVirtual",
+            "mdc": "PrivateFuncsAreVirtual",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "PrivateFuncsAreVirtual",
+            "mdc": "PrivateFuncsAreVirtual",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

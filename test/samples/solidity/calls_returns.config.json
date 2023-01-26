@@ -1,0 +1,356 @@
+{
+    "name": "Returns",
+    "file": "./test/samples/solidity/calls.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Calls",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "multipleReturn()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "sort2(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "42"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "43"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "42"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "43"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "sort2(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "43"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "42"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "42"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "43"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "returnNoExplicitReturn()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "returnMixedNamedUnamed(bool)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "bool",
+                    "value": true
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "3"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "returnMixedNamedUnamed(bool)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "bool",
+                    "value": false
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "0"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "11"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "returnOverwrite()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "returnAssignBeforeBreak1()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "0"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "returnAssignBeforeBreak2()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "5"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "0"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "returnBreakBeforeAssign()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "returnTuplesFromFunction()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "returnTuplesFromFunctionCall()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "1"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "2"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "3"
+                        }
+                    ]
+                },
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "4"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "2"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "3"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

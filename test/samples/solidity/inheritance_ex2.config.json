@@ -1,0 +1,40 @@
+{
+    "name": "DynamicDispatch",
+    "file": "./test/samples/solidity/inheritance_ex2.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "DynamicDispatch",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "DynamicDispatch",
+            "mdc": "DynamicDispatch",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "DynamicDispatch",
+            "mdc": "DynamicDispatch",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

@@ -1,0 +1,81 @@
+{
+    "file": "./test/samples/solidity/overflow_and_underflow.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "OverflowsAndUnderflows",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "OverflowsAndUnderflows",
+            "mdc": "OverflowsAndUnderflows",
+            "method": "testSignedInt8()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "OverflowsAndUnderflows",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "OverflowsAndUnderflows",
+            "mdc": "OverflowsAndUnderflows",
+            "method": "testSignedInt256()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "OverflowsAndUnderflows",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "OverflowsAndUnderflows",
+            "mdc": "OverflowsAndUnderflows",
+            "method": "testUnsignedInt8()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "OverflowsAndUnderflows",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "OverflowsAndUnderflows",
+            "mdc": "OverflowsAndUnderflows",
+            "method": "testUnsignedInt256()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "OverflowsAndUnderflows",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "OverflowsAndUnderflows",
+            "mdc": "OverflowsAndUnderflows",
+            "method": "docCases()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "OverflowsAndUnderflows",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

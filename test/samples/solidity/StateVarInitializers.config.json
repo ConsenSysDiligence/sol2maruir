@@ -1,0 +1,26 @@
+{
+    "name": "StateVarInitializers",
+    "file": "./test/samples/solidity/StateVarInitializers.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "StateVarInitializers",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "StateVarInitializers",
+            "mdc": "StateVarInitializers",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

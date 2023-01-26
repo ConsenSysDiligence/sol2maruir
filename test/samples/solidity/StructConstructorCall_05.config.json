@@ -1,0 +1,40 @@
+{
+    "name": "StructConstructorCall_0.5.x",
+    "file": "./test/samples/solidity/StructConstructorCall_05.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "StructConstructorCall",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "StructConstructorCall",
+            "mdc": "StructConstructorCall",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "StructConstructorCall",
+            "mdc": "StructConstructorCall",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

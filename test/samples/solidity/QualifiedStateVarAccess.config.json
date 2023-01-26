@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/QualifiedStateVarAccess.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "B",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "B",
+            "mdc": "B",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "B",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "B",
+            "mdc": "B",
+            "method": "verify()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Test",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

@@ -1,0 +1,96 @@
+{
+    "name": "PublicGetters",
+    "file": "./test/samples/solidity/public_getters.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "PublicGetters",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "PublicGetters",
+            "mdc": "PublicGetters",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "PublicGetters",
+            "mdc": "PublicGetters",
+            "method": "testElementaryUnchanged()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "PublicGetters",
+            "mdc": "PublicGetters",
+            "method": "testElementaryChanged()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "PublicGetters",
+            "mdc": "PublicGetters",
+            "method": "testStructUnchanged()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "PublicGetters",
+            "mdc": "PublicGetters",
+            "method": "testStructChanged()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "PublicGetters",
+            "mdc": "PublicGetters",
+            "method": "testArrayOneDim()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

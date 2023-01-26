@@ -1,0 +1,322 @@
+{
+    "name": "Ternary",
+    "file": "./test/samples/solidity/ternary.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Ternary",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Ternary",
+            "mdc": "Ternary",
+            "method": "ternaryInExpressionStatement(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Ternary",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Ternary",
+            "mdc": "Ternary",
+            "method": "ternaryInExpressionStatement(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Ternary",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "3"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "5"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Ternary",
+            "mdc": "Ternary",
+            "method": "ternaryNested(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Ternary",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "0"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Ternary",
+            "mdc": "Ternary",
+            "method": "ternaryNested(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Ternary",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Ternary",
+            "mdc": "Ternary",
+            "method": "ternaryNested(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Ternary",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Ternary",
+            "mdc": "Ternary",
+            "method": "ternaryNestedFunctionCallArgument(bool)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Ternary",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "bool",
+                    "value": true
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int64",
+                    "value": "1"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Ternary",
+            "mdc": "Ternary",
+            "method": "ternaryNestedFunctionCallArgument(bool)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Ternary",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "bool",
+                    "value": false
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int64",
+                    "value": "2"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Ternary",
+            "mdc": "Ternary",
+            "method": "ternaryReturnMultiple(bool)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Ternary",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "bool",
+                    "value": true
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Ternary",
+            "mdc": "Ternary",
+            "method": "ternaryReturnMultiple(bool)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Ternary",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "bool",
+                    "value": false
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Ternary",
+            "mdc": "Ternary",
+            "method": "ternaryReturn(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Ternary",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Ternary",
+            "mdc": "Ternary",
+            "method": "ternaryReturn(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Ternary",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "5"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "7"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Ternary",
+            "mdc": "Ternary",
+            "method": "ternaryCommonType(bool)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Ternary",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "bool",
+                    "value": false
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "address",
+                    "value": "0x0"
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,40 @@
+{
+    "name": "InheritanceEx1",
+    "file": "./test/samples/solidity/inheritance_ex1.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "C",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "C",
+            "mdc": "C",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "C",
+            "mdc": "C",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

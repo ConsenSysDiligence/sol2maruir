@@ -1,0 +1,12 @@
+{
+    "file": "./test/samples/solidity/TypeBuiltin.sol",
+    "compilerVersion": "0.7.6",
+    "steps": [
+        {
+            "act": "validateBySnapshot",
+            "definingContract": "TypeBuiltin",
+            "method": "verify()",
+            "dotFile": "./test/samples/dot/TypeBuiltin_verify.dot"
+        }
+    ]
+}

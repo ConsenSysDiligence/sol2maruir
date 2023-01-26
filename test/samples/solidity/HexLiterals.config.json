@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/HexLiterals.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "HexLiterals",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "HexLiterals",
+            "mdc": "HexLiterals",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "HexLiterals",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "HexLiterals",
+            "mdc": "HexLiterals",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "HexLiterals",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/TryCatchShadowing.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "TryCatchShadowing",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatchShadowing",
+            "mdc": "TryCatchShadowing",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatchShadowing",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatchShadowing",
+            "mdc": "TryCatchShadowing",
+            "method": "successArgShadow()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatchShadowing",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

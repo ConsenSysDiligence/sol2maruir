@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/ContractEnumKeys06.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "ContractEnumKeys06",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "ContractEnumKeys06",
+            "mdc": "ContractEnumKeys06",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ContractEnumKeys06",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ContractEnumKeys06",
+            "mdc": "ContractEnumKeys06",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ContractEnumKeys06",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

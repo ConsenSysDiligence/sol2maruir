@@ -1,0 +1,40 @@
+{
+    "name": "CastInBraces",
+    "file": "./test/samples/solidity/CastInBraces.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "CastInBraces",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "CastInBraces",
+            "mdc": "CastInBraces",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "CastInBraces",
+            "mdc": "CastInBraces",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

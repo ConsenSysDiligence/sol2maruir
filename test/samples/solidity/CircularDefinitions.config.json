@@ -1,0 +1,40 @@
+{
+    "name": "CircularDefinitions",
+    "file": "./test/samples/solidity/CircularDefinitions.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "CircularDefinitions",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "CircularDefinitions",
+            "mdc": "CircularDefinitions",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "CircularDefinitions",
+            "mdc": "CircularDefinitions",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/SelectorTest062.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "SelectorTest",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "SelectorTest",
+            "mdc": "SelectorTest",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "SelectorTest",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "SelectorTest",
+            "mdc": "SelectorTest",
+            "method": "verify()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "SelectorTest",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

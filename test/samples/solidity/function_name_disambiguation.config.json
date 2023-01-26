@@ -1,0 +1,40 @@
+{
+    "name": "FunctionNameDisambiguation",
+    "file": "./test/samples/solidity/function_name_disambiguation.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "FunctionNameDisambiguation",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "FunctionNameDisambiguation",
+            "mdc": "FunctionNameDisambiguation",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "FunctionNameDisambiguation",
+            "mdc": "FunctionNameDisambiguation",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

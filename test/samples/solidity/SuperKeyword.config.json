@@ -1,0 +1,40 @@
+{
+    "name": "SuperKeyword",
+    "file": "./test/samples/solidity/SuperKeyword.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "SuperKeyword",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "SuperKeyword",
+            "mdc": "SuperKeyword",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "SuperKeyword",
+            "mdc": "SuperKeyword",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

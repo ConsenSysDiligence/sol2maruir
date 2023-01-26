@@ -1,0 +1,40 @@
+{
+    "name": "OldStyleEventEmit",
+    "file": "./test/samples/solidity/OldStyleEventEmit.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "OldStyleEventEmit",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "OldStyleEventEmit",
+            "mdc": "OldStyleEventEmit",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "OldStyleEventEmit",
+            "mdc": "OldStyleEventEmit",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

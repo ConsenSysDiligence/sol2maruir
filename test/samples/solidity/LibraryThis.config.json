@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/LibraryThis.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "LibraryThis",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "LibraryThis",
+            "mdc": "LibraryThis",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "LibraryThis",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "LibraryThis",
+            "mdc": "LibraryThis",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "LibraryThis",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

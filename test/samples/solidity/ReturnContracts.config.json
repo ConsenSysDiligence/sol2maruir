@@ -1,0 +1,53 @@
+{
+    "file": "./test/samples/solidity/ReturnContracts.sol",
+    "steps": [
+        {
+            "act": "validateBySnapshot",
+            "definingContract": "ReturnContracts",
+            "method": "retArray()",
+            "dotFile": "./test/samples/dot/ReturnContracts_retArray_640d9b5f.dot"
+        },
+        {
+            "act": "validateBySnapshot",
+            "definingContract": "ReturnContracts",
+            "method": "retArrayNamed()",
+            "dotFile": "./test/samples/dot/ReturnContracts_retArrayNamed_f6031204.dot"
+        },
+        {
+            "act": "validateBySnapshot",
+            "definingContract": "ReturnContracts",
+            "method": "retContract()",
+            "dotFile": "./test/samples/dot/ReturnContracts_retContract_6a469faf.dot"
+        },
+        {
+            "act": "validateBySnapshot",
+            "definingContract": "ReturnContracts",
+            "method": "retContractNamed()",
+            "dotFile": "./test/samples/dot/ReturnContracts_retContractNamed_6c10a4df.dot"
+        },
+        {
+            "act": "validateBySnapshot",
+            "definingContract": "ReturnContracts",
+            "method": "retStruct()",
+            "dotFile": "./test/samples/dot/ReturnContracts_retStruct_0d1d2c64.dot"
+        },
+        {
+            "act": "validateBySnapshot",
+            "definingContract": "ReturnContracts",
+            "method": "retStructNamed()",
+            "dotFile": "./test/samples/dot/ReturnContracts_retStructNamed_4d2424f8.dot"
+        },
+        {
+            "act": "validateBySnapshot",
+            "definingContract": "ReturnContracts",
+            "method": "retStructs()",
+            "dotFile": "./test/samples/dot/ReturnContracts_retStructs_5d57c227.dot"
+        },
+        {
+            "act": "validateBySnapshot",
+            "definingContract": "ReturnContracts",
+            "method": "retStructsNamed()",
+            "dotFile": "./test/samples/dot/ReturnContracts_retStructsNamed_2677a045.dot"
+        }
+    ]
+}

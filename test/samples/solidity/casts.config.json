@@ -1,0 +1,136 @@
+{
+    "name": "Casts",
+    "file": "./test/samples/solidity/casts.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Casts",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Casts",
+            "mdc": "Casts",
+            "method": "castToChar(bytes1)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Casts",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "byte",
+                    "value": ["0x25"]
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "byte",
+                    "value": ["0x7c"]
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Casts",
+            "mdc": "Casts",
+            "method": "castToChar(bytes1)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Casts",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "byte",
+                    "value": ["0x05"]
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "byte",
+                    "value": ["0x35"]
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Casts",
+            "mdc": "Casts",
+            "method": "castToString(address)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Casts",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "address",
+                    "value": "0x14723a09acff6d2a60dcdf7aa4aff308fddc160c"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "string",
+                    "location": "memory",
+                    "value": "14723a09acff6d2a60dcdf7aa4aff308fddc160c"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Casts",
+            "mdc": "Casts",
+            "method": "castToUpper(string)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Casts",
+                    "name": "this"
+                },
+                {
+                    "kind": "string",
+                    "location": "memory",
+                    "value": "ab1c2y3xyz"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "string",
+                    "value": "AB1C2Y3XYZ"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Casts",
+            "mdc": "Casts",
+            "method": "castToUint(string)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Casts",
+                    "name": "this"
+                },
+                {
+                    "kind": "string",
+                    "location": "memory",
+                    "value": "te1st123xy3z"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "11233"
+                }
+            ]
+        }
+    ]
+}

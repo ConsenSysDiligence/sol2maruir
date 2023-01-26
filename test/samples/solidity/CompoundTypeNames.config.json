@@ -1,0 +1,40 @@
+{
+    "name": "CompoundTypeNames",
+    "file": "./test/samples/solidity/CompoundTypeNames.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "CompoundTypeNames",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "CompoundTypeNames",
+            "mdc": "CompoundTypeNames",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "CompoundTypeNames",
+            "mdc": "CompoundTypeNames",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

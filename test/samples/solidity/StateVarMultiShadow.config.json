@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/StateVarMultiShadow.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Main",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Main",
+            "mdc": "Main",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Main",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Main",
+            "mdc": "Main",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Main",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

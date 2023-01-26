@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/ArrayLengthUnaryOp.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "ArrayLengthUnaryOp",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "ArrayLengthUnaryOp",
+            "mdc": "ArrayLengthUnaryOp",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ArrayLengthUnaryOp",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ArrayLengthUnaryOp",
+            "mdc": "ArrayLengthUnaryOp",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ArrayLengthUnaryOp",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

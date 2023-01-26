@@ -1,0 +1,40 @@
+{
+    "file": "./test/samples/solidity/ImplicitStringLiteralFixedByteCasts.sol",
+    "compilerVersion": "0.7.6",
+    "steps": [
+        {
+            "act": "define",
+            "type": "ImplicitStringLiteralFixedByteCasts",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "ImplicitStringLiteralFixedByteCasts",
+            "mdc": "ImplicitStringLiteralFixedByteCasts",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ImplicitStringLiteralFixedByteCasts",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ImplicitStringLiteralFixedByteCasts",
+            "mdc": "ImplicitStringLiteralFixedByteCasts",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ImplicitStringLiteralFixedByteCasts",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

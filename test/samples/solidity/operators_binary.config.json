@@ -1,0 +1,67 @@
+{
+    "file": "./test/samples/solidity/operators_binary.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "OperatorsBinary",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "OperatorsBinary",
+            "mdc": "OperatorsBinary",
+            "method": "testArithmeticOperators()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "OperatorsBinary",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "OperatorsBinary",
+            "mdc": "OperatorsBinary",
+            "method": "testBitwiseOperators()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "OperatorsBinary",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "OperatorsBinary",
+            "mdc": "OperatorsBinary",
+            "method": "testLogicOperators()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "OperatorsBinary",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "OperatorsBinary",
+            "mdc": "OperatorsBinary",
+            "method": "testOperatorsOnBitTypes()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "OperatorsBinary",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

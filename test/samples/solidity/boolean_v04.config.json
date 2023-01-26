@@ -1,0 +1,25 @@
+{
+    "file": "./test/samples/solidity/boolean_v04.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Boolean",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Boolean",
+            "mdc": "Boolean",
+            "method": "booleanLogic()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Boolean",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

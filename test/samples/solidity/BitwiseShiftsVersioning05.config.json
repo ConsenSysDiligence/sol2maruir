@@ -1,0 +1,46 @@
+{
+    "file": "./test/samples/solidity/BitwiseShiftsVersioning.sol",
+    "compilerVersion": "0.5.5",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Test",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Test",
+            "mdc": "Test",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Test",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Test",
+            "mdc": "Test",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Test",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "int256",
+                    "value": "-3"
+                }
+            ]
+        }
+    ]
+}

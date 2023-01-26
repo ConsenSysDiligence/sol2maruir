@@ -1,0 +1,40 @@
+{
+    "file": "./test/samples/solidity/ImplicitMemoryStorageCasts.sol",
+    "compilerVersion": "0.7.6",
+    "steps": [
+        {
+            "act": "define",
+            "type": "ImplicitMemoryStorageCasts",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "ImplicitMemoryStorageCasts",
+            "mdc": "ImplicitMemoryStorageCasts",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ImplicitMemoryStorageCasts",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ImplicitMemoryStorageCasts",
+            "mdc": "ImplicitMemoryStorageCasts",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ImplicitMemoryStorageCasts",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

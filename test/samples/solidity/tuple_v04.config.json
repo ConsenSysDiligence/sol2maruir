@@ -1,0 +1,67 @@
+{
+    "file": "./test/samples/solidity/tuple_v04.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Tuples",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Tuples",
+            "mdc": "Tuples",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Tuples",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Tuples",
+            "mdc": "Tuples",
+            "method": "declarationTuples()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Tuples",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Tuples",
+            "mdc": "Tuples",
+            "method": "nestedTuples()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Tuples",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Tuples",
+            "mdc": "Tuples",
+            "method": "missingTupleFields()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Tuples",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

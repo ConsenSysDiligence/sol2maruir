@@ -1,0 +1,26 @@
+{
+    "file": "./test/samples/solidity/DecodingTest.sol",
+    "compilerVersion": "0.7.6",
+    "steps": [
+        {
+            "act": "define",
+            "type": "DecodingTest",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "DecodingTest",
+            "mdc": "DecodingTest",
+            "method": "test()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "DecodingTest",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

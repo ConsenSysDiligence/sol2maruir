@@ -1,0 +1,39 @@
+{
+    "file": "./test/samples/solidity/Calldata08.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Calldata08",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Calldata08",
+            "mdc": "Calldata08",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calldata08",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Calldata08",
+            "mdc": "Calldata08",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calldata08",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

@@ -1,0 +1,58 @@
+{
+    "file": "./test/samples/solidity/TryCatchMisc.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "TryCatchMisc",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatchMisc",
+            "mdc": "TryCatchMisc",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatchMisc",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatchMisc",
+            "mdc": "TryCatchMisc",
+            "method": "main4()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatchMisc",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "TryCatchMisc",
+            "mdc": "TryCatchMisc",
+            "method": "main5()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "TryCatchMisc",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "string",
+                    "value": "zbcd"
+                }
+            ]
+        }
+    ]
+}

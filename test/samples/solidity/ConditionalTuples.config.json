@@ -1,0 +1,40 @@
+{
+    "file": "./test/samples/solidity/ConditionalTuples.sol",
+    "compilerVersion": "0.7.6",
+    "steps": [
+        {
+            "act": "define",
+            "type": "ConditionalTuples",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "ConditionalTuples",
+            "mdc": "ConditionalTuples",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ConditionalTuples",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ConditionalTuples",
+            "mdc": "ConditionalTuples",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Test",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

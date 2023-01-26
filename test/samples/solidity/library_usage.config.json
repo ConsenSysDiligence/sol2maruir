@@ -1,0 +1,62 @@
+{
+    "name": "LibraryUsage",
+    "file": "./test/samples/solidity/library_usage.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "LibraryUsage",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "LibraryUsage",
+            "mdc": "LibraryUsage",
+            "method": "libraryUsing(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "LibraryUsage",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "10"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "10"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "LibraryUsage",
+            "mdc": "LibraryUsage",
+            "method": "libraryCall(uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "LibraryUsage",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "10"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "10"
+                }
+            ]
+        }
+    ]
+}

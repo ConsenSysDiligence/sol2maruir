@@ -1,0 +1,45 @@
+{
+    "file": "./test/samples/solidity/ExpressionStatement.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "ExpressionStatement",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "ExpressionStatement",
+            "mdc": "ExpressionStatement",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ExpressionStatement",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ExpressionStatement",
+            "mdc": "ExpressionStatement",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Test",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "validateBySnapshot",
+            "definingContract": "ExpressionStatement",
+            "method": "main()",
+            "dotFile": "./test/samples/dot/ExpressionStatement_main.dot"
+        }
+    ]
+}

@@ -1,0 +1,188 @@
+{
+    "name": "Require/assert/revert calls",
+    "file": "./test/samples/solidity/calls.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Calls",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "requireCall(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "4"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "requireCall(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "0"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ],
+            "expectedRequireFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "assertCall(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "4"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "assertCall(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "0"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ],
+            "expectedAssertFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "revertCall(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "4"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Calls",
+            "mdc": "Calls",
+            "method": "revertCall(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Calls",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "0"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ],
+            "expectedExplicitRevert": true
+        }
+    ]
+}

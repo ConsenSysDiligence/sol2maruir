@@ -1,0 +1,461 @@
+{
+    "name": "Modifiers",
+    "file": "./test/samples/solidity/modifiers.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Modifiers",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Modifiers",
+            "mdc": "Modifiers",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Modifiers",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Modifiers",
+            "mdc": "Modifiers",
+            "method": "modifierRepeated(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Modifiers",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "0"
+                }
+            ],
+            "expectedRequireFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Modifiers",
+            "mdc": "Modifiers",
+            "method": "modifierRepeated(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Modifiers",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "3"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Modifiers",
+            "mdc": "Modifiers",
+            "method": "modifierBefore(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Modifiers",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ],
+            "expectedRequireFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Modifiers",
+            "mdc": "Modifiers",
+            "method": "modifierBefore(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Modifiers",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "3"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "5"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Modifiers",
+            "mdc": "Modifiers",
+            "method": "modifierReturn(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Modifiers",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Modifiers",
+            "mdc": "Modifiers",
+            "method": "modifierAfter(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Modifiers",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "0"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ],
+            "expectedRequireFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Modifiers",
+            "mdc": "Modifiers",
+            "method": "modifierAfter(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Modifiers",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ],
+            "expectedRequireFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Modifiers",
+            "mdc": "Modifiers",
+            "method": "modifierAfter(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Modifiers",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "4"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Modifiers",
+            "mdc": "Modifiers",
+            "method": "modifierTwo(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Modifiers",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "0"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                }
+            ],
+            "expectedRequireFail": true
+        },
+        {
+            "act": "call",
+            "definingContract": "Modifiers",
+            "mdc": "Modifiers",
+            "method": "modifierTwo(uint256,uint256)",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Modifiers",
+                    "name": "this"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "2"
+                },
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "1"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "3"
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Modifiers",
+            "mdc": "Modifiers",
+            "method": "modifierChangeMemoryArrBefore(uint256[3])",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Modifiers",
+                    "name": "this"
+                },
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "9"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "8"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "7"
+                        }
+                    ]
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "1"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "8"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "7"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Modifiers",
+            "mdc": "Modifiers",
+            "method": "modifierChangeMemoryArrAfter1(uint256[3])",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Modifiers",
+                    "name": "this"
+                },
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "5"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "5"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "5"
+                        }
+                    ]
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "1"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "5"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "5"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "act": "call",
+            "definingContract": "Modifiers",
+            "mdc": "Modifiers",
+            "method": "modifierChangeMemoryArrAfter2(uint256[3])",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Modifiers",
+                    "name": "this"
+                },
+                {
+                    "kind": "array",
+                    "type": "uint256",
+                    "sized": true,
+                    "size": 3,
+                    "elements": [
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "5"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "5"
+                        },
+                        {
+                            "kind": "literal",
+                            "type": "uint256",
+                            "value": "5"
+                        }
+                    ]
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "5"
+                }
+            ]
+        }
+    ]
+}

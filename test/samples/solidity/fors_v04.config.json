@@ -1,0 +1,179 @@
+{
+    "file": "./test/samples/solidity/fors_v04.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "ForLoops",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "ForLoops",
+            "mdc": "ForLoops",
+            "method": "forStatementCompleteWithExpression()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ForLoops",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ForLoops",
+            "mdc": "ForLoops",
+            "method": "forStatementCompleteWithBlock()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ForLoops",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ForLoops",
+            "mdc": "ForLoops",
+            "method": "forStatementInitializationWithNoDeclaration()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ForLoops",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ForLoops",
+            "mdc": "ForLoops",
+            "method": "forStatementNoInitialization()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ForLoops",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ForLoops",
+            "mdc": "ForLoops",
+            "method": "forStatementNoLoopExpression()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ForLoops",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ForLoops",
+            "mdc": "ForLoops",
+            "method": "forStatementNoLoopCondition()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ForLoops",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ForLoops",
+            "mdc": "ForLoops",
+            "method": "forStatementLoopExpressionOnly()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ForLoops",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ForLoops",
+            "mdc": "ForLoops",
+            "method": "forStatementLoopConditionOnly()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ForLoops",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ForLoops",
+            "mdc": "ForLoops",
+            "method": "forStatementLoopInitializationOnly()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ForLoops",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ForLoops",
+            "mdc": "ForLoops",
+            "method": "forStatementEmpty()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ForLoops",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ForLoops",
+            "mdc": "ForLoops",
+            "method": "forStatementWithLoopControlStatements()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ForLoops",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ForLoops",
+            "mdc": "ForLoops",
+            "method": "forStatementwithTernaryInHeader()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "ForLoops",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        }
+    ]
+}

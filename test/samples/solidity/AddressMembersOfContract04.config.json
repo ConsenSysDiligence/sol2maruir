@@ -1,0 +1,11 @@
+{
+    "file": "./test/samples/solidity/AddressMembersOfContract04.sol",
+    "steps": [
+        {
+            "act": "validateBySnapshot",
+            "definingContract": "AddressMembersOfContract",
+            "method": "verify(uint256)",
+            "dotFile": "./test/samples/dot/AddressMembersOfContract_verify.dot"
+        }
+    ]
+}
