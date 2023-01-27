@@ -194,6 +194,10 @@ export class CFGBuilder {
         return this.addSolVarImpl(localV, this._locals);
     }
 
+    addModifierArg(localV: sol.VariableDeclaration): ir.VariableDeclaration {
+        return this.addSolVarImpl(localV, this._locals);
+    }
+
     addArg(argV: sol.VariableDeclaration): ir.VariableDeclaration {
         return this.addSolVarImpl(argV, this.args);
     }

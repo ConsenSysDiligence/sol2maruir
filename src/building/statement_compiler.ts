@@ -1,6 +1,12 @@
 import * as ir from "maru-ir2";
 import * as sol from "solc-typed-ast";
-import { ABIEncoderVersion, assert, ErrorDefinition, pp } from "solc-typed-ast";
+import {
+    ABIEncoderVersion,
+    abiTypeToCanonicalName,
+    assert,
+    ErrorDefinition,
+    pp
+} from "solc-typed-ast";
 import { CFGBuilder } from "./cfg_builder";
 import { ExpressionCompiler } from "./expression_compiler";
 import { ASTSource } from "../ir/source";
@@ -50,7 +56,7 @@ export class StatementCompiler {
     compilePlaceholderStatement(stmt: sol.PlaceholderStatement): void {
         this.cfgBuilder.placeHolderStack.push(stmt);
 
-        const modEntry = this.modifierStack.pop();
+        const modEntry = this.modifierStack.shift();
         assert(modEntry !== undefined, `Pop from empty modifier stack`);
 
         const [body, invocation] = modEntry;
@@ -67,6 +73,10 @@ export class StatementCompiler {
             const formals = mod.vParameters.vParameters;
             const actuals = invocation.vArguments;
 
+            for (const decl of formals) {
+                this.cfgBuilder.addModifierArg(decl);
+            }
+
             for (let i = 0; i < formals.length; i++) {
                 const formal = formals[i];
                 const actual = actuals[i];
@@ -82,6 +92,7 @@ export class StatementCompiler {
 
         this.compile(body);
 
+        this.modifierStack.unshift(modEntry);
         this.cfgBuilder.placeHolderStack.pop();
     }
 
@@ -410,7 +421,14 @@ export class StatementCompiler {
 
         const sig = this.cfgBuilder.infer.signature(decl, this.abiVersion);
         const sigStr = this.exprCompiler.getStrLit(sig, noSrc);
-        const args = stmt.errorCall.vArguments.map((arg) => this.exprCompiler.compile(arg));
+        const args: ir.Expression[] = [];
+
+        for (const arg of stmt.errorCall.vArguments) {
+            const solArgT = this.cfgBuilder.infer.typeOf(arg);
+            args.push(this.exprCompiler.getStrLit(abiTypeToCanonicalName(solArgT), noSrc));
+            args.push(this.exprCompiler.compile(arg));
+        }
+
         const argTs = args.map((arg) => this.exprCompiler.typeOf(arg));
 
         const errBytes = this.cfgBuilder.getTmpId(u8ArrMemPtr);

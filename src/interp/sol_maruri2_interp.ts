@@ -10,7 +10,6 @@ import {
     IntType,
     noSrc,
     PointerVal,
-    poison,
     PrimitiveValue,
     Program,
     Resolving,
@@ -20,6 +19,8 @@ import {
     Typing
 } from "maru-ir2";
 import { LiteralEvaluator } from "maru-ir2";
+import * as ir from "maru-ir2";
+import { encodeWithSignature } from "../utils";
 
 export class SolMaruirInterp {
     resolving: Resolving;
@@ -29,6 +30,123 @@ export class SolMaruirInterp {
     stmtExec: StatementExecutor;
     contractRegistry: Map<bigint, [Type, PrimitiveValue]>;
     nAddresses = 0;
+
+    private decodeString(ptr: PointerVal): string {
+        const val = this.stmtExec.deref(ptr);
+
+        assert(
+            val instanceof Map && val.has("arr"),
+            `Expected array for string decoding not {0}`,
+            val
+        );
+
+        const bigIntPtr = val.get("arr") as PointerVal;
+
+        const bigIntArr = this.stmtExec.deref(bigIntPtr);
+
+        assert(bigIntArr instanceof Array, `Expected array for string decoding not {0}`, bigIntArr);
+        const numArr: number[] = [];
+
+        for (const bigInt of bigIntArr) {
+            numArr.push(Number(bigInt));
+        }
+
+        const buf = Buffer.from(numArr);
+
+        return buf.toString("utf-8");
+    }
+
+    private defineBytes(bytes: Buffer, inMem: string): PointerVal {
+        const bigIntArr: bigint[] = Array.from(bytes).map(BigInt);
+
+        const arrPtr = this.state.define(bigIntArr, inMem);
+
+        const struct = new Map<string, PrimitiveValue>([
+            ["arr", arrPtr],
+            ["len", BigInt(arrPtr.length)]
+        ]);
+
+        return this.state.define(struct, inMem);
+    }
+
+    /**
+     * Converts interpreter value to Web3-compatible value.
+     *
+     * @see https://web3js.readthedocs.io/en/v1.2.6/web3-eth-abi.html#encodeparameters
+     */
+    toWeb3Value(arg: ir.PrimitiveValue, abiType: string, state: State): any {
+        if (abiType === "uint256") {
+            return arg;
+        }
+
+        throw new Error(`NYI toWeb3Value of abi type ${abiType}`);
+    }
+
+    private builtin_bin_op_overflows(frame: BuiltinFrame, op: string): boolean {
+        if (op === "**") {
+            assert(
+                frame.typeArgs.length === 2,
+                `Expected two type arg to builtin_<{0}>_overflows`,
+                op
+            );
+        } else {
+            assert(
+                frame.typeArgs.length === 1,
+                `Expected one type arg to builtin_<{0}>_overflows`,
+                op
+            );
+        }
+
+        const typ = frame.typeArgs[0];
+
+        assert(typ instanceof IntType, `Expected an int type not ${typ.pp()}`);
+
+        const x = frame.args[0][1];
+        const y = frame.args[1][1];
+
+        const [min, max] = getTypeRange(typ.nbits, typ.signed);
+        assert(typeof x === "bigint" && typeof y === "bigint", ``);
+
+        let res: bigint;
+
+        if (op === "+") {
+            res = x + y;
+        } else if (op === "-") {
+            res = x - y;
+        } else if (op === "*") {
+            res = x * y;
+        } else if (op === "/") {
+            res = x / y;
+        } else if (op === "**") {
+            res = x ** y;
+        } else {
+            throw new Error(`NYI op ${op}`);
+        }
+
+        const inRange = min <= res && res <= max;
+
+        return !inRange;
+    }
+
+    private builtin_un_op_overflows(frame: BuiltinFrame, op: string): boolean {
+        assert(frame.typeArgs.length === 1, `Expected one type arg to builtin_un_overflows`);
+
+        const typ = frame.typeArgs[0];
+
+        assert(typ instanceof IntType, `Expected an int type not ${typ.pp()}`);
+
+        const x = frame.args[0][1];
+
+        const [min, max] = getTypeRange(typ.nbits, typ.signed);
+        assert(typeof x === "bigint", ``);
+
+        const res: bigint = -x;
+
+        assert(op === "-", "NYI unary op overflow for {0}", op);
+        const inRange = min <= res && res <= max;
+
+        return !inRange;
+    }
 
     constructor(public readonly defs: Program, rootTrans: boolean) {
         this.resolving = new Resolving(defs);
@@ -49,24 +167,37 @@ export class SolMaruirInterp {
             [
                 "builtin_add_overflows",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
-                    assert(
-                        frame.typeArgs.length === 1,
-                        `Expected one type arg to builtin_add_overflows`
-                    );
-
-                    const typ = frame.typeArgs[0];
-
-                    assert(typ instanceof IntType, `Expected an int type not ${typ.pp()}`);
-
-                    const x = frame.args[0][1];
-                    const y = frame.args[1][1];
-
-                    const [min, max] = getTypeRange(typ.nbits, typ.signed);
-                    assert(typeof x === "bigint" && typeof y === "bigint", ``);
-
-                    const inRange = min <= x + y && x + y <= max;
-
-                    return [false, [!inRange]];
+                    return [false, [this.builtin_bin_op_overflows(frame, "+")]];
+                }
+            ],
+            [
+                "builtin_sub_overflows",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    return [false, [this.builtin_bin_op_overflows(frame, "-")]];
+                }
+            ],
+            [
+                "builtin_mul_overflows",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    return [false, [this.builtin_bin_op_overflows(frame, "*")]];
+                }
+            ],
+            [
+                "builtin_div_overflows",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    return [false, [this.builtin_bin_op_overflows(frame, "/")]];
+                }
+            ],
+            [
+                "builtin_pow_overflows",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    return [false, [this.builtin_bin_op_overflows(frame, "**")]];
+                }
+            ],
+            [
+                "builtin_neg_overflows",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    return [false, [this.builtin_un_op_overflows(frame, "-")]];
                 }
             ],
             [
@@ -79,11 +210,22 @@ export class SolMaruirInterp {
                 "builtin_abi_encodeWithSignature_1",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
                     assert(
-                        frame.typeArgs.length === 1 && frame.args.length === 2,
-                        `Expected one type arg to builtin_add_overflows`
+                        frame.typeArgs.length === 1 && frame.args.length === 3,
+                        `Expected one type arg and 3 args to builtin_abi_encodeWithSignature_1`
                     );
 
-                    return [true, [poison]];
+                    const [[, sigPtr], [, typePtr], [, val]] = frame.args;
+
+                    assert(sigPtr instanceof Array && typePtr instanceof Array, ``);
+
+                    const signature = this.decodeString(sigPtr);
+                    const abiType = this.decodeString(typePtr);
+
+                    console.error(`Signature: ${signature} abi type: ${abiType} val: ${val}`);
+                    const result = encodeWithSignature(signature, [abiType], val);
+                    console.error(result.toString("hex"));
+
+                    return [true, [this.defineBytes(result, "memory")]];
                 }
             ],
             [

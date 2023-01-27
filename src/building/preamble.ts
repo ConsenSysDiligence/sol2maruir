@@ -5,6 +5,7 @@ const preambleStr = `
     var _exception_bytes_: ArrWithLen<#exception; u8> *#exception = { arr: [], len: 0_u256 }
 
     var _panic_signature: ArrWithLen<#exception; u8> *#exception = { arr: [80_u8, 97_u8, 110_u8, 105_u8, 99_u8, 40_u8, 117_u8, 105_u8, 110_u8, 116_u8, 50_u8, 53_u8, 54_u8, 41_u8], len: 14_u256 }
+    var _uint256_str_: ArrWithLen<#exception; u8> *#exception = { arr: [117_u8, 105_u8, 110_u8, 116_u8, 50_u8, 53_u8, 54_u8], len: 7_u256 }
 
     struct Block {
         number: u256;
@@ -95,7 +96,7 @@ const preambleStr = `
         panicBytesInExc: ArrWithLen<#exception; u8> *#exception;
     {
         entry:
-            panicBytes := call builtin_abi_encodeWithSignature_1<#exception; u256>(_panic_signature, code);
+            panicBytes := call builtin_abi_encodeWithSignature_1<#exception; u256>(_panic_signature, _uint256_str_, code);
             panicBytesInExc := call copy_u8arr<#memory, #exception>(panicBytes);
             call builtin_setExceptionBytes(panicBytesInExc);
             abort;
@@ -128,15 +129,17 @@ const preambleStr = `
             abort;
     }
 
-    fun builtin_abi_encodeWithSignature_1<SigM; T1>(sig: ArrWithLen<SigM; u8> *SigM, arg1: T1): ArrWithLen<#memory; u8> *#memory
-    fun builtin_abi_encodeWithSignature_2<SigM; T1, T2>(sig: ArrWithLen<SigM; u8> *SigM, arg1: T1, arg2: T2): ArrWithLen<#memory; u8> *#memory
-    fun builtin_abi_encodeWithSignature_3<SigM; T1, T2, T3>(sig: ArrWithLen<SigM; u8> *SigM, arg1: T1, arg2: T2, arg3: T3): ArrWithLen<#memory; u8> *#memory
+    fun builtin_abi_encodeWithSignature_1<SigM; T1>(sig: ArrWithLen<SigM; u8> *SigM, arg1AbiT: ArrWithLen<#exception; u8> *#exception, arg1: T1): ArrWithLen<#memory; u8> *#memory
+    fun builtin_abi_encodeWithSignature_2<SigM; T1, T2>(sig: ArrWithLen<SigM; u8> *SigM, arg1AbiT: ArrWithLen<#exception; u8> *#exception, arg1: T1, arg2AbiT: ArrWithLen<#exception; u8> *#exception, arg2: T2): ArrWithLen<#memory; u8> *#memory
+    fun builtin_abi_encodeWithSignature_3<SigM; T1, T2, T3>(sig: ArrWithLen<SigM; u8> *SigM, arg1AbiT: ArrWithLen<#exception; u8> *#exception, arg1: T1, arg2AbiT: ArrWithLen<#exception; u8> *#exception, arg2: T2, arg3AbiT: ArrWithLen<#exception; u8> *#exception, arg3: T3): ArrWithLen<#memory; u8> *#memory
+    
 
     fun builtin_add_overflows<;IntT>(x: IntT, y: IntT): bool
     fun builtin_sub_overflows<;IntT>(x: IntT, y: IntT): bool
     fun builtin_mul_overflows<;IntT>(x: IntT, y: IntT): bool
     fun builtin_div_overflows<;IntT>(x: IntT, y: IntT): bool
     fun builtin_pow_overflows<;Int1T, Int2T>(x: Int1T, y: Int2T): bool
+    fun builtin_neg_overflows<;IntT>(x: IntT): bool
 
     fun builtin_register_contract<;T>(contractPtr: T): u160
     fun builtin_is_contract_at<;T>(addr: u160): bool

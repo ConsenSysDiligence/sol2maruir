@@ -26,7 +26,8 @@
         "minimist": "^1.2.7",
         "semver": "^7.3.8",
         "maru-ir2": "../maru-ir2",
-        "solc-typed-ast": "11.0.2"
+        "solc-typed-ast": "11.0.2",
+        "web3-utils": "^1.8.1"
     },
     "devDependencies": {
         "@types/fs-extra": "^9.0.13",

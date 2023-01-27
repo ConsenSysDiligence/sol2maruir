@@ -5,6 +5,7 @@ import { blockPtrT, msgPtrT, transpileType } from "./typing";
 import { noSrc } from "maru-ir2";
 import { getDesugaredPartialConstructorName } from "./resolving";
 import { IRFactory } from "./factory";
+import { ExpressionCompiler } from "./expression_compiler";
 
 export class ImplicitConstructorCompiler extends BaseFunctionCompiler {
     constructor(
@@ -41,16 +42,26 @@ export class ImplicitConstructorCompiler extends BaseFunctionCompiler {
         this.cfgBuilder.addIRArg("block", blockPtrT, noSrc);
         this.cfgBuilder.addIRArg("msg", msgPtrT, noSrc);
 
+        const exprCompiler = new ExpressionCompiler(this.cfgBuilder);
+
         for (const stateVar of this.contract.vStateVariables) {
-            const stateVarT = transpileType(
-                this.cfgBuilder.infer.variableDeclarationToTypeNode(stateVar),
-                factory
-            );
+            let initialVal: ir.Expression;
+
+            if (stateVar.vValue !== undefined) {
+                initialVal = exprCompiler.compile(stateVar.vValue);
+            } else {
+                const stateVarT = transpileType(
+                    this.cfgBuilder.infer.variableDeclarationToTypeNode(stateVar),
+                    this.cfgBuilder.factory
+                );
+
+                initialVal = this.cfgBuilder.zeroValue(stateVarT);
+            }
 
             this.cfgBuilder.storeField(
                 this.cfgBuilder.this(noSrc),
                 stateVar.name,
-                this.cfgBuilder.zeroValue(stateVarT),
+                initialVal,
                 noSrc
             );
         }

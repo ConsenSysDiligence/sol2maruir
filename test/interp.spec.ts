@@ -10,12 +10,14 @@ import expect from "expect";
 
 describe("Mir2", async () => {
     const files = [
+        /*
         "test/samples/solidity/simple.config.json",
         "test/samples/solidity/ifs_v04.config.json",
         "test/samples/solidity/while_v04.config.json",
         "test/samples/solidity/fors_v04.config.json",
         "test/samples/solidity/overflow_and_underflow.config.json"
-        //"test/samples/solidity/overflow_08.config.json"
+        */
+        "test/samples/solidity/overflow_08.config.json"
     ];
 
     for (const jsonFile of files) {

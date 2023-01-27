@@ -1,6 +1,6 @@
 import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
-import { assert } from "solc-typed-ast";
+import { assert, pp } from "solc-typed-ast";
 import { ModifierStack2, StatementCompiler } from "./statement_compiler";
 import { ExpressionCompiler } from "./expression_compiler";
 import { noSrc } from "maru-ir2";
@@ -82,7 +82,9 @@ export class FunctionCompiler extends BaseFunctionCompiler {
             );
         }
 
-        // For partial constructors 0-init state vars
+        // For partial constructors:
+        // 1. 0-init all state variables
+        // 2. Execute any inline initializers
         if (this.isPartialConstructor) {
             const contract = this.fun.vScope;
             assert(
@@ -91,20 +93,29 @@ export class FunctionCompiler extends BaseFunctionCompiler {
             );
 
             for (const stateVar of contract.vStateVariables) {
-                const stateVarT = transpileType(
-                    this.cfgBuilder.infer.variableDeclarationToTypeNode(stateVar),
-                    this.cfgBuilder.factory
-                );
+                let initialVal: ir.Expression;
+
+                if (stateVar.vValue !== undefined) {
+                    initialVal = this.exprCompiler.compile(stateVar.vValue);
+                } else {
+                    const stateVarT = transpileType(
+                        this.cfgBuilder.infer.variableDeclarationToTypeNode(stateVar),
+                        this.cfgBuilder.factory
+                    );
+
+                    initialVal = this.cfgBuilder.zeroValue(stateVarT);
+                }
 
                 this.cfgBuilder.storeField(
                     this.cfgBuilder.this(noSrc),
                     stateVar.name,
-                    this.cfgBuilder.zeroValue(stateVarT),
+                    initialVal,
                     noSrc
                 );
             }
         }
 
+        console.error(`Modifier stack size for ${this.fun.name} is ${pp(this.modifiers)}`);
         this.stmtCompiler.compile(new sol.PlaceholderStatement(0, "0:0:0", "PlaceholderStatement"));
 
         if (this.cfgBuilder.isCurBBSet) {

@@ -201,6 +201,9 @@ export class ExpressionCompiler {
             resT = this.cfgBuilder.infer.variableDeclarationToTypeNode(parentE.vDeclarations[0]);
         } else if (parentE instanceof sol.Conditional) {
             resT = this.cfgBuilder.infer.typeOf(parentE);
+        } else if (parentE instanceof sol.VariableDeclaration) {
+            // This is an inline initializer of a state variable
+            resT = this.cfgBuilder.infer.variableDeclarationToTypeNode(parentE);
         } else {
             throw new Error(`NYI infer type of literal inside of an ${pp(parentE)}`);
         }
@@ -415,6 +418,21 @@ export class ExpressionCompiler {
 
         if (expr.operator === "-") {
             const subT = this.typeOf(subExp);
+            if (this.isArithmeticChecked(expr)) {
+                const isOverflowing = this.cfgBuilder.getTmpId(boolT, noSrc);
+
+                this.cfgBuilder.call(
+                    [isOverflowing],
+                    this.factory.identifier(noSrc, "builtin_neg_overflows", noType),
+                    [],
+                    [subT],
+                    [subExp],
+                    noSrc
+                );
+
+                this.makeConditionalPanic(isOverflowing, 0x11, src);
+            }
+
             return this.factory.unaryOperation(src, "-", subExp, subT);
         }
 
