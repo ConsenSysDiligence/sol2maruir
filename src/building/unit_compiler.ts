@@ -200,12 +200,22 @@ export class UnitCompiler {
 
         this.emittedMethodMap.set(contract, new Map());
 
+        const seenSigs = new Set<string>();
+
         for (const base of contract.vLinearizedBaseContracts) {
             for (const method of base.vFunctions) {
                 // Handled separately in ConstructionCompiler
-                if (method === contract.vConstructor && contract === base) {
+                if (method.isConstructor) {
                     continue;
                 }
+
+                const sig = infer.signature(method, this.abiVersion);
+
+                if (seenSigs.has(sig)) {
+                    continue;
+                }
+
+                seenSigs.add(sig);
 
                 const funCompiler = new FunctionCompiler(
                     this.factory,
@@ -224,7 +234,6 @@ export class UnitCompiler {
                 const fun = funCompiler.compile();
                 this.globalScope.define(fun);
 
-                const sig = infer.signature(method, this.abiVersion);
                 (this.emittedMethodMap.get(contract) as Map<string, ir.FunctionDefinition>).set(
                     sig,
                     fun

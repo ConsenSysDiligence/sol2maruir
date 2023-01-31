@@ -122,7 +122,7 @@ export class StatementCompiler {
             for (let i = 0; i < rets.length; i++) {
                 this.cfgBuilder.assign(
                     factory.identifier(noSrc, formals[i].name, formals[i].type),
-                    rets[i],
+                    this.exprCompiler.mustCastTo(rets[i], formals[i].type, rets[i].src),
                     src
                 );
             }
@@ -398,7 +398,12 @@ export class StatementCompiler {
 
                 const src = new ASTSource(decl);
                 const lhs = this.cfgBuilder.getVarId(decl, src);
-                this.cfgBuilder.assign(lhs, rhs, src);
+                const lhsT = this.cfgBuilder.getVarType(decl);
+                this.cfgBuilder.assign(
+                    lhs,
+                    this.exprCompiler.castTo(rhs, lhsT, rhs.src) as ir.Expression,
+                    src
+                );
             }
         }
     }

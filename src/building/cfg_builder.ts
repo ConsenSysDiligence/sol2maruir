@@ -152,6 +152,14 @@ export class CFGBuilder {
         return this.factory.identifier(src, this.getVarName(decl), irDecl.type);
     }
 
+    public getVarType(decl: sol.VariableDeclaration): ir.Type {
+        const irDecl = this.solidityVarsToIRVarsMap.get(decl);
+
+        assert(irDecl !== undefined, `No IR decl for solidity variable {0}`, decl);
+
+        return irDecl.type;
+    }
+
     private getVarName(decl: sol.VariableDeclaration): string {
         // Global constants
         if (decl.parent instanceof sol.SourceUnit) {

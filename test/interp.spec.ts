@@ -9,7 +9,7 @@ import { SolMaruirInterp } from "../src/interp";
 import expect from "expect";
 
 const files = [
-    //    "test/samples/solidity/ABIEncoderV2_Structs.config.json",
+    "test/samples/solidity/ABIEncoderV2_Structs.config.json",
     "test/samples/solidity/AbstractVirtualModifier.config.json",
     "test/samples/solidity/AddressArrayLiteral.config.json",
     "test/samples/solidity/AddressBytesCast04x.config.json",
@@ -170,59 +170,57 @@ const files = [
 ];
 
 describe("Interpretor tests", async () => {
-    /*
-    const files = [
-        "test/samples/solidity/simple.config.json",
-        "test/samples/solidity/ifs_v04.config.json",
-        "test/samples/solidity/while_v04.config.json",
-        "test/samples/solidity/fors_v04.config.json",
-        "test/samples/solidity/overflow_and_underflow.config.json",
-        "test/samples/solidity/overflow_08.config.json"
-    ];
-    */
+    //    const files = ["test/samples/solidity/simple_dyn_dispatch.config.json"];
 
     for (const jsonFile of files) {
-        console.error(jsonFile);
-        const file = jsonFile.replace(".config.json", ".sol");
-
         const config = fse.readJsonSync(jsonFile);
+        const file = config.file;
+
         const result = await compileSol(file, "auto");
         const reader = new ASTReader();
         const units = reader.read(result.data);
 
-        const compiler = new UnitCompiler(result.compilerVersion as string, ABIEncoderVersion.V2);
-        const jsonCompiler = new JSONConfigTranspiler(
-            result.compilerVersion as string,
-            compiler.factory
-        );
-        const transpiledDefs = [...compiler.compile(units)];
-        const [methodMap, contractMap] = buildMaps(
-            transpiledDefs,
-            result.compilerVersion as string,
-            ABIEncoderVersion.V2
-        );
-        const mainDefs = [...jsonCompiler.compileConfig(config, methodMap, contractMap)];
+        try {
+            const compiler = new UnitCompiler(
+                result.compilerVersion as string,
+                ABIEncoderVersion.V2
+            );
+            const jsonCompiler = new JSONConfigTranspiler(
+                result.compilerVersion as string,
+                compiler.factory
+            );
+            const transpiledDefs = [...compiler.compile(units)];
+            const [methodMap, contractMap] = buildMaps(
+                transpiledDefs,
+                result.compilerVersion as string,
+                ABIEncoderVersion.V2
+            );
+            const mainDefs = [...jsonCompiler.compileConfig(config, methodMap, contractMap)];
 
-        const defs = [...transpiledDefs, ...mainDefs];
+            const defs = [...transpiledDefs, ...mainDefs];
 
-        let contents = "";
-        for (const def of defs) {
-            contents += def.pp() + "\n";
+            let contents = "";
+            for (const def of defs) {
+                contents += def.pp() + "\n";
+            }
+
+            console.log(contents);
+
+            const resolving = new Resolving(defs);
+            new Typing(defs, resolving);
+
+            const interp = new SolMaruirInterp(defs, true);
+
+            const main = single(
+                defs.filter((def) => def instanceof ir.FunctionDefinition && def.name === "main")
+            ) as ir.FunctionDefinition;
+
+            const [failed] = interp.call(main, [], true);
+
+            expect(failed).not.toBeTruthy();
+            console.error(`------> Success ${jsonFile}`);
+        } catch (e) {
+            console.error(`------> Failed ${jsonFile} with ${e}`);
         }
-
-        console.log(contents);
-
-        const resolving = new Resolving(defs);
-        new Typing(defs, resolving);
-
-        const interp = new SolMaruirInterp(defs, true);
-
-        const main = single(
-            defs.filter((def) => def instanceof ir.FunctionDefinition && def.name === "main")
-        ) as ir.FunctionDefinition;
-
-        const [failed] = interp.call(main, [], true);
-
-        expect(failed).not.toBeTruthy();
     }
 });

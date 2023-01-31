@@ -84,22 +84,21 @@ export class FunctionCompiler extends BaseFunctionCompiler {
 
             for (const stateVar of contract.vStateVariables) {
                 let initialVal: ir.Expression;
+                const stateVarT = transpileType(
+                    this.cfgBuilder.infer.variableDeclarationToTypeNode(stateVar),
+                    this.cfgBuilder.factory
+                );
 
                 if (stateVar.vValue !== undefined) {
                     initialVal = this.exprCompiler.compile(stateVar.vValue);
                 } else {
-                    const stateVarT = transpileType(
-                        this.cfgBuilder.infer.variableDeclarationToTypeNode(stateVar),
-                        this.cfgBuilder.factory
-                    );
-
                     initialVal = this.cfgBuilder.zeroValue(stateVarT);
                 }
 
                 this.cfgBuilder.storeField(
                     this.cfgBuilder.this(noSrc),
                     stateVar.name,
-                    initialVal,
+                    this.exprCompiler.mustCastTo(initialVal, stateVarT, initialVal.src),
                     noSrc
                 );
             }

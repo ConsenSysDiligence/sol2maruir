@@ -23,7 +23,6 @@ export class DispatchCompiler extends BaseFunctionCompiler {
      * Compile the implicit partial constructor. Just zero-es out the state variables
      */
     compile(): ir.FunctionDefinition {
-        console.error(`Calling compile for ${this.contract.name} and ${this.origDef.name}`);
         const factory = this.cfgBuilder.factory;
 
         // Add this argument

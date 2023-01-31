@@ -7,7 +7,7 @@ import { grabInheritanceArgs } from "../utils";
 import { getDesugaredConstructorName, getDesugaredPartialConstructorName } from "./resolving";
 import { ExpressionCompiler } from "./expression_compiler";
 import { ASTSource } from "../ir/source";
-import { blockPtrT, msgPtrT, noType, u16, u160 } from "./typing";
+import { blockPtrT, msgPtrT, noType, transpileType, u16, u160 } from "./typing";
 import { ImplicitConstructorCompiler } from "./implicit_constructor_compiler";
 import { IRFactory } from "./factory";
 
@@ -45,6 +45,7 @@ export class ConstructorCompiler {
                 }
 
                 res.push(funCompiler.compile());
+                continue;
             }
 
             // If no explicit constructor, emit an implicit constructor that
@@ -122,6 +123,20 @@ export class ConstructorCompiler {
         for (let i = constructorCalls.length - 1; i >= 0; i--) {
             const [base, rawArgs] = constructorCalls[i];
 
+            const solFormalTs: sol.TypeNode[] = [];
+
+            if (base.vConstructor) {
+                solFormalTs.push(
+                    ...base.vConstructor.vParameters.vParameters.map((decl) =>
+                        builder.infer.variableDeclarationToTypeNode(decl)
+                    )
+                );
+            }
+
+            const irFormalTs = solFormalTs.map((irFormalT) =>
+                transpileType(irFormalT, this.factory)
+            );
+
             // The first argument to the base constructor is `this` casted to the base type.
             const constrArgs: ir.Expression[] = [
                 builder.this(noSrc),
@@ -137,7 +152,9 @@ export class ConstructorCompiler {
 
             for (let argIdx = 0; argIdx < rawArgs.length; argIdx++) {
                 const rawArg = rawArgs[argIdx];
-                constrArgs.push(exprCompiler.compile(rawArg));
+                const irArg = exprCompiler.compile(rawArg);
+                const castedIrArg = exprCompiler.mustCastTo(irArg, irFormalTs[argIdx], irArg.src);
+                constrArgs.push(castedIrArg);
             }
 
             /**

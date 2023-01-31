@@ -71,7 +71,7 @@ export class ExpressionCompiler {
                     this.factory
                 );
 
-                const castedRHS = this.castTo(rhs, lhsT, rhs.src) as ir.Expression;
+                const castedRHS = this.mustCastTo(rhs, lhsT, rhs.src);
 
                 if (def.stateVariable) {
                     this.cfgBuilder.storeField(
@@ -281,6 +281,7 @@ export class ExpressionCompiler {
         src: BaseSrc
     ): ir.BinaryOperation {
         const rhsT = this.typeOf(rhs);
+        const lhsT = this.typeOf(lhs);
 
         /// Always emit a div-by-zero check
         if (op === "/" || op === "%") {
@@ -318,7 +319,7 @@ export class ExpressionCompiler {
             }
         }
 
-        return this.factory.binaryOperation(src, lhs, op as ir.BinaryOperator, rhs, rhsT);
+        return this.factory.binaryOperation(src, lhs, op as ir.BinaryOperator, rhs, lhsT);
     }
 
     compileBinaryOperation(expr: sol.BinaryOperation): ir.Expression {
@@ -543,7 +544,8 @@ export class ExpressionCompiler {
                 ``
             );
 
-            const size = this.compile(expr.vArguments[0]);
+            const irSize = this.compile(expr.vArguments[0]);
+            const size = this.mustCastTo(irSize, u256, irSize.src);
             this.cfgBuilder.call(
                 [resId],
                 this.factory.identifier(noSrc, "new_array", noType),
@@ -560,7 +562,20 @@ export class ExpressionCompiler {
             const contract = newE.vTypeName.vReferencedDeclaration;
             const irConstructorName = getDesugaredConstructorName(contract);
 
-            const args = expr.vArguments.map((arg) => this.compile(arg));
+            const solFormalTs = contract.vConstructor
+                ? contract.vConstructor.vParameters.vParameters.map((decl) =>
+                      this.cfgBuilder.infer.variableDeclarationToTypeNode(decl)
+                  )
+                : [];
+            const irFormalTs = solFormalTs.map((solT) => transpileType(solT, this.factory));
+
+            const args: ir.Expression[] = [];
+
+            for (let i = 0; i < expr.vArguments.length; i++) {
+                const irArg = this.compile(expr.vArguments[i]);
+                args.push(this.mustCastTo(irArg, irFormalTs[i], irArg.src));
+            }
+
             args.splice(0, 0, this.cfgBuilder.blockPtr(noSrc), this.cfgBuilder.msgPtr(noSrc));
 
             const ptrT = this.factory.pointerType(
@@ -644,7 +659,8 @@ export class ExpressionCompiler {
      * 4. Any salt modifiers
      * 5. Whether this is an external call
      * 6. The name of the compiled function
-     * 7. The solidiy return values
+     * 8. The Solidity formal argument types
+     * 7. The Solidity return types
      * @param expr
      */
     private decodeCall(
@@ -656,6 +672,7 @@ export class ExpressionCompiler {
         sol.Expression | undefined,
         boolean,
         string,
+        sol.TypeNode[],
         sol.TypeNode[]
     ] {
         const [callee, gasModifier, valueModifier, saltModifier] = this.stripCallOptions(
@@ -664,9 +681,11 @@ export class ExpressionCompiler {
 
         const funT = this.cfgBuilder.infer.typeOf(callee);
         let retTs: sol.TypeNode[] = [];
+        let argTs: sol.TypeNode[] = [];
 
         if (funT instanceof sol.FunctionType) {
             retTs = funT.returns;
+            argTs = funT.parameters;
         } else if (funT instanceof sol.FunctionLikeSetType) {
             const firstDef = funT.defs[0];
 
@@ -677,6 +696,7 @@ export class ExpressionCompiler {
             );
 
             retTs = firstDef.returns;
+            argTs = firstDef.parameters;
         }
 
         let thisExpr: ir.Expression;
@@ -720,7 +740,7 @@ export class ExpressionCompiler {
                 );
 
                 const baseIRExpr = this.compile(base);
-                thisExpr = this.castTo(baseIRExpr, u160, new ASTSource(base)) as ir.Expression;
+                thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));
             } else if (
                 baseT instanceof sol.TypeNameType &&
                 baseT.type instanceof sol.UserDefinedType &&
@@ -749,7 +769,16 @@ export class ExpressionCompiler {
             throw new Error(`NYI call to callee ${callee.print()}`);
         }
 
-        return [thisExpr, gasModifier, valueModifier, saltModifier, isExternal, irFun, retTs];
+        return [
+            thisExpr,
+            gasModifier,
+            valueModifier,
+            saltModifier,
+            isExternal,
+            irFun,
+            argTs,
+            retTs
+        ];
     }
 
     compileFunctionCall(expr: sol.FunctionCall): ir.Expression {
@@ -762,9 +791,16 @@ export class ExpressionCompiler {
         }
 
         const src = new ASTSource(expr);
-        const [irCallee, , , , , irFun, retTs] = this.decodeCall(expr);
+        const [irCallee, , , , , irFun, argTs, retTs] = this.decodeCall(expr);
 
-        const args = expr.vArguments.map((arg) => this.compile(arg));
+        const args: ir.Expression[] = [];
+
+        for (let i = 0; i < expr.vArguments.length; i++) {
+            const irArg = this.compile(expr.vArguments[i]);
+            const formalIRT = transpileType(argTs[i], this.factory);
+            args.push(this.mustCastTo(irArg, formalIRT, irArg.src));
+        }
+
         args.splice(0, 0, irCallee, this.cfgBuilder.blockPtr(noSrc), this.cfgBuilder.msgPtr(noSrc));
 
         const lhss = retTs.map((retT) =>
@@ -948,6 +984,20 @@ export class ExpressionCompiler {
         }
 
         return true;
+    }
+
+    mustCastTo(expr: ir.Expression, toT: ir.Type, src: BaseSrc): ir.Expression {
+        const res = this.castTo(expr, toT, src);
+
+        assert(
+            res !== undefined,
+            `Couldn't cast {0} of type {1} to {2}`,
+            expr,
+            this.typeOf(expr),
+            toT
+        );
+
+        return res;
     }
 
     castTo(expr: ir.Expression, toT: ir.Type, src: BaseSrc): ir.Expression | undefined {
