@@ -1,25 +1,42 @@
 import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
 import { noSrc } from "maru-ir2";
-import { blockPtrT, msgPtrT, transpileType, u16, u160 } from "./typing";
+import { transpileType, u16, u160 } from "./typing";
 import { ASTSource } from "../ir/source";
 import { FunctionCompiler } from "./function_compiler";
-import { ABIEncoderVersion, assert, InferType } from "solc-typed-ast";
+import { assert, InferType } from "solc-typed-ast";
 import { compileGlobalVarInitializer } from "./literal_compiler";
-import { getDesugaredGlobalVarName, getDispatchName } from "./resolving";
+import { getDesugaredGlobalVarName, getIRStructDefName } from "./resolving";
 import { ConstructorCompiler } from "./constructor_compiler";
-import { CFGBuilder } from "./cfg_builder";
 import { preamble } from "./preamble";
 import { IRFactory } from "./factory";
+import { DispatchCompiler } from "./dispatch_compiler";
 
-type OverrideMap = Map<sol.ContractDefinition, Map<string, sol.FunctionDefinition[]>>;
 type InheritMap = Map<sol.ContractDefinition, sol.ContractDefinition[]>;
+
+type OverridenImplsList = Array<[ir.StructDefinition, ir.FunctionDefinition]>;
+type OverridenImplsMap = Map<sol.FunctionDefinition, OverridenImplsList>;
+type OverrideMap = Map<sol.ContractDefinition, OverridenImplsMap>;
+
+function isExternallyVisible(fun: sol.FunctionDefinition): boolean {
+    return [
+        sol.FunctionVisibility.Default,
+        sol.FunctionVisibility.Public,
+        sol.FunctionVisibility.External
+    ].includes(fun.visibility);
+}
 
 export class UnitCompiler {
     private readonly globalScope: ir.Scope;
     private readonly versionMap: Map<sol.SourceUnit, [string, string]>;
     private readonly inferMap: Map<string, sol.InferType>;
     public readonly factory: IRFactory = new IRFactory();
+
+    private emittedStructMap = new Map<sol.ContractDefinition, ir.StructDefinition>();
+    private emittedMethodMap = new Map<
+        sol.ContractDefinition,
+        Map<string, ir.FunctionDefinition>
+    >();
 
     constructor(
         private readonly solVersion: string,
@@ -38,6 +55,7 @@ export class UnitCompiler {
                 def as ir.FunctionDefinition | ir.StructDefinition | ir.GlobalVariable
             );
         }
+
         for (const unit of units) {
             const [compilerVersion, abiVersion] = this.detectVersions(unit);
             this.versionMap.set(unit, [compilerVersion, abiVersion]);
@@ -47,21 +65,13 @@ export class UnitCompiler {
             this.compileUnit(unit);
         }
 
-        const overrideMap = this.buildOverrideMap(units);
+        const inheritMap = this.buildInheritMap(units);
+        const overrideMap = this.buildOverrideMap(inheritMap);
 
         for (const [contract, methodOverrideMap] of overrideMap) {
-            const unit = contract.vScope;
-            const [solVersion] = this.versionMap.get(unit) as [string, ABIEncoderVersion];
-            const infer = this.inferMap.get(solVersion) as InferType;
-
-            for (const [sig, overridingImpls] of methodOverrideMap) {
-                // Ignore constructors, receive and fallback
-                if (sig === "" || sig === "receive" || sig === "fallback") {
-                    continue;
-                }
-
+            for (const [method, overridingImpls] of methodOverrideMap) {
                 this.globalScope.define(
-                    this.compileMethodDispatch(contract, sig, overridingImpls, infer)
+                    this.compileMethodDispatch(contract, method, overridingImpls)
                 );
             }
         }
@@ -90,9 +100,41 @@ export class UnitCompiler {
         return [this.solVersion, this.abiVersion];
     }
 
+    compileStructDef(def: sol.StructDefinition, infer: sol.InferType): ir.StructDefinition {
+        const fields: Array<[string, ir.Type]> = [];
+
+        for (const decl of def.vMembers) {
+            fields.push([
+                decl.name,
+                transpileType(
+                    infer.variableDeclarationToTypeNode(decl),
+                    this.factory,
+                    new ir.MemIdentifier(noSrc, "M", false)
+                )
+            ]);
+        }
+
+        const name = getIRStructDefName(def);
+
+        const res = this.factory.structDefinition(
+            new ASTSource(def),
+            [new ir.MemVariableDeclaration(noSrc, "M", false)],
+            [],
+            name,
+            fields
+        );
+
+        return res;
+    }
+
     compileUnit(unit: sol.SourceUnit): void {
         const [compilerVersion] = this.detectVersions(unit);
         const infer = this.getInfer(compilerVersion);
+
+        for (const structDef of unit.getChildrenByType(sol.StructDefinition)) {
+            const struct = this.compileStructDef(structDef, infer);
+            this.globalScope.define(struct);
+        }
 
         for (const contract of unit.vContracts) {
             const struct = this.getContractStruct(contract, infer);
@@ -111,7 +153,9 @@ export class UnitCompiler {
                 unit
             );
 
-            this.globalScope.define(funCompile.compile());
+            if (funCompile.canEmitBody()) {
+                this.globalScope.define(funCompile.compile());
+            }
         }
 
         for (const globConst of unit.vVariables) {
@@ -148,22 +192,18 @@ export class UnitCompiler {
             irContract
         );
 
-        this.globalScope.define(constrCompiler.compilePartialConstructor());
+        for (const constr of constrCompiler.compilePartialConstructors()) {
+            this.globalScope.define(constr);
+        }
+
         this.globalScope.define(constrCompiler.compileConstructor());
 
-        const vtbl = new Map<string, ir.FunctionDefinition>();
+        this.emittedMethodMap.set(contract, new Map());
 
         for (const base of contract.vLinearizedBaseContracts) {
             for (const method of base.vFunctions) {
                 // Handled separately in ConstructionCompiler
                 if (method === contract.vConstructor && contract === base) {
-                    continue;
-                }
-
-                const sigHash = infer.signatureHash(method, this.abiVersion);
-
-                if (vtbl.has(sigHash)) {
-                    // Already overriden
                     continue;
                 }
 
@@ -177,46 +217,38 @@ export class UnitCompiler {
                     irContract
                 );
 
+                if (!funCompiler.canEmitBody()) {
+                    continue;
+                }
+
                 const fun = funCompiler.compile();
                 this.globalScope.define(fun);
 
-                vtbl.set(sigHash, fun);
+                const sig = infer.signature(method, this.abiVersion);
+                (this.emittedMethodMap.get(contract) as Map<string, ir.FunctionDefinition>).set(
+                    sig,
+                    fun
+                );
             }
         }
     }
 
     compileMethodDispatch(
         contract: sol.ContractDefinition,
-        sig: string,
-        overridingImpls: sol.FunctionDefinition[],
-        infer: InferType
+        solMethod: sol.FunctionDefinition,
+        overridingImpls: OverridenImplsList
     ): ir.FunctionDefinition {
-        const firstImpl = overridingImpls[0];
-
-        const funScope = new ir.Scope(this.globalScope);
-        const builder = new CFGBuilder(this.globalScope, funScope, this.solVersion, this.factory);
-
-        builder.addIRArg("block", blockPtrT, noSrc);
-        builder.addIRArg("msg", msgPtrT, noSrc);
-        builder.addIRArg("this", u160, noSrc);
-
-        for (const solArg of firstImpl.vParameters.vParameters) {
-            builder.addArg(solArg);
-        }
-
-        for (const solRet of firstImpl.vReturnParameters.vParameters) {
-            builder.addRet(solRet);
-        }
-
-        return this.factory.functionDefinition(
-            noSrc,
-            [],
-            [],
-            getDispatchName(contract, firstImpl, infer, this.abiVersion),
-            builder.args,
-            [],
-            builder.returns.map((ret) => ret.type)
+        const dispatchCompiler = new DispatchCompiler(
+            this.factory,
+            contract,
+            solMethod,
+            overridingImpls,
+            this.globalScope,
+            this.solVersion,
+            this.abiVersion
         );
+
+        return dispatchCompiler.compile();
     }
 
     getContractStruct(contract: sol.ContractDefinition, infer: sol.InferType): ir.StructDefinition {
@@ -227,17 +259,93 @@ export class UnitCompiler {
             ["__rtti__", u16]
         ];
 
-        for (const decl of contract.vStateVariables) {
-            const solType = infer.variableDeclarationToTypeNode(decl);
-            const irType = transpileType(solType, this.factory);
+        for (const base of contract.vLinearizedBaseContracts) {
+            for (const decl of base.vStateVariables) {
+                const solType = infer.variableDeclarationToTypeNode(decl);
+                const irType = transpileType(solType, this.factory);
 
-            fields.push([decl.name, irType]);
+                fields.push([decl.name, irType]);
+            }
         }
 
-        return this.factory.structDefinition(new ASTSource(contract), [], [], name, fields);
+        const res = this.factory.structDefinition(new ASTSource(contract), [], [], name, fields);
+        this.emittedStructMap.set(contract, res);
+        return res;
     }
 
-    buildOverrideMap(units: sol.SourceUnit[]): OverrideMap {
+    private buildInheritMap(units: sol.SourceUnit[]): InheritMap {
+        const res: InheritMap = new Map();
+
+        for (const unit of units) {
+            for (const contract of unit.vContracts) {
+                for (const base of contract.vLinearizedBaseContracts) {
+                    if (!res.has(base)) {
+                        res.set(base, []);
+                    }
+
+                    (res.get(base) as sol.ContractDefinition[]).push(contract);
+                }
+            }
+        }
+
+        return res;
+    }
+
+    buildOverrideMap(inhMap: InheritMap): OverrideMap {
+        // Map from contracts, to a map from function signatures to the list of overriding implementations
+        const res: OverrideMap = new Map();
+
+        for (const [contract, subContracts] of inhMap) {
+            const unit = contract.vScope;
+            const infer = this.getInfer(unit);
+            const [, abiVersion] = this.versionMap.get(unit) as [string, sol.ABIEncoderVersion];
+
+            const seenSigs = new Map<string, sol.FunctionDefinition>();
+
+            const overridenImplMap: OverridenImplsMap = new Map();
+
+            // Get all externally visible method signatures for contract, including inherited ones
+            for (const base of contract.vLinearizedBaseContracts) {
+                for (const method of base.vFunctions) {
+                    // Ignore internal/private functions
+                    if (!isExternallyVisible(method)) {
+                        continue;
+                    }
+
+                    const sig = infer.signature(method, abiVersion);
+                    // Ignore constructors, receive and fallback
+                    if (sig === "" || sig === "receive" || sig === "fallback") {
+                        continue;
+                    }
+
+                    seenSigs.set(sig, method);
+                }
+            }
+
+            for (const [sig, method] of seenSigs) {
+                const implementations: Array<[ir.StructDefinition, ir.FunctionDefinition]> = [];
+
+                for (const subContract of subContracts) {
+                    const irFun = (
+                        this.emittedMethodMap.get(subContract) as Map<string, ir.FunctionDefinition>
+                    ).get(sig);
+
+                    if (irFun) {
+                        implementations.push([
+                            this.emittedStructMap.get(subContract) as ir.StructDefinition,
+                            irFun
+                        ]);
+                    }
+
+                    overridenImplMap.set(method, implementations);
+                }
+            }
+
+            res.set(contract, overridenImplMap);
+        }
+
+        return res;
+        /*
         // Map from contracts to a list of their sub-contracts
         const inhMap: InheritMap = new Map();
         // Map from contracts, to a map from function signatures to the list of overriding implementations
@@ -290,9 +398,9 @@ export class UnitCompiler {
                 for (const subContract of subContracts) {
                     const subVtbl = vtblMap.get(subContract) as Map<string, sol.FunctionDefinition>;
 
-                    if (subVtbl.has(sig)) {
-                        overridingImplementations.push(subVtbl.get(sig) as sol.FunctionDefinition);
-                    }
+                    // We specialze all inherited methods to the sub-contract, even when it doesn't
+                    // Explicitly override them.
+                    overridingImplementations.push(subVtbl.get(sig) as sol.FunctionDefinition);
                 }
 
                 (res.get(contract) as Map<string, sol.FunctionDefinition[]>).set(
@@ -303,5 +411,6 @@ export class UnitCompiler {
         }
 
         return res;
+        */
     }
 }

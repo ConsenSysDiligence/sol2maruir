@@ -406,6 +406,13 @@ export class JSONConfigTranspiler {
                 if (step.expectedReturns === undefined) {
                     entry.statements.push(this.factory.assert(ir.noSrc, aborted));
                 } else {
+                    entry.statements.push(
+                        this.factory.assert(
+                            ir.noSrc,
+                            this.factory.unaryOperation(noSrc, "!", aborted, boolT)
+                        )
+                    );
+
                     for (let i = 0; i < step.expectedReturns.length; i++) {
                         const jsRet = step.expectedReturns[i];
                         const maruirRet = this.compileJSArg(jsRet);

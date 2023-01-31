@@ -1,9 +1,10 @@
 import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
-import { assert, ContractDefinition, EnumDefinition, StructDefinition } from "solc-typed-ast";
-import { noSrc } from "maru-ir2";
+import { assert, ContractDefinition } from "solc-typed-ast";
+import { MemDesc, noSrc } from "maru-ir2";
 import { IRTupleType2 } from "../ir";
 import { IRFactory } from "./factory";
+import { getIRStructDefName } from "./resolving";
 
 // @todo These consts are the only IR nodes that are not produced by the IRFactory
 // For now this is not a problem, but we should fix this eventually.
@@ -37,7 +38,7 @@ export const blockPtrT = new ir.PointerType(noSrc, blockT, new ir.MemConstant(no
 export const msgT = new ir.UserDefinedType(noSrc, "Message", [], []);
 export const msgPtrT = new ir.PointerType(noSrc, msgT, new ir.MemConstant(noSrc, "memory"));
 
-export function transpileType(type: sol.TypeNode, factory: IRFactory): ir.Type {
+export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: MemDesc): ir.Type {
     if (type instanceof sol.IntType) {
         return factory.intType(ir.noSrc, type.nBits === undefined ? 256 : type.nBits, type.signed);
     }
@@ -61,18 +62,14 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory): ir.Type {
     if (type instanceof sol.UserDefinedType) {
         const def = type.definition;
 
-        if (def instanceof EnumDefinition) {
+        if (def instanceof sol.EnumDefinition) {
             assert(def.vMembers.length < 256, `Enum {0} too big`, type.name);
             return factory.intType(ir.noSrc, 8, false);
         }
 
-        if (def instanceof StructDefinition) {
-            return factory.userDefinedType(
-                ir.noSrc,
-                type.name,
-                [factory.memVariableDeclaration(ir.noSrc, "M", false)],
-                []
-            );
+        if (def instanceof sol.StructDefinition) {
+            assert(ptrLoc !== undefined, `Expected ptrLoc for sol struct`);
+            return factory.userDefinedType(ir.noSrc, getIRStructDefName(def), [ptrLoc], []);
         }
 
         if (def instanceof ContractDefinition) {
@@ -81,16 +78,13 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory): ir.Type {
     }
 
     if (type instanceof sol.PointerType) {
+        const loc = ptrLoc ? ptrLoc : factory.memConstant(ir.noSrc, type.location);
+
         if (type.to instanceof sol.StringType || type.to instanceof sol.BytesType) {
             return factory.pointerType(
                 ir.noSrc,
-                factory.userDefinedType(
-                    ir.noSrc,
-                    "ArrWithLen",
-                    [factory.memConstant(ir.noSrc, type.location)],
-                    [u8]
-                ),
-                factory.memConstant(ir.noSrc, type.location)
+                factory.userDefinedType(ir.noSrc, "ArrWithLen", [loc], [u8]),
+                loc
             );
         }
 
@@ -100,11 +94,15 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory): ir.Type {
                 factory.userDefinedType(
                     noSrc,
                     "ArrWithLen",
-                    [factory.memConstant(noSrc, type.location)],
-                    [transpileType(type.to.elementT, factory)]
+                    [loc],
+                    [transpileType(type.to.elementT, factory, loc)]
                 ),
-                factory.memConstant(ir.noSrc, type.location)
+                loc
             );
+        }
+
+        if (type.to instanceof sol.UserDefinedType) {
+            return factory.pointerType(ir.noSrc, transpileType(type.to, factory, loc), loc);
         }
     }
 

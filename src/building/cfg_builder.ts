@@ -373,6 +373,19 @@ export class CFGBuilder {
         );
     }
 
+    transCall(
+        lhss: ir.Identifier[],
+        callee: ir.Identifier,
+        memArgs: ir.MemDesc[],
+        typeArgs: ir.Type[],
+        args: ir.Expression[],
+        src: BaseSrc
+    ): void {
+        this.curBB.statements.push(
+            this.factory.transactionCall(src, lhss, callee, memArgs, typeArgs, args)
+        );
+    }
+
     jump(to: ir.BasicBlock, src: BaseSrc): void {
         this.curBB.statements.push(this.factory.jump(src, to.label));
         this._curBB = undefined;
@@ -385,6 +398,11 @@ export class CFGBuilder {
 
     return(vals: ir.Expression[], src: BaseSrc): void {
         this.curBB.statements.push(this.factory.return(src, vals));
+        this._curBB = undefined;
+    }
+
+    abort(src: BaseSrc): void {
+        this.curBB.statements.push(this.factory.abort(src));
         this._curBB = undefined;
     }
 
@@ -405,10 +423,22 @@ export class CFGBuilder {
         return this.factory.identifier(src, decl.name, decl.type);
     }
 
+    private getInternalId(name: string, src: ir.BaseSrc) {
+        const def = this.defMap.get(name);
+        assert(def !== undefined, `Missing {0} def`, name);
+        return this.factory.identifier(src, name, def.type);
+    }
+
     this(src: ir.BaseSrc): ir.Identifier {
-        const def = this.defMap.get("this");
-        assert(def !== undefined, `Missing this def`);
-        return this.factory.identifier(src, "this", def.type);
+        return this.getInternalId("this", src);
+    }
+
+    msgPtr(src: ir.BaseSrc): ir.Identifier {
+        return this.getInternalId("msg", src);
+    }
+
+    blockPtr(src: ir.BaseSrc): ir.Identifier {
+        return this.getInternalId("block", src);
     }
 
     zeroValue(typ: ir.Type, src: BaseSrc = noSrc): ir.Expression {

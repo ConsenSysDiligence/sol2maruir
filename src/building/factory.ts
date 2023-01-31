@@ -278,4 +278,8 @@ export class IRFactory {
     tupleType(src: ir.BaseSrc, elementTypes: Array<ir.Type | null>): IRTupleType2 {
         return new IRTupleType2(src, elementTypes);
     }
+
+    abort(src: ir.BaseSrc): ir.Abort {
+        return new ir.Abort(src);
+    }
 }

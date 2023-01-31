@@ -1,6 +1,6 @@
 import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
-import { assert, pp } from "solc-typed-ast";
+import { assert } from "solc-typed-ast";
 import { ModifierStack2, StatementCompiler } from "./statement_compiler";
 import { ExpressionCompiler } from "./expression_compiler";
 import { noSrc } from "maru-ir2";
@@ -31,7 +31,7 @@ export class FunctionCompiler extends BaseFunctionCompiler {
         contractStruct?: ir.StructDefinition
     ) {
         super(factory, globalScope, solVersion, abiVersion, contractStruct);
-        this.exprCompiler = new ExpressionCompiler(this.cfgBuilder);
+        this.exprCompiler = new ExpressionCompiler(this.cfgBuilder, this.abiVersion);
 
         this.modifiers = this.getModifierStack();
         this.modifiers.push([this.fun.vBody, undefined]);
@@ -70,17 +70,7 @@ export class FunctionCompiler extends BaseFunctionCompiler {
         this.collectArgs();
         this.collectReturns();
 
-        if (!this.canEmitBody()) {
-            return this.cfgBuilder.factory.functionDefinition(
-                src,
-                [],
-                [],
-                name,
-                this.cfgBuilder.args,
-                this.cfgBuilder.locals,
-                this.cfgBuilder.returns
-            );
-        }
+        assert(this.canEmitBody(), `Can't emit body for {0}`, this.fun);
 
         // For partial constructors:
         // 1. 0-init all state variables
@@ -115,7 +105,6 @@ export class FunctionCompiler extends BaseFunctionCompiler {
             }
         }
 
-        console.error(`Modifier stack size for ${this.fun.name} is ${pp(this.modifiers)}`);
         this.stmtCompiler.compile(new sol.PlaceholderStatement(0, "0:0:0", "PlaceholderStatement"));
 
         if (this.cfgBuilder.isCurBBSet) {
@@ -130,7 +119,7 @@ export class FunctionCompiler extends BaseFunctionCompiler {
      * 1. The solidity function is abstract
      * 2. The solidity function has an abstract modifier
      */
-    private canEmitBody(): boolean {
+    canEmitBody(): boolean {
         for (const [block] of this.modifiers) {
             if (!block) {
                 return false;
@@ -185,7 +174,7 @@ export class FunctionCompiler extends BaseFunctionCompiler {
      */
     private getModifierStack(): ModifierStack2 {
         const modifiers: ModifierStack2 = [];
-        const scope = this.fun.vScope;
+        const scope = this.scope;
 
         for (const m of this.fun.vModifiers) {
             if (m.vModifier instanceof sol.ModifierDefinition) {

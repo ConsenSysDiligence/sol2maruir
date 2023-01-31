@@ -1,13 +1,20 @@
 import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
 import { CFGBuilder } from "./cfg_builder";
-import { assert, ASTNode, pp, smallestFittingType } from "solc-typed-ast";
+import { assert, ContractKind, pp } from "solc-typed-ast";
 import { ASTSource } from "../ir/source";
-import { BaseSrc, noSrc } from "maru-ir2";
-import { boolT, noType, transpileType, u160, u256, u8, u8ArrExcPtr } from "./typing";
+import { BaseSrc, GlobalVariable, noSrc } from "maru-ir2";
+import { boolT, noType, transpileType, u160, u256, u8, u8ArrExcPtr, u8ArrMemPtr } from "./typing";
 import { single } from "../utils";
-import { gte, lt, lte } from "semver";
+import { gte } from "semver";
 import { IRFactory } from "./factory";
+import {
+    FunctionScope,
+    getDesugaredConstructorName,
+    getDispatchName,
+    getIRContractName
+} from "./resolving";
+import { IRTuple2 } from "../ir";
 
 const overflowBuiltinMap = new Map<string, string>([
     ["+", "builtin_add_overflows"],
@@ -17,57 +24,13 @@ const overflowBuiltinMap = new Map<string, string>([
     ["**", "builtin_pow_overflows"]
 ]);
 
-function isStringLiteral(lit: sol.Literal): boolean {
-    return (
-        lit.kind === sol.LiteralKind.String ||
-        lit.kind === sol.LiteralKind.HexString ||
-        lit.kind === sol.LiteralKind.UnicodeString
-    );
-}
-
-function isNumberLiteral(lit: sol.Literal): boolean {
-    return lit.kind === sol.LiteralKind.Number;
-}
-
-function isHexNumberLiteral(lit: sol.Literal): boolean {
-    return (isNumberLiteral(lit) && lit.value.startsWith("0x")) || lit.hexValue !== "";
-}
-
-function hexLiteralValue(lit: sol.Literal): bigint[] {
-    /// @todo (pavel)
-    throw new Error("NYI hexLiteralValue");
-}
-
-function isFixedArray(typ: sol.TypeNode): typ is sol.PointerType {
-    return (
-        typ instanceof sol.PointerType &&
-        typ.to instanceof sol.ArrayType &&
-        typ.to.size !== undefined
-    );
-}
-
-function isNonFixedArray(typ: sol.TypeNode): typ is sol.PointerType {
-    return (
-        typ instanceof sol.PointerType &&
-        typ.to instanceof sol.ArrayType &&
-        typ.to.size === undefined
-    );
-}
-
-function isU8Array(type: ir.Type): type is ir.PointerType {
-    return (
-        type instanceof ir.PointerType &&
-        type.toType instanceof ir.UserDefinedType &&
-        type.toType.name === "ArrWithLen" &&
-        type.toType.typeArgs.length === 1 &&
-        ir.eq(type.toType.typeArgs[0], u8)
-    );
-}
-
 export class ExpressionCompiler {
     private factory: IRFactory;
 
-    constructor(public readonly cfgBuilder: CFGBuilder) {
+    constructor(
+        public readonly cfgBuilder: CFGBuilder,
+        public readonly abiEncodeVersion: sol.ABIEncoderVersion
+    ) {
         this.factory = cfgBuilder.factory;
     }
 
@@ -103,11 +66,18 @@ export class ExpressionCompiler {
             assert(def !== undefined, `No def for {0}`, lhs);
 
             if (def instanceof sol.VariableDeclaration) {
+                const lhsT = transpileType(
+                    this.cfgBuilder.infer.variableDeclarationToTypeNode(def),
+                    this.factory
+                );
+
+                const castedRHS = this.castTo(rhs, lhsT, rhs.src) as ir.Expression;
+
                 if (def.stateVariable) {
                     this.cfgBuilder.storeField(
                         this.cfgBuilder.this(noSrc),
                         lhs.name,
-                        rhs,
+                        castedRHS,
                         assignSrc
                     );
 
@@ -115,8 +85,22 @@ export class ExpressionCompiler {
                 }
 
                 const irVar = this.cfgBuilder.getVarId(def, new ASTSource(lhs));
-                this.cfgBuilder.assign(irVar, rhs, assignSrc);
+                this.cfgBuilder.assign(irVar, castedRHS, assignSrc);
                 return irVar;
+            }
+        }
+
+        if (lhs instanceof sol.MemberAccess) {
+            const base = this.compile(lhs.vExpression);
+            const baseIrT = this.typeOf(base);
+
+            if (baseIrT instanceof ir.PointerType && baseIrT.toType instanceof ir.UserDefinedType) {
+                const def = this.cfgBuilder.globalScope.getTypeDecl(baseIrT.toType);
+
+                if (def instanceof ir.StructDefinition) {
+                    this.cfgBuilder.storeField(base, lhs.memberName, rhs, assignSrc);
+                    return rhs;
+                }
             }
         }
 
@@ -134,19 +118,13 @@ export class ExpressionCompiler {
      */
     compileAssignment(expr: sol.Assignment): ir.Expression {
         const lhsT = this.cfgBuilder.infer.typeOf(expr.vLeftHandSide);
+        const lhsIRT = transpileType(lhsT, this.factory);
         const rhsSolT = this.cfgBuilder.infer.typeOf(expr.vRightHandSide);
 
         let rhs: ir.Expression = this.compile(expr.vRightHandSide);
 
         // Perform any implicit casts from the rhs to the lhs (e.g. u8 to u16)
-        const castedRHS = this.performImplicitCast(
-            expr.vRightHandSide,
-            rhs,
-            rhsSolT,
-            lhsT,
-            this.typeOf(rhs),
-            transpileType(lhsT, this.factory)
-        );
+        const castedRHS = this.castTo(rhs, lhsIRT, new ASTSource(expr));
 
         assert(castedRHS !== undefined, `Cannot assign ${rhsSolT.pp()} to ${lhsT.pp()}`);
 
@@ -179,7 +157,7 @@ export class ExpressionCompiler {
         if (parentE instanceof sol.BinaryOperation) {
             if (["<<", ">>", "**"].includes(parentE.operator)) {
                 if (expr === parentE.vRightExpression) {
-                    return smallestFittingType(value) as sol.IntType;
+                    return sol.smallestFittingType(value) as sol.IntType;
                 }
 
                 throw new Error(`NYI type of int literal as left child of << >> or **`);
@@ -247,7 +225,10 @@ export class ExpressionCompiler {
 
         if (expr.kind === sol.LiteralKind.Number) {
             const val = BigInt(expr.value);
-            const type = transpileType(this.inferIntType(expr, val), this.factory) as ir.IntType;
+            const type = transpileType(
+                sol.smallestFittingType(val) as sol.IntType,
+                this.factory
+            ) as ir.IntType;
             return this.factory.numberLiteral(
                 src,
                 BigInt(expr.value),
@@ -390,14 +371,14 @@ export class ExpressionCompiler {
                 src,
                 val,
                 10,
-                transpileType(this.inferIntType(expr, val), this.factory)
+                transpileType(sol.smallestFittingType(val) as sol.IntType, this.factory)
             );
         } else {
             throw new Error(`NYI compileConstExpr(${pp(expr)}) with val ${val}`);
         }
     }
 
-    isArithmeticChecked(node: ASTNode): boolean {
+    isArithmeticChecked(node: sol.ASTNode): boolean {
         return (
             gte(this.cfgBuilder.solVersion, "0.8.0") &&
             node.getClosestParentByType(sol.UncheckedBlock) === undefined
@@ -481,6 +462,23 @@ export class ExpressionCompiler {
         );
     }
 
+    private prepEncodeArgs(solArgs: sol.Expression[]): [ir.Expression[], ir.Type[]] {
+        const args: ir.Expression[] = [];
+        const argTs: ir.Type[] = [];
+
+        for (const solArg of solArgs) {
+            const solType = this.cfgBuilder.infer.typeOf(solArg);
+            const irArg = this.compile(solArg);
+            const irArgT = this.typeOf(irArg);
+            const abiTypeName = this.getStrLit(sol.abiTypeToCanonicalName(solType), noSrc);
+
+            args.push(abiTypeName, irArg);
+            argTs.push(irArgT);
+        }
+
+        return [args, argTs];
+    }
+
     compileBuiltinFunctionCall(expr: sol.FunctionCall): ir.Expression {
         if (expr.vFunctionName === "assert") {
             this.cfgBuilder.call(
@@ -508,15 +506,283 @@ export class ExpressionCompiler {
             return this.factory.tuple(noSrc, [], noType);
         }
 
+        if (expr.vFunctionName === "encode") {
+            const [args, argTs] = this.prepEncodeArgs(expr.vArguments);
+            const builtinName = `builtin_abi_encode_${expr.vArguments.length}`;
+            const res = this.cfgBuilder.getTmpId(u8ArrMemPtr);
+
+            this.cfgBuilder.call(
+                [res],
+                this.factory.identifier(noSrc, builtinName, noType),
+                [],
+                argTs,
+                args,
+                new ASTSource(expr)
+            );
+
+            return res;
+        }
+
         throw new Error(`NYI compileBuiltinFunctionCall(${expr.vFunctionName})`);
+    }
+
+    compileNewCall(expr: sol.FunctionCall): ir.Expression {
+        const newE = expr.vCallee as sol.NewExpression;
+        const newSolT = this.cfgBuilder.infer.typeOf(expr);
+        const newIrT = transpileType(newSolT, this.factory);
+        let resId: ir.Identifier;
+        const src = new ASTSource(expr);
+
+        // New array
+        if (newE.vTypeName instanceof sol.ArrayTypeName) {
+            resId = this.cfgBuilder.getTmpId(newIrT);
+            assert(
+                newIrT instanceof ir.PointerType &&
+                    newIrT.toType instanceof ir.UserDefinedType &&
+                    expr.vArguments.length === 1,
+                ``
+            );
+
+            const size = this.compile(expr.vArguments[0]);
+            this.cfgBuilder.call(
+                [resId],
+                this.factory.identifier(noSrc, "new_array", noType),
+                [this.factory.memConstant(noSrc, "memory")],
+                [newIrT.toType.typeArgs[0]],
+                [size],
+                src
+            );
+        } else if (
+            newE.vTypeName instanceof sol.UserDefinedTypeName &&
+            newE.vTypeName.vReferencedDeclaration instanceof sol.ContractDefinition
+        ) {
+            // Contract
+            const contract = newE.vTypeName.vReferencedDeclaration;
+            const irConstructorName = getDesugaredConstructorName(contract);
+
+            const args = expr.vArguments.map((arg) => this.compile(arg));
+            args.splice(0, 0, this.cfgBuilder.blockPtr(noSrc), this.cfgBuilder.msgPtr(noSrc));
+
+            const ptrT = this.factory.pointerType(
+                noSrc,
+                this.factory.userDefinedType(noSrc, getIRContractName(contract), [], []),
+                this.factory.memConstant(noSrc, "storage")
+            );
+
+            const ptrId = this.cfgBuilder.getTmpId(ptrT, src);
+
+            this.cfgBuilder.call(
+                [ptrId],
+                this.factory.identifier(noSrc, irConstructorName, noType),
+                [],
+                [],
+                args,
+                src
+            );
+
+            resId = this.cfgBuilder.loadField(ptrId, ptrT, "__address__", src);
+        } else {
+            throw new Error(`NYI new expression of type ${newE.print()}`);
+        }
+
+        return resId;
+    }
+
+    private stripCallOptions(
+        expr: sol.Expression
+    ): [
+        sol.Expression,
+        sol.Expression | undefined,
+        sol.Expression | undefined,
+        sol.Expression | undefined
+    ] {
+        let callee: sol.Expression = expr;
+        let gas: sol.Expression | undefined;
+        let value: sol.Expression | undefined;
+        let salt: sol.Expression | undefined;
+
+        while (true) {
+            if (
+                callee instanceof sol.FunctionCall &&
+                callee.vExpression instanceof sol.MemberAccess &&
+                ["gas", "value"].includes(callee.vExpression.memberName)
+            ) {
+                if (callee.vExpression.memberName === "gas") {
+                    gas = callee.vArguments[0];
+                } else {
+                    value = callee.vArguments[0];
+                }
+
+                callee = callee.vExpression.vExpression;
+            } else if (callee instanceof sol.FunctionCallOptions) {
+                for (const [option, rawValue] of callee.vOptionsMap) {
+                    if (option === "gas") {
+                        gas = rawValue;
+                    } else if (option === "value") {
+                        value = rawValue;
+                    } else if (option === "salt") {
+                        salt = rawValue;
+                    } else {
+                        assert(false, `Unknown function call option: ${option}`, callee);
+                    }
+                }
+
+                callee = callee.vExpression;
+            } else {
+                break;
+            }
+        }
+
+        return [callee, gas, value, salt];
+    }
+
+    /**
+     * Helper to decode a NON-builtin solidity call. This computes and returns:
+     * 1. The "this" argument. Depending on the context its either a u160 or a struct pointer
+     * 2. Any gas modifiers
+     * 3. Any value modifiers
+     * 4. Any salt modifiers
+     * 5. Whether this is an external call
+     * 6. The name of the compiled function
+     * 7. The solidiy return values
+     * @param expr
+     */
+    private decodeCall(
+        expr: sol.FunctionCall
+    ): [
+        ir.Expression,
+        sol.Expression | undefined,
+        sol.Expression | undefined,
+        sol.Expression | undefined,
+        boolean,
+        string,
+        sol.TypeNode[]
+    ] {
+        const [callee, gasModifier, valueModifier, saltModifier] = this.stripCallOptions(
+            expr.vExpression
+        );
+
+        const funT = this.cfgBuilder.infer.typeOf(callee);
+        let retTs: sol.TypeNode[] = [];
+
+        if (funT instanceof sol.FunctionType) {
+            retTs = funT.returns;
+        } else if (funT instanceof sol.FunctionLikeSetType) {
+            const firstDef = funT.defs[0];
+
+            assert(
+                firstDef instanceof sol.FunctionType,
+                `Unexpected def in decodeCall {0}`,
+                firstDef
+            );
+
+            retTs = firstDef.returns;
+        }
+
+        let thisExpr: ir.Expression;
+        let isExternal: boolean;
+        let irFun: string;
+
+        let funScope: FunctionScope | undefined = expr.getClosestParentByType(
+            sol.ContractDefinition
+        );
+
+        if (funScope === undefined) {
+            funScope = expr.getClosestParentByType(sol.SourceUnit) as sol.SourceUnit;
+        }
+
+        // There are several cases:
+        if (callee instanceof sol.Identifier) {
+            // 1. Internal call to the same contract or a free function call
+            throw new Error("NYI decoding identifier calls");
+        } else if (callee instanceof sol.MemberAccess) {
+            const base = callee.vExpression;
+            const baseT = this.cfgBuilder.infer.typeOf(base);
+
+            if (
+                baseT instanceof sol.UserDefinedType &&
+                baseT.definition instanceof sol.ContractDefinition
+            ) {
+                // 2. Call to another contract a.foo() (as a sub-case this.foo())
+                isExternal = true;
+                const def = expr.vReferencedDeclaration;
+
+                assert(
+                    def instanceof sol.FunctionDefinition,
+                    `Unexpected declaration ${sol.pp(def)} for ${sol.pp(expr)}`
+                );
+
+                irFun = getDispatchName(
+                    baseT.definition,
+                    def,
+                    this.cfgBuilder.infer,
+                    this.abiEncodeVersion
+                );
+
+                const baseIRExpr = this.compile(base);
+                thisExpr = this.castTo(baseIRExpr, u160, new ASTSource(base)) as ir.Expression;
+            } else if (
+                baseT instanceof sol.TypeNameType &&
+                baseT.type instanceof sol.UserDefinedType &&
+                baseT.type.definition instanceof sol.ContractDefinition &&
+                baseT.type.definition.kind === ContractKind.Contract
+            ) {
+                // 3. Internal call of the shape ContractName.funName()
+                throw new Error(
+                    `NYI internal call to ${callee.print()} with base type ${baseT.pp()}`
+                );
+            } else if (
+                baseT instanceof sol.TypeNameType &&
+                baseT.type instanceof sol.UserDefinedType &&
+                baseT.type.definition instanceof sol.ContractDefinition &&
+                baseT.type.definition.kind === ContractKind.Library
+            ) {
+                // 4. Library call LibraryName.foo()
+                throw new Error(
+                    `NYI library call to ${callee.print()} with base type ${baseT.pp()}`
+                );
+            } else {
+                // 5. Library call (some data).fun() with a `using for`
+                throw new Error(`NYI call to ${callee.print()} with base type ${baseT.pp()}`);
+            }
+        } else {
+            throw new Error(`NYI call to callee ${callee.print()}`);
+        }
+
+        return [thisExpr, gasModifier, valueModifier, saltModifier, isExternal, irFun, retTs];
     }
 
     compileFunctionCall(expr: sol.FunctionCall): ir.Expression {
         if (expr.vFunctionCallType === sol.ExternalReferenceType.Builtin) {
+            if (expr.vCallee instanceof sol.NewExpression) {
+                return this.compileNewCall(expr);
+            }
+
             return this.compileBuiltinFunctionCall(expr);
         }
 
-        throw new Error("NYI compileFunctionCall");
+        const src = new ASTSource(expr);
+        const [irCallee, , , , , irFun, retTs] = this.decodeCall(expr);
+
+        const args = expr.vArguments.map((arg) => this.compile(arg));
+        args.splice(0, 0, irCallee, this.cfgBuilder.blockPtr(noSrc), this.cfgBuilder.msgPtr(noSrc));
+
+        const lhss = retTs.map((retT) =>
+            this.cfgBuilder.getTmpId(transpileType(retT, this.factory), src)
+        );
+        const callee = this.factory.identifier(src, irFun, noType);
+
+        this.cfgBuilder.call(lhss, callee, [], [], args, src);
+
+        if (lhss.length === 0) {
+            return noType;
+        }
+
+        if (lhss.length === 1) {
+            return lhss[0];
+        }
+
+        return new IRTuple2(src, lhss);
     }
 
     compileStructConstructorCall(expr: sol.FunctionCall): ir.Expression {
@@ -553,6 +819,38 @@ export class ExpressionCompiler {
         return unionID;
     }
 
+    compileIndexAccess(expr: sol.IndexAccess): ir.Expression {
+        assert(expr.vIndexExpression !== undefined, ``);
+        const base = this.compile(expr.vBaseExpression);
+        const baseT = this.typeOf(base);
+        const idx = this.compile(expr.vIndexExpression);
+        const idxT = this.typeOf(idx);
+        const src = new ASTSource(expr);
+
+        if (
+            baseT instanceof ir.PointerType &&
+            baseT.toType instanceof ir.UserDefinedType &&
+            baseT.toType.name === "ArrWithLen"
+        ) {
+            const elT = baseT.toType.typeArgs[0];
+            const res = this.cfgBuilder.getTmpId(elT, src);
+            this.cfgBuilder.call(
+                [res],
+                this.factory.identifier(noSrc, "sol_arr_read", noType),
+                baseT.toType.memArgs,
+                [elT, idxT],
+                [base, idx],
+                src
+            );
+
+            return res;
+        }
+
+        throw new Error(
+            `NYI compiling index expression ${expr.print()} wth base type ${baseT.pp()}`
+        );
+    }
+
     /**
      * Compile a single Solidity expression `expr` and return the
      * corresponding low-level IR expression. Note that this may
@@ -583,6 +881,8 @@ export class ExpressionCompiler {
             }
         } else if (expr instanceof sol.Conditional) {
             return this.compileConditional(expr);
+        } else if (expr instanceof sol.IndexAccess) {
+            return this.compileIndexAccess(expr);
         }
 
         throw new Error(`NYI Compiling ${pp(expr)}`);
@@ -607,14 +907,14 @@ export class ExpressionCompiler {
         }
 
         // Try casting e1->e2
-        const e1Casted = this.performImplicitCast(e1, irE1, e1T, e2T, irE1T, irE2T);
+        const e1Casted = this.castTo(irE1, irE2T, new ASTSource(e1));
 
         if (e1Casted) {
             return [e1Casted, irE2, irE2T];
         }
 
         // Try casting e2->e1
-        const e2Casted = this.performImplicitCast(e2, irE2, e2T, e1T, irE2T, irE1T);
+        const e2Casted = this.castTo(irE2, irE1T, new ASTSource(e2));
 
         if (e2Casted) {
             return [irE1, e2Casted, irE1T];
@@ -625,101 +925,91 @@ export class ExpressionCompiler {
         );
     }
 
-    performImplicitCast(
-        expr: sol.Expression,
-        irExpr: ir.Expression,
-        fromSolT: sol.TypeNode,
-        toSolT: sol.TypeNode,
-        irFromT: ir.Type,
-        irToT: ir.Type
-    ): ir.Expression | undefined {
-        const src = new ASTSource(expr);
-        const version = this.cfgBuilder.solVersion;
-
-        /**
-         * Every type is implicitly convertible to itself
-         */
-        if (sol.eq(fromSolT, toSolT)) {
-            assert(ir.eq(irFromT, irToT), ``);
-            return irExpr;
+    /**
+     * Returns true IFF the struct a is a "structural subtype" of the struct b. I.e.
+     * The fields of b, are a prefix of the fields of a. (or in other words we can safely UP-cast a to b).
+     */
+    private isSturctSubtypeOf(a: ir.StructDefinition, b: ir.StructDefinition): boolean {
+        if (a.fields.length < b.fields.length) {
+            return false;
         }
 
-        if (ir.eq(irFromT, irToT)) {
-            return irExpr;
-        }
+        for (let i = 0; i < b.fields.length; i++) {
+            const [aName, aType] = a.fields[i];
+            const [bName, bType] = b.fields[i];
 
-        /**
-         * Implicit conversion from address payable to address is allowed
-         */
-        if (
-            fromSolT instanceof sol.AddressType &&
-            toSolT instanceof sol.AddressType &&
-            fromSolT.payable
-        ) {
-            return irExpr;
-        }
-
-        /**
-         * Up to 0.4.26 all integer constants are implicitly convertible to address
-         */
-        if (
-            expr instanceof sol.Literal &&
-            expr.kind === sol.LiteralKind.Number &&
-            toSolT instanceof sol.AddressType &&
-            BigInt(expr.value) >= 0n &&
-            BigInt(expr.value) < 1n << 160n &&
-            lte(version, "0.4.26")
-        ) {
-            return ir.eq(irFromT, u160) ? irExpr : this.factory.cast(src, u160, irExpr);
-        }
-
-        if (
-            fromSolT instanceof sol.PointerType &&
-            toSolT instanceof sol.PointerType &&
-            fromSolT.to instanceof sol.UserDefinedType &&
-            toSolT.to instanceof sol.UserDefinedType &&
-            fromSolT.location === toSolT.location &&
-            fromSolT.to.definition instanceof sol.ContractDefinition &&
-            toSolT.to.definition instanceof sol.ContractDefinition &&
-            fromSolT.to.definition.isSubclassOf(toSolT.to.definition)
-        ) {
-            if (irFromT instanceof ir.PointerType && irToT instanceof ir.PointerType) {
-                return this.factory.cast(src, irToT, irExpr);
+            if (aName !== bName) {
+                return false;
             }
 
-            if (ir.eq(irFromT, u160) && ir.eq(irToT, u160)) {
-                return irExpr;
+            if (!ir.eq(aType, bType)) {
+                return false;
             }
-
-            if (irFromT instanceof ir.PointerType && ir.eq(irToT, u160)) {
-                return this.cfgBuilder.loadField(irExpr, irFromT, "__address__", src);
-            }
-
-            throw new Error(`NYI implicit contract cast from ${irFromT.pp()} to ${irToT.pp()}`);
         }
 
-        /// @todo (dimo): Wasn't this implict cast version specific?
+        return true;
+    }
+
+    castTo(expr: ir.Expression, toT: ir.Type, src: BaseSrc): ir.Expression | undefined {
+        const fromT = this.typeOf(expr);
+
+        // Types equal - no cast needed
+        if (ir.eq(fromT, toT)) {
+            return expr;
+        }
+
+        /**
+         * For number literal casts just build a new literal instead of doing something like `u_160(0_u8)`
+         */
+        if (expr instanceof ir.NumberLiteral && toT instanceof ir.IntType && toT.fits(expr.value)) {
+            return this.factory.numberLiteral(expr.src, expr.value, 16, toT);
+        }
+
+        // Casting from one struct to another, where they agree on fields is allowed
         if (
-            fromSolT instanceof sol.PointerType &&
-            fromSolT.to instanceof sol.UserDefinedType &&
-            fromSolT.to.definition instanceof sol.ContractDefinition &&
-            toSolT instanceof sol.AddressType
+            fromT instanceof ir.PointerType &&
+            toT instanceof ir.PointerType &&
+            fromT.toType instanceof ir.UserDefinedType &&
+            toT.toType instanceof ir.UserDefinedType
         ) {
-            return this.cfgBuilder.loadField(irExpr, irFromT, "__address__", src);
+            const fromStruct = this.cfgBuilder.globalScope.getTypeDecl(fromT.toType);
+            const toStruct = this.cfgBuilder.globalScope.getTypeDecl(toT.toType);
+
+            if (
+                fromStruct instanceof ir.StructDefinition &&
+                toStruct instanceof ir.StructDefinition &&
+                this.isSturctSubtypeOf(fromStruct, toStruct)
+            ) {
+                return this.factory.cast(src, toT, expr);
+            }
+        }
+
+        // Contract -> address cast
+        if (
+            fromT instanceof ir.PointerType &&
+            fromT.toType instanceof ir.UserDefinedType &&
+            ir.eq(toT, u160)
+        ) {
+            const def = this.cfgBuilder.globalScope.getTypeDecl(fromT.toType);
+
+            if (
+                def instanceof ir.StructDefinition &&
+                ir.eq(def.getFieldType("__address__"), u160)
+            ) {
+                return this.cfgBuilder.loadField(expr, fromT, "__address__", src);
+            }
         }
 
         /**
          * Integer types with same sign can be implicitly converted fromSolT lower to higher bit-width
          */
         if (
-            fromSolT instanceof sol.IntType &&
-            toSolT instanceof sol.IntType &&
-            fromSolT.signed === toSolT.signed &&
-            fromSolT.nBits !== undefined &&
-            toSolT.nBits !== undefined &&
-            fromSolT.nBits <= toSolT.nBits
+            fromT instanceof ir.IntType &&
+            toT instanceof ir.IntType &&
+            fromT.signed === toT.signed &&
+            fromT.nbits <= toT.nbits
         ) {
-            return this.factory.cast(src, irToT, irExpr);
+            return this.factory.cast(src, toT, expr);
         }
 
         /**
@@ -727,149 +1017,34 @@ export class ExpressionCompiler {
          * ONLY fromSolT unsigned -> signed, and ONLY to STRICTLY larger bit-widths
          */
         if (
-            fromSolT instanceof sol.IntType &&
-            toSolT instanceof sol.IntType &&
-            !fromSolT.signed &&
-            toSolT.signed &&
-            fromSolT.nBits !== undefined &&
-            toSolT.nBits !== undefined &&
-            fromSolT.nBits < toSolT.nBits
+            fromT instanceof ir.IntType &&
+            toT instanceof ir.IntType &&
+            fromT.signed !== toT.signed &&
+            fromT.nbits < toT.nbits
         ) {
-            return this.factory.cast(src, irToT, irExpr);
-        }
-
-        /**
-         * String literals are implicitly convertible to byte[]
-         */
-        if (
-            expr instanceof sol.Literal &&
-            isStringLiteral(expr) &&
-            toSolT instanceof sol.PointerType &&
-            toSolT.to instanceof sol.BytesType
-        ) {
-            assert(ir.eq(irFromT, irToT), ``);
-            return irExpr;
+            return this.factory.cast(src, toT, expr);
         }
 
         /**
          * String literals are implicitly convertible to byteN if they fit
          */
         if (
-            expr instanceof sol.Literal &&
-            isStringLiteral(expr) &&
-            toSolT instanceof sol.FixedBytesType &&
-            expr.value.length <= toSolT.size
+            fromT instanceof ir.PointerType &&
+            fromT.toType instanceof ir.UserDefinedType &&
+            fromT.toType.name === "ArrWithLen" &&
+            ir.eq(fromT.toType.typeArgs[0], u8) &&
+            toT instanceof ir.IntType &&
+            expr instanceof ir.Identifier
         ) {
-            // @todo (pavel)
-            throw new Error("NYI converting short string to fixed-bytes numeri constants");
-        }
+            const def = this.cfgBuilder.globalScope.get(expr.name);
 
-        /**
-         * String literals of length 1 are implicitly convertible to uint8 (special case alias of bytes1)
-         */
-        if (
-            expr instanceof sol.Literal &&
-            isStringLiteral(expr) &&
-            toSolT instanceof sol.FixedBytesType &&
-            toSolT.size === 1
-        ) {
-            return this.factory.numberLiteral(src, BigInt(expr.value.charCodeAt(0)), 10, u8);
-        }
+            if (def instanceof GlobalVariable) {
+                const size = (def.initialValue as ir.StructLiteral).field("len");
 
-        /**
-         * Hex numeric literals are convertible to fixed bytes of the same size
-         */
-        if (
-            expr instanceof sol.Literal &&
-            toSolT instanceof sol.FixedBytesType &&
-            isHexNumberLiteral(expr)
-        ) {
-            const hexVal = hexLiteralValue(expr);
-
-            if (hexVal.length === toSolT.size) {
-                /// @todo (pavel)
-                throw new Error(`NYI making int consts from hex literals`);
+                if (size instanceof ir.NumberLiteral && size.value < BigInt(toT.nbits / 8)) {
+                    throw new Error("NYI casting string literals to fixed bytes");
+                }
             }
-        }
-
-        /**
-         * In Solidity 0.4.x int is implicitly convertible to fixed bytes (of any size)
-         */
-        if (
-            fromSolT instanceof sol.IntType &&
-            toSolT instanceof sol.FixedBytesType &&
-            lt(version, "0.5.0")
-        ) {
-            /// @todo (pavel)
-            throw new Error(`NYI making int consts from hex literals`);
-        }
-
-        /**
-         * In-memory strings are convertible to bytes
-         */
-        if (
-            expr instanceof sol.Literal &&
-            isStringLiteral(expr) &&
-            toSolT instanceof sol.PointerType &&
-            toSolT.to instanceof sol.BytesType
-        ) {
-            assert(
-                isU8Array(irFromT) && isU8Array(irToT),
-                `Unexpected ir type for string and bytes: {0} and {1}`,
-                irFromT,
-                irToT
-            );
-
-            if (ir.eq(irFromT.region, irToT.region)) {
-                return irExpr;
-            }
-
-            throw new Error(`NYI insert copy for implicit string->bytes casts`);
-        }
-
-        /**
-         * Solidity 0.4.20+ allows to implicitly convert fixed bytes to int
-         */
-        if (
-            fromSolT instanceof sol.FixedBytesType &&
-            toSolT instanceof sol.IntType &&
-            gte(version, "0.4.20")
-        ) {
-            /// @todo (pavel) do we need to check sizes here? Whats the behavior on overflow?
-            assert(
-                ir.eq(irFromT, irToT),
-                `NYI casting between different sized fixed bytes and int`
-            );
-
-            return irExpr;
-        }
-
-        /**
-         * Allow fixed byte types implicit casts when target size is greater than source size,
-         * so source should be zero-padded right.
-         */
-        if (
-            fromSolT instanceof sol.FixedBytesType &&
-            toSolT instanceof sol.FixedBytesType &&
-            fromSolT.size < toSolT.size
-        ) {
-            return this.factory.cast(src, irToT, irExpr);
-        }
-
-        /**
-         * Fixed memory arrays are implicitly convertible to dynamic storage arrays of the same base type, since
-         * 1) Storage->memory assignment results in copy
-         * 2) Storage arrays are dynamic
-         */
-        if (
-            isFixedArray(fromSolT) &&
-            fromSolT.location === sol.DataLocation.Memory &&
-            isNonFixedArray(toSolT) &&
-            toSolT.location === sol.DataLocation.Storage &&
-            sol.eq((fromSolT.to as sol.ArrayType).elementT, (toSolT.to as sol.ArrayType).elementT)
-        ) {
-            /// @todo (dimo)
-            throw new Error(`NYI implicit cast from fixed arrays to dynamic storage arrays`);
         }
 
         return undefined;

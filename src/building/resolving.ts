@@ -9,6 +9,7 @@ import {
     ModifierDefinition,
     resolve,
     SourceUnit,
+    StructDefinition,
     VariableDeclaration
 } from "solc-typed-ast";
 import { ABIEncoderVersion } from "solc-typed-ast/dist/types/abi";
@@ -320,4 +321,17 @@ export function getDispatchName(
     abiVersion: ABIEncoderVersion
 ): string {
     return `${contract.name}_${fun.name}_${infer.signatureHash(fun, abiVersion)}_dispatch`;
+}
+
+export function getIRContractName(contract: ContractDefinition): string {
+    return `${contract.name}_${contract.id}`;
+}
+
+/**
+ * Get the low-level name of a StructDefinition. We suffix it with the AST id to avoid shadowing.
+ */
+export function getIRStructDefName(struct: StructDefinition): string {
+    return `${struct.vScope instanceof ContractDefinition ? struct.vScope.name : ""}_${
+        struct.name
+    }_${struct.id}`;
 }

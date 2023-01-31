@@ -90,7 +90,7 @@ const preambleStr = `
             return;
     }
 
-    fun sol_panic(code: u256)
+    fun sol_panic(code: u256): never
     locals 
         panicBytes: ArrWithLen<#memory; u8> *#memory,
         panicBytesInExc: ArrWithLen<#exception; u8> *#exception;
@@ -100,12 +100,31 @@ const preambleStr = `
             panicBytesInExc := call copy_u8arr<#memory, #exception>(panicBytes);
             call builtin_setExceptionBytes(panicBytesInExc);
             abort;
-        exit:
-            return;
-
     }
 
-    fun sol_revert() 
+    fun sol_arr_read<M; ElT>(arr: ArrWithLen<M; ElT> *M, idx: u256): ElT 
+    locals
+        len: u256,
+        arrPtr: ElT[] *M,
+        res: ElT;
+    {
+        entry:
+            branch idx < 0_u256 fail BB0;
+
+        BB0:
+            load arr.len in len;
+            branch idx >= len fail ret;
+
+        ret:
+            load arr.arr in arrPtr;
+            load arrPtr[idx] in res;
+            return res;
+
+        fail:
+            call sol_panic(0x32_u256);
+    }
+
+    fun sol_revert(): never 
     locals 
         panicBytes: ArrWithLen<#exception; u8> *#exception,
         panicBytesArr: u8[] *#exception;
@@ -119,7 +138,7 @@ const preambleStr = `
             abort;
     }
 
-    fun sol_revert_08<M>(bytes: ArrWithLen<M; u8> *M) 
+    fun sol_revert_08<M>(bytes: ArrWithLen<M; u8> *M): never 
     locals 
         panicBytes: ArrWithLen<#exception; u8> *#exception;
     {
@@ -128,6 +147,22 @@ const preambleStr = `
             call builtin_setExceptionBytes(panicBytes);
             abort;
     }
+
+    fun new_array<M; T>(size: u256): ArrWithLen<M; T> *M
+    locals
+        arrPtr: T[] *M,
+        resPtr: ArrWithLen<M; T> *M;
+    {
+        entry:
+            arrPtr := alloc T[size] in M;
+            resPtr := alloc ArrWithLen<M; T> in M;
+            store arrPtr in resPtr.arr;
+            store size in resPtr.len;
+
+            return resPtr;
+    }
+
+    fun builtin_abi_encode_1<;T1>(arg1AbiT: ArrWithLen<#exception; u8> *#exception, arg1: T1): ArrWithLen<#memory; u8> *#memory
 
     fun builtin_abi_encodeWithSignature_1<SigM; T1>(sig: ArrWithLen<SigM; u8> *SigM, arg1AbiT: ArrWithLen<#exception; u8> *#exception, arg1: T1): ArrWithLen<#memory; u8> *#memory
     fun builtin_abi_encodeWithSignature_2<SigM; T1, T2>(sig: ArrWithLen<SigM; u8> *SigM, arg1AbiT: ArrWithLen<#exception; u8> *#exception, arg1: T1, arg2AbiT: ArrWithLen<#exception; u8> *#exception, arg2: T2): ArrWithLen<#memory; u8> *#memory
@@ -141,7 +176,7 @@ const preambleStr = `
     fun builtin_pow_overflows<;Int1T, Int2T>(x: Int1T, y: Int2T): bool
     fun builtin_neg_overflows<;IntT>(x: IntT): bool
 
-    fun builtin_register_contract<;T>(contractPtr: T): u160
+    fun builtin_register_contract<;T>(ptr: T): u160
     fun builtin_is_contract_at<;T>(addr: u160): bool
     fun builtin_get_contract_at<;T>(addr: u160): T
     
@@ -154,7 +189,6 @@ const preambleStr = `
     fun builtin_delegatecall04<M>(addr: u160, data: ArrWithLen<M; u8> *M): bool
     fun builtin_staticcall04<M>(addr: u160, data: ArrWithLen<M; u8> *M): bool
     fun builtin_callcode<M>(addr: u160, data: ArrWithLen<M; u8> *M): bool
-    fun builtin_get_new_address(): u160
 `;
 
 export const preamble: ir.Definition[] = ir.parseProgram(preambleStr);

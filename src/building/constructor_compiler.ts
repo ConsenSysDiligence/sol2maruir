@@ -25,42 +25,54 @@ export class ConstructorCompiler {
         private readonly irContract: ir.StructDefinition
     ) {}
 
-    public compilePartialConstructor(): ir.FunctionDefinition {
-        if (this.contract.vConstructor) {
-            const funCompiler = new FunctionCompiler(
+    public compilePartialConstructors(): ir.FunctionDefinition[] {
+        const res: ir.FunctionDefinition[] = [];
+
+        for (const base of this.contract.vLinearizedBaseContracts) {
+            if (base.vConstructor) {
+                const funCompiler = new FunctionCompiler(
+                    this.factory,
+                    base.vConstructor,
+                    this.globalScope,
+                    this.solVersion,
+                    this.abiVersion,
+                    this.contract,
+                    this.irContract
+                );
+
+                if (!funCompiler.canEmitBody()) {
+                    continue;
+                }
+
+                res.push(funCompiler.compile());
+            }
+
+            // If no explicit constructor, emit an implicit constructor that
+            const implCompiler = new ImplicitConstructorCompiler(
                 this.factory,
-                this.contract.vConstructor,
+                base,
+                this.contract,
                 this.globalScope,
                 this.solVersion,
                 this.abiVersion,
-                this.contract,
                 this.irContract
             );
 
-            return funCompiler.compile();
+            res.push(implCompiler.compile());
         }
 
-        // If no explicit constructor, emit an implicit constructor that
-        const implCompiler = new ImplicitConstructorCompiler(
-            this.factory,
-            this.contract,
-            this.globalScope,
-            this.solVersion,
-            this.abiVersion,
-            this.irContract
-        );
-
-        return implCompiler.compile();
+        return res;
     }
 
     public compileConstructor(): ir.FunctionDefinition {
         const funScope = new ir.Scope(this.globalScope);
         const builder = new CFGBuilder(this.globalScope, funScope, this.solVersion, this.factory);
-        const exprCompiler = new ExpressionCompiler(builder);
+        const exprCompiler = new ExpressionCompiler(builder, this.abiVersion);
 
+        const irContractT = this.factory.userDefinedType(noSrc, this.irContract.name, [], []);
         const thisT = this.factory.pointerType(
             noSrc,
-            this.factory.userDefinedType(noSrc, this.irContract.name, [], []),
+            irContractT,
             this.factory.memConstant(noSrc, "storage")
         );
 
@@ -109,7 +121,6 @@ export class ConstructorCompiler {
          */
         for (let i = constructorCalls.length - 1; i >= 0; i--) {
             const [base, rawArgs] = constructorCalls[i];
-            const baseConstructor = base.vConstructor;
 
             // The first argument to the base constructor is `this` casted to the base type.
             const constrArgs: ir.Expression[] = [
@@ -124,13 +135,9 @@ export class ConstructorCompiler {
                 noType
             );
 
-            if (baseConstructor instanceof sol.FunctionDefinition) {
-                for (let argIdx = 0; argIdx < rawArgs.length; argIdx++) {
-                    const rawArg = rawArgs[argIdx];
-                    constrArgs.push(exprCompiler.compile(rawArg));
-                }
-            } else {
-                continue;
+            for (let argIdx = 0; argIdx < rawArgs.length; argIdx++) {
+                const rawArg = rawArgs[argIdx];
+                constrArgs.push(exprCompiler.compile(rawArg));
             }
 
             /**
@@ -158,7 +165,7 @@ export class ConstructorCompiler {
         // Allocate contract struct
         builder.allocStruct(
             builder.this(noSrc),
-            this.factory.userDefinedType(noSrc, this.irContract.name, [], []),
+            irContractT,
             this.factory.memConstant(noSrc, "storage"),
             noSrc
         );
@@ -167,10 +174,10 @@ export class ConstructorCompiler {
         const addrTmp = builder.getTmpId(u160, noSrc);
         builder.call(
             [addrTmp],
-            this.factory.identifier(noSrc, "builtin_get_new_address", noType),
+            this.factory.identifier(noSrc, "builtin_register_contract", noType),
             [],
-            [],
-            [],
+            [thisT],
+            [builder.this(noSrc)],
             noSrc
         );
         builder.storeField(

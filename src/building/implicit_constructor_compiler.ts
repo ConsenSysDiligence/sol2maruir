@@ -6,11 +6,13 @@ import { noSrc } from "maru-ir2";
 import { getDesugaredPartialConstructorName } from "./resolving";
 import { IRFactory } from "./factory";
 import { ExpressionCompiler } from "./expression_compiler";
+import { ASTSource } from "../ir/source";
 
 export class ImplicitConstructorCompiler extends BaseFunctionCompiler {
     constructor(
         factory: IRFactory,
         private readonly contract: sol.ContractDefinition,
+        private readonly mdc: sol.ContractDefinition,
         globalScope: ir.Scope,
         solVersion: string,
         abiVersion: sol.ABIEncoderVersion,
@@ -42,34 +44,34 @@ export class ImplicitConstructorCompiler extends BaseFunctionCompiler {
         this.cfgBuilder.addIRArg("block", blockPtrT, noSrc);
         this.cfgBuilder.addIRArg("msg", msgPtrT, noSrc);
 
-        const exprCompiler = new ExpressionCompiler(this.cfgBuilder);
+        const exprCompiler = new ExpressionCompiler(this.cfgBuilder, this.abiVersion);
 
         for (const stateVar of this.contract.vStateVariables) {
             let initialVal: ir.Expression;
+            const stateVarT = transpileType(
+                this.cfgBuilder.infer.variableDeclarationToTypeNode(stateVar),
+                this.cfgBuilder.factory
+            );
 
             if (stateVar.vValue !== undefined) {
                 initialVal = exprCompiler.compile(stateVar.vValue);
             } else {
-                const stateVarT = transpileType(
-                    this.cfgBuilder.infer.variableDeclarationToTypeNode(stateVar),
-                    this.cfgBuilder.factory
-                );
-
                 initialVal = this.cfgBuilder.zeroValue(stateVarT);
             }
 
             this.cfgBuilder.storeField(
                 this.cfgBuilder.this(noSrc),
                 stateVar.name,
-                initialVal,
+                exprCompiler.castTo(
+                    initialVal,
+                    stateVarT,
+                    new ASTSource(stateVar)
+                ) as ir.Expression,
                 noSrc
             );
         }
 
-        const name = getDesugaredPartialConstructorName(
-            this.contract,
-            this.contract as sol.ContractDefinition
-        );
+        const name = getDesugaredPartialConstructorName(this.contract, this.mdc);
 
         this.cfgBuilder.jump(this.cfgBuilder.returnBB, noSrc);
 
