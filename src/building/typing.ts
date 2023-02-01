@@ -1,7 +1,7 @@
 import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
 import { assert, ContractDefinition } from "solc-typed-ast";
-import { MemDesc, noSrc } from "maru-ir2";
+import { MemDesc, noSrc, Scope } from "maru-ir2";
 import { IRTupleType2 } from "../ir";
 import { IRFactory } from "./factory";
 import { getIRStructDefName } from "./resolving";
@@ -114,4 +114,67 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: M
     }
 
     assert(false, "Unable to transpile type {0} ({1})", type, type.constructor.name);
+}
+
+/**
+ * Returns true IFF all memory descriptors in a given type are concrete
+ * @param t
+ */
+export function isConcreteMemT(t: ir.Type, scope: Scope): boolean {
+    const memDescs = collectMemDesc(t, scope);
+
+    for (const desc of memDescs) {
+        // Not fully concrete.
+        if (desc instanceof ir.MemIdentifier) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Collect all memory descriptors that appear in t (after concretizing any polymorphic types)
+ * @param t
+ */
+function collectMemDesc(t: ir.Type, scope: Scope): MemDesc[] {
+    const res: MemDesc[] = [];
+
+    ir.walkType(
+        t,
+        (typ) => {
+            if (typ instanceof ir.PointerType) {
+                res.push(typ.region);
+                return;
+            }
+
+            if (typ instanceof ir.UserDefinedType) {
+                res.push(...typ.memArgs);
+                return;
+            }
+        },
+        scope
+    );
+
+    return res;
+}
+
+/**
+ * Returns true IFF the type t is primitive, or lives in a single memory
+ * @param t
+ */
+export function isSingleMem(t: ir.Type, scope: Scope): boolean {
+    const memDescs = collectMemDesc(t, scope);
+    const mems = new Set<string>();
+
+    for (const desc of memDescs) {
+        // Not fully concrete.
+        if (desc instanceof ir.MemIdentifier) {
+            return false;
+        }
+
+        mems.add(desc.name);
+    }
+
+    return mems.size <= 1;
 }

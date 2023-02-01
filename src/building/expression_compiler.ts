@@ -12,9 +12,11 @@ import {
     FunctionScope,
     getDesugaredConstructorName,
     getDispatchName,
-    getIRContractName
+    getIRContractName,
+    getIRStructDefName
 } from "./resolving";
 import { IRTuple2 } from "../ir";
+import { CopyFunCompiler } from "./copy_fun_compiler";
 
 const overflowBuiltinMap = new Map<string, string>([
     ["+", "builtin_add_overflows"],
@@ -822,7 +824,37 @@ export class ExpressionCompiler {
     }
 
     compileStructConstructorCall(expr: sol.FunctionCall): ir.Expression {
-        throw new Error("NYI compileStructConstructorCall");
+        const calleeT = this.cfgBuilder.infer.typeOf(expr.vExpression);
+
+        assert(
+            calleeT instanceof sol.TypeNameType &&
+                calleeT.type instanceof sol.UserDefinedType &&
+                calleeT.type.definition instanceof sol.StructDefinition,
+            `Expected UserDefinedTypeName not ${calleeT.pp()}`
+        );
+
+        const solStruct = calleeT.type.definition;
+        const irStruct = this.cfgBuilder.globalScope.get(getIRStructDefName(solStruct));
+
+        assert(
+            irStruct instanceof ir.StructDefinition && irStruct.memoryParameters.length === 1,
+            `Expected a struct def with single mem param not ${ir.pp(irStruct)}`
+        );
+
+        const structPtrT = this.factory.pointerType(
+            noSrc,
+            this.factory.userDefinedType(
+                noSrc,
+                irStruct.name,
+                [this.factory.memConstant(noSrc, "memory")],
+                []
+            ),
+            this.factory.memConstant(noSrc, "memory")
+        );
+
+        const res = this.cfgBuilder.getTmpId(structPtrT);
+
+        throw new Error("NYI");
     }
 
     compileTypeConversion(expr: sol.FunctionCall): ir.Expression {
@@ -961,31 +993,6 @@ export class ExpressionCompiler {
         );
     }
 
-    /**
-     * Returns true IFF the struct a is a "structural subtype" of the struct b. I.e.
-     * The fields of b, are a prefix of the fields of a. (or in other words we can safely UP-cast a to b).
-     */
-    private isSturctSubtypeOf(a: ir.StructDefinition, b: ir.StructDefinition): boolean {
-        if (a.fields.length < b.fields.length) {
-            return false;
-        }
-
-        for (let i = 0; i < b.fields.length; i++) {
-            const [aName, aType] = a.fields[i];
-            const [bName, bType] = b.fields[i];
-
-            if (aName !== bName) {
-                return false;
-            }
-
-            if (!ir.eq(aType, bType)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     mustCastTo(expr: ir.Expression, toT: ir.Type, src: BaseSrc): ir.Expression {
         const res = this.castTo(expr, toT, src);
 
@@ -1013,25 +1020,6 @@ export class ExpressionCompiler {
          */
         if (expr instanceof ir.NumberLiteral && toT instanceof ir.IntType && toT.fits(expr.value)) {
             return this.factory.numberLiteral(expr.src, expr.value, 16, toT);
-        }
-
-        // Casting from one struct to another, where they agree on fields is allowed
-        if (
-            fromT instanceof ir.PointerType &&
-            toT instanceof ir.PointerType &&
-            fromT.toType instanceof ir.UserDefinedType &&
-            toT.toType instanceof ir.UserDefinedType
-        ) {
-            const fromStruct = this.cfgBuilder.globalScope.getTypeDecl(fromT.toType);
-            const toStruct = this.cfgBuilder.globalScope.getTypeDecl(toT.toType);
-
-            if (
-                fromStruct instanceof ir.StructDefinition &&
-                toStruct instanceof ir.StructDefinition &&
-                this.isSturctSubtypeOf(fromStruct, toStruct)
-            ) {
-                return this.factory.cast(src, toT, expr);
-            }
         }
 
         // Contract -> address cast
@@ -1097,6 +1085,50 @@ export class ExpressionCompiler {
             }
         }
 
+        // If these are two types, that live in 2 separate memories (without
+        // crossing memory boundaries), but are otherwise the same modulo
+        // memories, we can emit a copy
+        if (
+            fromT instanceof ir.PointerType &&
+            toT instanceof ir.PointerType &&
+            CopyFunCompiler.canCopy(fromT, toT)
+        ) {
+            const copyFunId = this.getCopyFun(fromT, toT);
+            const lhs = this.cfgBuilder.getTmpId(toT, expr.src);
+            this.cfgBuilder.call(
+                [lhs],
+                copyFunId,
+                [fromT.region, toT.region],
+                [],
+                [expr],
+                expr.src
+            );
+
+            return lhs;
+        }
         return undefined;
+    }
+
+    private getCopyFun(fromT: ir.Type, toT: ir.Type): ir.Identifier {
+        const name = CopyFunCompiler.getCopyName(fromT);
+        const decl = this.cfgBuilder.globalScope.get(name);
+
+        if (decl !== undefined) {
+            assert(decl instanceof ir.FunctionDefinition, ``);
+            return this.factory.identifier(noSrc, name, noType);
+        }
+
+        const compiler = new CopyFunCompiler(
+            this.factory,
+            this.cfgBuilder.globalScope,
+            this.cfgBuilder.solVersion,
+            this.abiEncodeVersion,
+            fromT
+        );
+
+        const fun = compiler.compile();
+        this.cfgBuilder.globalScope.define(fun);
+
+        return this.factory.identifier(noSrc, name, noType);
     }
 }

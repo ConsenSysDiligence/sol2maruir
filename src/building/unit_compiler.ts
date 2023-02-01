@@ -49,9 +49,19 @@ export class UnitCompiler {
         this.inferMap = new Map();
     }
 
+    globalDefine(def: ir.FunctionDefinition | ir.StructDefinition | ir.GlobalVariable): void {
+        if (def instanceof ir.FunctionDefinition) {
+            this.globalScope.makeFunScope(def);
+        } else if (def instanceof ir.StructDefinition) {
+            this.globalScope.makeStructScope(def);
+        }
+
+        this.globalScope.define(def);
+    }
+
     compile(units: sol.SourceUnit[]): Iterable<ir.Definition> {
         for (const def of preamble) {
-            this.globalScope.define(
+            this.globalDefine(
                 def as ir.FunctionDefinition | ir.StructDefinition | ir.GlobalVariable
             );
         }
@@ -70,9 +80,7 @@ export class UnitCompiler {
 
         for (const [contract, methodOverrideMap] of overrideMap) {
             for (const [method, overridingImpls] of methodOverrideMap) {
-                this.globalScope.define(
-                    this.compileMethodDispatch(contract, method, overridingImpls)
-                );
+                this.globalDefine(this.compileMethodDispatch(contract, method, overridingImpls));
             }
         }
 
@@ -133,13 +141,13 @@ export class UnitCompiler {
 
         for (const structDef of unit.getChildrenByType(sol.StructDefinition)) {
             const struct = this.compileStructDef(structDef, infer);
-            this.globalScope.define(struct);
+            this.globalDefine(struct);
         }
 
         for (const contract of unit.vContracts) {
             const struct = this.getContractStruct(contract, infer);
 
-            this.globalScope.define(struct);
+            this.globalDefine(struct);
             this.compileContractMethods(contract, struct, infer);
         }
 
@@ -154,12 +162,12 @@ export class UnitCompiler {
             );
 
             if (funCompile.canEmitBody()) {
-                this.globalScope.define(funCompile.compile());
+                this.globalDefine(funCompile.compile());
             }
         }
 
         for (const globConst of unit.vVariables) {
-            this.globalScope.define(this.compileGlobalConst(globConst, infer));
+            this.globalDefine(this.compileGlobalConst(globConst, infer));
         }
     }
 
@@ -193,10 +201,10 @@ export class UnitCompiler {
         );
 
         for (const constr of constrCompiler.compilePartialConstructors()) {
-            this.globalScope.define(constr);
+            this.globalDefine(constr);
         }
 
-        this.globalScope.define(constrCompiler.compileConstructor());
+        this.globalDefine(constrCompiler.compileConstructor());
 
         this.emittedMethodMap.set(contract, new Map());
 
@@ -232,7 +240,7 @@ export class UnitCompiler {
                 }
 
                 const fun = funCompiler.compile();
-                this.globalScope.define(fun);
+                this.globalDefine(fun);
 
                 (this.emittedMethodMap.get(contract) as Map<string, ir.FunctionDefinition>).set(
                     sig,
@@ -354,72 +362,5 @@ export class UnitCompiler {
         }
 
         return res;
-        /*
-        // Map from contracts to a list of their sub-contracts
-        const inhMap: InheritMap = new Map();
-        // Map from contracts, to a map from function signatures to the list of overriding implementations
-        const res: OverrideMap = new Map();
-        // Map from contracts to their vtables
-        const vtblMap = new Map<sol.ContractDefinition, Map<string, sol.FunctionDefinition>>();
-
-        // First build inheritance and vtbl maps
-        for (const unit of units) {
-            const infer = this.getInfer(unit);
-            const [, abiVersion] = this.versionMap.get(unit) as [string, sol.ABIEncoderVersion];
-
-            for (const contract of unit.vContracts) {
-                inhMap.set(contract, []);
-                res.set(contract, new Map());
-                vtblMap.set(
-                    contract,
-                    new Map(
-                        contract.vFunctions.map((fun) => [infer.signature(fun, abiVersion), fun])
-                    )
-                );
-            }
-        }
-
-        for (const unit of units) {
-            for (const contract of unit.vContracts) {
-                for (const base of contract.vLinearizedBaseContracts) {
-                    if (base !== contract) {
-                        (inhMap.get(base) as sol.ContractDefinition[]).push(contract);
-                    }
-                }
-            }
-        }
-
-        for (const [contract, subContracts] of inhMap) {
-            const vtbl = vtblMap.get(contract) as Map<string, sol.FunctionDefinition>;
-
-            for (const [sig, method] of vtbl) {
-                // Only care about externally callable methods for dynamic dispatch.
-                if (
-                    method.visibility !== sol.FunctionVisibility.Default &&
-                    method.visibility !== sol.FunctionVisibility.External &&
-                    method.visibility !== sol.FunctionVisibility.Public
-                ) {
-                    continue;
-                }
-
-                const overridingImplementations: sol.FunctionDefinition[] = [method];
-
-                for (const subContract of subContracts) {
-                    const subVtbl = vtblMap.get(subContract) as Map<string, sol.FunctionDefinition>;
-
-                    // We specialze all inherited methods to the sub-contract, even when it doesn't
-                    // Explicitly override them.
-                    overridingImplementations.push(subVtbl.get(sig) as sol.FunctionDefinition);
-                }
-
-                (res.get(contract) as Map<string, sol.FunctionDefinition[]>).set(
-                    sig,
-                    overridingImplementations
-                );
-            }
-        }
-
-        return res;
-        */
     }
 }

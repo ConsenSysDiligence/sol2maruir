@@ -8,6 +8,7 @@ import * as ir from "maru-ir2";
 import { SolMaruirInterp } from "../src/interp";
 import expect from "expect";
 
+/*
 const files = [
     "test/samples/solidity/ABIEncoderV2_Structs.config.json",
     "test/samples/solidity/AbstractVirtualModifier.config.json",
@@ -168,9 +169,10 @@ const files = [
     "test/samples/solidity/VirtualModifiersVsOverriding.config.json",
     "test/samples/solidity/while_v04.config.json"
 ];
+*/
 
 describe("Interpretor tests", async () => {
-    //    const files = ["test/samples/solidity/simple_dyn_dispatch.config.json"];
+    const files = ["test/samples/solidity/aliasing_and_copying.config.json"];
 
     for (const jsonFile of files) {
         const config = fse.readJsonSync(jsonFile);

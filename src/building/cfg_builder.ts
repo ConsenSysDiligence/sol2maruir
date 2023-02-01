@@ -144,6 +144,10 @@ export class CFGBuilder {
         return this.addIRLocalImpl(name, type, src, this._locals);
     }
 
+    public addIRRet(name: string, type: ir.Type, src: BaseSrc): ir.VariableDeclaration {
+        return this.addIRLocalImpl(name, type, src, this.returns);
+    }
+
     public getVarId(decl: sol.VariableDeclaration, src: BaseSrc): ir.Identifier {
         const irDecl = this.solidityVarsToIRVarsMap.get(decl);
 
@@ -299,7 +303,10 @@ export class CFGBuilder {
 
         assert(fieldT !== undefined, `No field {0} on struct {1}`, field, def);
 
-        const lhs = this.getTmpId(fieldT, src);
+        const subst = makeSubst(type.toType, this.funScope);
+        const concreteFieldT = concretizeType(fieldT, subst, this.globalScope.scopeOf(def));
+
+        const lhs = this.getTmpId(concreteFieldT, src);
 
         this.curBB.statements.push(this.factory.loadField(src, lhs, base, field));
 

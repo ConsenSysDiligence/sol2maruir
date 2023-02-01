@@ -25,7 +25,11 @@ export abstract class BaseFunctionCompiler {
      * 2. Adding the final return in the returnBB
      * 3. Building the actuall ir.FunctionDeclaration
      */
-    protected finishCompile(src: BaseSrc, name: string): ir.FunctionDefinition {
+    protected finishCompile(
+        src: BaseSrc,
+        name: string,
+        memArgs: ir.MemVariableDeclaration[] = []
+    ): ir.FunctionDefinition {
         const factory = this.cfgBuilder.factory;
 
         // After all local variables have been collected 0-init locals and returns (as per Solidity semantics).
@@ -41,7 +45,7 @@ export abstract class BaseFunctionCompiler {
 
         return factory.functionDefinition(
             src,
-            [],
+            memArgs,
             [],
             name,
             this.cfgBuilder.args,

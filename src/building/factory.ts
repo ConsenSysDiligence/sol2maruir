@@ -242,6 +242,10 @@ export class IRFactory {
         return new ir.PointerType(src, toType, region);
     }
 
+    arrayType(src: ir.BaseSrc, elType: ir.Type): ir.ArrayType {
+        return new ir.ArrayType(src, elType);
+    }
+
     userDefinedType(
         src: ir.BaseSrc,
         name: string,
