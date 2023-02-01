@@ -3,7 +3,7 @@ import * as ir from "maru-ir2";
 import { BasicBlock } from "maru-ir2/dist/ir/cfg";
 import { assert, InferType, pp } from "solc-typed-ast";
 import { UIDGenerator } from "../utils";
-import { BaseSrc, noSrc } from "maru-ir2";
+import { BaseSrc, concretizeType, makeSubst, noSrc } from "maru-ir2";
 import { transpileType, u256 } from "./typing";
 import { ASTSource } from "../ir/source";
 import { IRFactory } from "./factory";
@@ -463,7 +463,7 @@ export class CFGBuilder {
                 const res = this.getTmpId(typ, src);
                 this.allocArray(
                     res,
-                    typ.toType,
+                    typ.toType.baseType,
                     this.factory.numberLiteral(src, 0n, 10, u256),
                     typ.region,
                     src
@@ -477,9 +477,12 @@ export class CFGBuilder {
                 if (def instanceof ir.StructDefinition) {
                     const res = this.getTmpId(typ, src);
                     this.allocStruct(res, typ.toType, typ.region, src);
+                    const subst = makeSubst(typ.toType, this.funScope);
+                    const structScope = this.globalScope.scopeOf(def);
 
                     for (const [fieldName, fieldT] of def.fields) {
-                        this.storeField(res, fieldName, this.zeroValue(fieldT, src), src);
+                        const concreteFieldT = concretizeType(fieldT, subst, structScope);
+                        this.storeField(res, fieldName, this.zeroValue(concreteFieldT, src), src);
                     }
 
                     return res;

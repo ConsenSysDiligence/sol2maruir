@@ -263,16 +263,12 @@ export class IRFactory {
         return new ir.MemConstant(src, name);
     }
 
-    memVariableDeclaration(
-        src: ir.BaseSrc,
-        name: string,
-        fresh: boolean
-    ): ir.MemVariableDeclaration {
-        return new ir.MemVariableDeclaration(src, name, fresh);
+    memVariableDeclaration(src: ir.BaseSrc, name: string): ir.MemVariableDeclaration {
+        return new ir.MemVariableDeclaration(src, name);
     }
 
-    memIdentifier(src: BaseSrc, name: string, out: boolean): ir.MemIdentifier {
-        return new ir.MemIdentifier(src, name, out);
+    memIdentifier(src: BaseSrc, name: string): ir.MemIdentifier {
+        return new ir.MemIdentifier(src, name);
     }
 
     tupleType(src: ir.BaseSrc, elementTypes: Array<ir.Type | null>): IRTupleType2 {
