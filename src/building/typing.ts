@@ -89,16 +89,18 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: M
         }
 
         if (type.to instanceof sol.ArrayType) {
-            return factory.pointerType(
-                ir.noSrc,
-                factory.userDefinedType(
-                    noSrc,
-                    "ArrWithLen",
-                    [loc],
-                    [transpileType(type.to.elementT, factory, loc)]
-                ),
-                loc
+            const arrT = factory.userDefinedType(
+                noSrc,
+                "ArrWithLen",
+                [loc],
+                [transpileType(type.to.elementT, factory, loc)]
             );
+
+            if (type.to.size !== undefined) {
+                arrT.md.set("size", type.to.size);
+            }
+
+            return factory.pointerType(ir.noSrc, arrT, loc);
         }
 
         if (type.to instanceof sol.UserDefinedType) {

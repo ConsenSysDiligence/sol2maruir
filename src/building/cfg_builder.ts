@@ -468,6 +468,7 @@ export class CFGBuilder {
         if (typ instanceof ir.PointerType) {
             if (typ.toType instanceof ir.ArrayType) {
                 const res = this.getTmpId(typ, src);
+
                 this.allocArray(
                     res,
                     typ.toType.baseType,
@@ -475,11 +476,42 @@ export class CFGBuilder {
                     typ.region,
                     src
                 );
+
                 return res;
             }
 
             if (typ.toType instanceof ir.UserDefinedType) {
                 const def = this.globalScope.getTypeDecl(typ.toType);
+
+                if (def instanceof ir.StructDefinition && def.name === "ArrWithLen") {
+                    const size = typ.toType.md.has("size")
+                        ? (typ.toType.md.get("size") as bigint)
+                        : 0n;
+
+                    const res = this.getTmpId(typ, src);
+                    this.call(
+                        [res],
+                        this.factory.funIdentifier("new_array"),
+                        typ.toType.memArgs,
+                        typ.toType.typeArgs,
+                        [this.factory.numberLiteral(src, size, 10, u256)],
+                        src
+                    );
+
+                    const elT = typ.toType.typeArgs[0];
+                    const arrId = this.loadField(res, typ, "arr", src);
+
+                    for (let i = 0n; i < size; i++) {
+                        this.storeIndex(
+                            arrId,
+                            this.factory.numberLiteral(src, i, 10, u256),
+                            this.zeroValue(elT, src),
+                            src
+                        );
+                    }
+
+                    return res;
+                }
 
                 if (def instanceof ir.StructDefinition) {
                     const res = this.getTmpId(typ, src);

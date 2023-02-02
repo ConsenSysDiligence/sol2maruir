@@ -172,7 +172,11 @@ const files = [
 */
 
 describe("Interpretor tests", async () => {
-    const files = ["test/samples/solidity/aliasing_and_copying.config.json"];
+    const files = [
+        "test/samples/solidity/aliasing_and_copying.config.json",
+        "test/samples/solidity/MemoryAliasing.config.json",
+        "test/samples/solidity/StorageAliasing.config.json"
+    ];
 
     for (const jsonFile of files) {
         const config = fse.readJsonSync(jsonFile);

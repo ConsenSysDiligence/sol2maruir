@@ -62,6 +62,54 @@ export class ExpressionCompiler {
         throw new Error(`NYI compileIdnetifier(${pp(expr)})`);
     }
 
+    /**
+     * Return a copy of `expr` if its an array or struct pointer. Otherwise return just `expr`.
+     */
+    copy(expr: ir.Expression): ir.Expression {
+        const exprT = this.typeOf(expr);
+
+        if (exprT instanceof ir.PointerType) {
+            const copyId = this.cfgBuilder.getTmpId(exprT, expr.src);
+            const copyFunId = this.getCopyFun(exprT, exprT);
+            this.cfgBuilder.call(
+                [copyId],
+                copyFunId,
+                [exprT.region, exprT.region],
+                [],
+                [expr],
+                expr.src
+            );
+
+            return copyId;
+        }
+
+        return expr;
+    }
+
+    /**
+     * Return true if the type of `expr` is a pointer to the storage region
+     */
+    isStoragePtrExpr(expr: ir.Expression): boolean {
+        const exprT = this.typeOf(expr);
+        return (
+            exprT instanceof ir.PointerType &&
+            exprT.region instanceof ir.MemConstant &&
+            exprT.region.name === "storage"
+        );
+    }
+
+    /**
+     * Assign a rhs _compiled_ expression to a solidity lhs. This handles several cases:
+     *
+     * 1. Assignment to a solidity local/return - normal assignment
+     * 2. Assignment to a struct field or contract var - a store field operation
+     * 3. Assignment to an array index - a store index operation
+     *
+     * Additionally this inserts an implicit copy when the solidity language semantics requires it:
+     *
+     * 1. Assignment between different memories (done by mustCastTo)
+     * 2. Assignment to storage (that is not a local storage variable)
+     */
     assignTo(lhs: sol.Expression, rhs: ir.Expression, assignSrc: ir.BaseSrc): ir.Expression {
         if (lhs instanceof sol.Identifier) {
             const def = lhs.vReferencedDeclaration;
@@ -96,6 +144,10 @@ export class ExpressionCompiler {
             const base = this.compile(lhs.vExpression);
             const baseIrT = this.typeOf(base);
 
+            if (this.isStoragePtrExpr(rhs) && this.isStoragePtrExpr(base)) {
+                rhs = this.copy(rhs);
+            }
+
             if (baseIrT instanceof ir.PointerType && baseIrT.toType instanceof ir.UserDefinedType) {
                 const def = this.cfgBuilder.globalScope.getTypeDecl(baseIrT.toType);
 
@@ -111,6 +163,10 @@ export class ExpressionCompiler {
             const base = this.compile(lhs.vBaseExpression);
             const idx = this.compile(lhs.vIndexExpression);
             const baseIrT = this.typeOf(base);
+
+            if (this.isStoragePtrExpr(rhs) && this.isStoragePtrExpr(base)) {
+                rhs = this.copy(rhs);
+            }
 
             if (
                 baseIrT instanceof ir.PointerType &&
