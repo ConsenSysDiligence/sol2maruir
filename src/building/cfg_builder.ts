@@ -516,4 +516,26 @@ export class CFGBuilder {
 
         this.jump(oldEntry, noSrc);
     }
+
+    /**
+     * Given a user-defined type `userT` with some optional polymorphic mem/type
+     * args, used in current function scope, return a list of the field names
+     * and their concrete types given the polymorphic mem/type args.
+     */
+    getConcreteFields(userT: ir.UserDefinedType): Array<[string, ir.Type]> {
+        const subst = makeSubst(userT, this.funScope);
+        const res: Array<[string, ir.Type]> = [];
+        const def = this.globalScope.get(userT.name);
+
+        assert(def instanceof ir.StructDefinition, `Expected a struct not {0}`, def);
+        const defScope = this.globalScope.scopeOf(def);
+
+        for (const [fieldName, fieldT] of def.fields) {
+            const concreteFieldT = concretizeType(fieldT, subst, defScope);
+
+            res.push([fieldName, concreteFieldT]);
+        }
+
+        return res;
+    }
 }

@@ -1,8 +1,8 @@
 import * as ir from "maru-ir2";
-import { BaseSrc } from "maru-ir2";
+import { BaseSrc, noSrc } from "maru-ir2";
 import { assert } from "solc-typed-ast";
-import { IRTuple2, IRTupleType2 } from "../ir";
-import { boolT } from "./typing";
+import { IRTuple2, IRTupleType2, SolArrayLiteral } from "../ir";
+import { boolT, noType } from "./typing";
 
 /**
  * The ir node factory class is the only entry point for creating IR nodes.
@@ -81,6 +81,13 @@ export class IRFactory {
         return res;
     }
 
+    funIdentifier(name: string): ir.Identifier {
+        const res = new ir.Identifier(noSrc, name);
+        this.typeMap.set(res, noType);
+
+        return res;
+    }
+
     cast(src: BaseSrc, toType: ir.Type, expr: ir.Expression): ir.Cast {
         const res = new ir.Cast(src, toType, expr);
         this.typeMap.set(res, toType);
@@ -90,6 +97,17 @@ export class IRFactory {
 
     tuple(src: BaseSrc, elements: Array<ir.Expression | null>, type: ir.Type): IRTuple2 {
         const res = new IRTuple2(src, elements);
+        this.typeMap.set(res, type);
+
+        return res;
+    }
+
+    solArrayLiteral(
+        src: BaseSrc,
+        elements: Array<ir.Expression | null>,
+        type: ir.Type
+    ): SolArrayLiteral {
+        const res = new SolArrayLiteral(src, elements);
         this.typeMap.set(res, type);
 
         return res;

@@ -1,0 +1,46 @@
+{
+    "name": "Arrays",
+    "file": "./test/samples/solidity/arrays_literals.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "ArrayLiterals",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "ArrayLiterals",
+            "mdc": "ArrayLiterals",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Arrays",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "ArrayLiterals",
+            "mdc": "ArrayLiterals",
+            "method": "foo()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Arrays",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+		    "kind": "literal",
+		    "type": "uint256",
+		    "value": "20008"
+                }
+            ]
+        }
+    ]
+}

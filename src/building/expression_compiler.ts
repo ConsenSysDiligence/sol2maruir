@@ -106,7 +106,71 @@ export class ExpressionCompiler {
             }
         }
 
+        if (lhs instanceof sol.IndexAccess) {
+            assert(lhs.vIndexExpression !== undefined, ``);
+            const base = this.compile(lhs.vBaseExpression);
+            const idx = this.compile(lhs.vIndexExpression);
+            const baseIrT = this.typeOf(base);
+
+            if (
+                baseIrT instanceof ir.PointerType &&
+                baseIrT.toType instanceof ir.UserDefinedType &&
+                baseIrT.toType.name === "ArrWithLen"
+            ) {
+                this.solArrWrite(base, idx, rhs, assignSrc);
+                return rhs;
+            }
+        }
+
         throw new Error(`NYI Assigning to solidity expression ${pp(lhs)}`);
+    }
+
+    private solArrRead(arrPtr: ir.Expression, idx: ir.Expression, src: BaseSrc): ir.Expression {
+        const arrPtrT = this.typeOf(arrPtr);
+
+        assert(
+            arrPtrT instanceof ir.PointerType &&
+                arrPtrT.toType instanceof ir.UserDefinedType &&
+                arrPtrT.toType.name === "ArrWithLen",
+            ""
+        );
+
+        const elT = arrPtrT.toType.typeArgs[0];
+        const res = this.cfgBuilder.getTmpId(elT, src);
+        this.cfgBuilder.call(
+            [res],
+            this.factory.funIdentifier("sol_arr_read"),
+            [arrPtrT.region],
+            [elT],
+            [arrPtr, this.mustCastTo(idx, u256, idx.src)],
+            src
+        );
+
+        return res;
+    }
+
+    private solArrWrite(
+        arrPtr: ir.Expression,
+        idx: ir.Expression,
+        val: ir.Expression,
+        src: BaseSrc
+    ): void {
+        const arrPtrT = this.typeOf(arrPtr);
+
+        assert(
+            arrPtrT instanceof ir.PointerType &&
+                arrPtrT.toType instanceof ir.UserDefinedType &&
+                arrPtrT.toType.name === "ArrWithLen",
+            ""
+        );
+        this.cfgBuilder.call(
+            [],
+            this.factory.funIdentifier("sol_arr_write"),
+            [arrPtrT.region],
+            [arrPtrT.toType.typeArgs[0]],
+            [arrPtr, this.mustCastTo(idx, u256, idx.src), val],
+            src
+        );
     }
 
     /**
@@ -450,7 +514,48 @@ export class ExpressionCompiler {
         throw new Error(`NYI unary operator ${expr.operator}`);
     }
 
+    compileInlineArray(expr: sol.TupleExpression): ir.Expression {
+        const src = new ASTSource(expr);
+        const arrT = transpileType(this.cfgBuilder.infer.typeOf(expr), this.factory);
+        const els = expr.vComponents.map((compE) => this.compile(compE));
+
+        assert(
+            arrT instanceof ir.PointerType &&
+                arrT.toType instanceof ir.UserDefinedType &&
+                arrT.toType.name === "ArrWithLen",
+            `Unexpected type {0} of array literal`,
+            arrT
+        );
+
+        const res = this.cfgBuilder.getTmpId(arrT, src);
+        const elT = arrT.toType.typeArgs[0];
+        this.cfgBuilder.call(
+            [res],
+            this.factory.funIdentifier("new_array"),
+            [this.factory.memConstant(noSrc, "memory")],
+            [elT],
+            [this.factory.numberLiteral(noSrc, BigInt(els.length), 10, u256)],
+            src
+        );
+
+        for (let i = 0; i < els.length; i++) {
+            const castedEl = this.mustCastTo(els[i], elT, els[i].src);
+            this.solArrWrite(
+                res,
+                this.factory.numberLiteral(noSrc, BigInt(i), 10, u256),
+                castedEl,
+                els[i].src
+            );
+        }
+
+        return res;
+    }
+
     compileTupleExpression(expr: sol.TupleExpression): ir.Expression {
+        if (expr.isInlineArray) {
+            return this.compileInlineArray(expr);
+        }
+
         if (expr.vOriginalComponents.length === 1) {
             assert(expr.vOriginalComponents[0] !== null, ``);
             return this.compile(expr.vOriginalComponents[0]);
@@ -841,23 +946,59 @@ export class ExpressionCompiler {
             `Expected a struct def with single mem param not ${ir.pp(irStruct)}`
         );
 
+        const structT = this.factory.userDefinedType(
+            noSrc,
+            irStruct.name,
+            [this.factory.memConstant(noSrc, "memory")],
+            []
+        );
         const structPtrT = this.factory.pointerType(
             noSrc,
-            this.factory.userDefinedType(
-                noSrc,
-                irStruct.name,
-                [this.factory.memConstant(noSrc, "memory")],
-                []
-            ),
+            structT,
             this.factory.memConstant(noSrc, "memory")
         );
 
         const res = this.cfgBuilder.getTmpId(structPtrT);
+        this.cfgBuilder.allocStruct(res, structT, this.factory.memConstant(noSrc, "memory"), noSrc);
 
-        throw new Error("NYI");
+        const concreteFields = this.cfgBuilder.getConcreteFields(structT);
+        assert(
+            concreteFields.length === expr.vArguments.length,
+            `Struct {0} expectes {1} fields, but given {2} initializers`,
+            irStruct.name,
+            concreteFields.length,
+            expr.vArguments.length
+        );
+
+        for (let i = 0; i < concreteFields.length; i++) {
+            const [fieldName, fieldT] = concreteFields[i];
+            const initVal = this.compile(expr.vArguments[i]);
+            const castedInitVal = this.mustCastTo(initVal, fieldT, initVal.src);
+
+            this.cfgBuilder.storeField(res, fieldName, castedInitVal, new ASTSource(expr));
+        }
+
+        return res;
     }
 
     compileTypeConversion(expr: sol.FunctionCall): ir.Expression {
+        const calleeT = this.cfgBuilder.infer.typeOf(expr.vExpression);
+
+        assert(
+            calleeT instanceof sol.TypeNameType,
+            `Expected a type as callee not {0} of type {1}`,
+            expr.vExpression,
+            calleeT
+        );
+
+        assert(expr.vArguments.length === 1, ``);
+
+        return this.mustCastTo(
+            this.compile(expr.vArguments[0]),
+            transpileType(calleeT.type, this.factory),
+            new ASTSource(expr)
+        );
+
         throw new Error("NYI compileTypeConversion");
     }
 
@@ -892,7 +1033,6 @@ export class ExpressionCompiler {
         const base = this.compile(expr.vBaseExpression);
         const baseT = this.typeOf(base);
         const idx = this.compile(expr.vIndexExpression);
-        const idxT = this.typeOf(idx);
         const src = new ASTSource(expr);
 
         if (
@@ -900,22 +1040,39 @@ export class ExpressionCompiler {
             baseT.toType instanceof ir.UserDefinedType &&
             baseT.toType.name === "ArrWithLen"
         ) {
-            const elT = baseT.toType.typeArgs[0];
-            const res = this.cfgBuilder.getTmpId(elT, src);
-            this.cfgBuilder.call(
-                [res],
-                this.factory.identifier(noSrc, "sol_arr_read", noType),
-                baseT.toType.memArgs,
-                [elT, idxT],
-                [base, idx],
-                src
-            );
-
-            return res;
+            return this.solArrRead(base, idx, src);
         }
 
         throw new Error(
             `NYI compiling index expression ${expr.print()} wth base type ${baseT.pp()}`
+        );
+    }
+
+    compileMemberAccess(expr: sol.MemberAccess): ir.Expression {
+        const base = this.compile(expr.vExpression);
+        const baseT = this.typeOf(base);
+
+        if (baseT instanceof ir.PointerType && baseT.toType instanceof ir.UserDefinedType) {
+            const def = this.cfgBuilder.globalScope.getTypeDecl(baseT.toType);
+
+            if (def instanceof ir.StructDefinition) {
+                for (const [fieldName] of def.fields) {
+                    if (fieldName === expr.memberName) {
+                        return this.cfgBuilder.loadField(
+                            base,
+                            baseT,
+                            fieldName,
+                            new ASTSource(expr)
+                        );
+                    }
+                }
+            }
+        }
+
+        throw new Error(
+            `NYI compiling member expression ${expr.print()} wth base ${base.pp()} of type ${baseT.pp()} and member ${
+                expr.memberName
+            }`
         );
     }
 
@@ -951,6 +1108,8 @@ export class ExpressionCompiler {
             return this.compileConditional(expr);
         } else if (expr instanceof sol.IndexAccess) {
             return this.compileIndexAccess(expr);
+        } else if (expr instanceof sol.MemberAccess) {
+            return this.compileMemberAccess(expr);
         }
 
         throw new Error(`NYI Compiling ${pp(expr)}`);
@@ -1110,7 +1269,7 @@ export class ExpressionCompiler {
     }
 
     private getCopyFun(fromT: ir.Type, toT: ir.Type): ir.Identifier {
-        const name = CopyFunCompiler.getCopyName(fromT);
+        const name = CopyFunCompiler.getCopyName(fromT, toT);
         const decl = this.cfgBuilder.globalScope.get(name);
 
         if (decl !== undefined) {
@@ -1123,7 +1282,8 @@ export class ExpressionCompiler {
             this.cfgBuilder.globalScope,
             this.cfgBuilder.solVersion,
             this.abiEncodeVersion,
-            fromT
+            fromT,
+            toT
         );
 
         const fun = compiler.compile();

@@ -367,7 +367,7 @@ export class StatementCompiler {
 
         assert(
             rhsVs.length === stmt.assignments.length,
-            `Mismatch in number of decls {0} and number of rhs exprs {1} in {2}`,
+            `Mismatch in number of rhs vals {0} and number of lhs assignments {1} in {2}`,
             rhsVs.length,
             stmt.assignments.length,
             stmt

@@ -124,6 +124,28 @@ const preambleStr = `
             call sol_panic(0x32_u256);
     }
 
+    fun sol_arr_write<M; ElT>(arr: ArrWithLen<M; ElT> *M, idx: u256, val: ElT)
+    locals
+        len: u256,
+        arrPtr: ElT[] *M;
+    {
+        entry:
+            branch idx < 0_u256 fail BB0;
+
+        BB0:
+            load arr.len in len;
+            branch idx >= len fail ret;
+
+        ret:
+            load arr.arr in arrPtr;
+            store val in arrPtr[idx];
+            return ;
+
+        fail:
+            call sol_panic(0x32_u256);
+    }
+
+
     fun sol_revert(): never 
     locals 
         panicBytes: ArrWithLen<#exception; u8> *#exception,
@@ -160,6 +182,36 @@ const preambleStr = `
             store size in resPtr.len;
 
             return resPtr;
+    }
+
+    fun sol_arr_eq<M1, M2; T>(arr1: ArrWithLen<M1; T> *M1, arr2: ArrWithLen<M2; T> *M2): bool 
+    locals
+        len1: u256,
+        len2: u256,
+        i: u256,
+        el1: T,
+        el2: T;
+    {
+        entry:
+            i := 0_u256;
+            load arr1.len in len1;
+            load arr2.len in len2;
+            branch len1 == len2 header different;
+
+        header:
+            branch i < len1 body equal;
+
+        body:
+            el1 := call sol_arr_read<M1; T>(arr1, i);
+            el2 := call sol_arr_read<M2; T>(arr2, i);
+            i := i + 1_u256;
+            branch el1 == el2 header different;
+
+        equal:
+            return true;
+
+        different:
+            return false;
     }
 
     fun builtin_abi_encode_1<;T1>(arg1AbiT: ArrWithLen<#exception; u8> *#exception, arg1: T1): ArrWithLen<#memory; u8> *#memory

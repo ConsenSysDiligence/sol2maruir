@@ -1,9 +1,10 @@
 import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
 import { BaseFunctionCompiler } from "./base_function_compiler";
-import { boolT, concretizeType, makeSubst, noSrc } from "maru-ir2";
+import { boolT, noSrc } from "maru-ir2";
 import { IRFactory } from "./factory";
 import { noType, u256 } from "./typing";
+import { assert } from "console";
 
 export class CopyFunCompiler extends BaseFunctionCompiler {
     constructor(
@@ -11,7 +12,8 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
         globalScope: ir.Scope,
         solVersion: string,
         abiVersion: sol.ABIEncoderVersion,
-        private readonly type: ir.Type
+        private readonly fromT: ir.Type,
+        private readonly toT: ir.Type
     ) {
         super(factory, globalScope, solVersion, abiVersion);
     }
@@ -45,6 +47,42 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
         return t;
     }
 
+    // @todo This duplicates logic in ExpressionCompiler.castTo. Fix this
+    private castTo(expr: ir.Expression, fromT: ir.IntType, toT: ir.IntType): ir.Expression {
+        const factory = this.cfgBuilder.factory;
+
+        if (ir.eq(fromT, toT)) {
+            return expr;
+        }
+
+        /**
+         * Integer types with same sign can be implicitly converted fromSolT lower to higher bit-width
+         */
+        if (
+            fromT instanceof ir.IntType &&
+            toT instanceof ir.IntType &&
+            fromT.signed === toT.signed &&
+            fromT.nbits <= toT.nbits
+        ) {
+            return factory.cast(expr.src, toT, expr);
+        }
+
+        /**
+         * Integer types can implicitly change their sign
+         * ONLY fromSolT unsigned -> signed, and ONLY to STRICTLY larger bit-widths
+         */
+        if (
+            fromT instanceof ir.IntType &&
+            toT instanceof ir.IntType &&
+            fromT.signed !== toT.signed &&
+            fromT.nbits < toT.nbits
+        ) {
+            return factory.cast(expr.src, toT, expr);
+        }
+
+        throw new Error(`Can't cast ${expr.pp()} of type ${fromT.pp()} to ${toT.pp()}`);
+    }
+
     private compileCopy(
         src: ir.Expression,
         srcT: ir.Type,
@@ -53,15 +91,19 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
     ): void {
         const factory = this.cfgBuilder.factory;
 
-        if (
-            (srcT instanceof ir.IntType && dstT instanceof ir.IntType) ||
-            (srcT instanceof ir.BoolType && dstT instanceof ir.BoolType)
-        ) {
+        if (srcT instanceof ir.BoolType && dstT instanceof ir.BoolType) {
             this.cfgBuilder.assign(dst, src, noSrc);
             return;
         }
 
-        const existingCopyFun = this.globalScope.get(CopyFunCompiler.getCopyName(srcT));
+        // We allow a little bit of casting between int types when copying arrays to
+        // support assigning to storage arrays (up-casts are allowed there)
+        if (srcT instanceof ir.IntType && dstT instanceof ir.IntType) {
+            this.cfgBuilder.assign(dst, this.castTo(src, srcT, dstT), noSrc);
+            return;
+        }
+
+        const existingCopyFun = this.globalScope.get(CopyFunCompiler.getCopyName(srcT, dstT));
 
         if (existingCopyFun instanceof ir.FunctionDefinition) {
             this.cfgBuilder.call(
@@ -150,7 +192,7 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
                         noSrc,
                         ctr,
                         "+",
-                        factory.numberLiteral(noSrc, 0n, 10, u256),
+                        factory.numberLiteral(noSrc, 1n, 10, u256),
                         u256
                     ),
                     noSrc
@@ -161,19 +203,22 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
                 return;
             }
 
-            const srcSubst = makeSubst(srcT.toType, this.globalScope);
-            const dstSubst = makeSubst(dstT.toType, this.globalScope);
+            const srcFields = this.cfgBuilder.getConcreteFields(srcT.toType);
+            const dstFields = this.cfgBuilder.getConcreteFields(dstT.toType);
 
-            for (const [fieldName, fieldT] of def.fields) {
-                const srcFieldT = concretizeType(fieldT, srcSubst, this.globalScope.scopeOf(def));
-                const dstFieldT = concretizeType(fieldT, dstSubst, this.globalScope.scopeOf(def));
+            sol.assert(srcFields.length === dstFields.length, ``);
+            for (let i = 0; i < srcFields.length; i++) {
+                const [srcFieldName, srcFieldT] = srcFields[i];
+                const [dstFieldName, dstFieldT] = dstFields[i];
 
-                const srcField = this.cfgBuilder.loadField(src, srcT, fieldName, noSrc);
+                assert(srcFieldName === dstFieldName, ``);
+
+                const srcField = this.cfgBuilder.loadField(src, srcT, srcFieldName, noSrc);
                 const dstFieldTmp = this.cfgBuilder.getTmpId(dstFieldT, noSrc);
 
                 this.compileCopy(srcField, srcFieldT, dstFieldTmp, dstFieldT);
 
-                this.cfgBuilder.storeField(dst, fieldName, dstFieldTmp, noSrc);
+                this.cfgBuilder.storeField(dst, dstFieldName, dstFieldTmp, noSrc);
             }
 
             return;
@@ -192,8 +237,8 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
 
         // Add this argument
 
-        const srcT = this.templateType(this.type, srcM);
-        const dstT = this.templateType(this.type, dstM);
+        const srcT = this.templateType(this.fromT, srcM);
+        const dstT = this.templateType(this.toT, dstM);
 
         this.cfgBuilder.addIRArg("src", srcT, noSrc);
         this.cfgBuilder.addIRRet("res", dstT, noSrc);
@@ -205,7 +250,7 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
 
         this.cfgBuilder.jump(this.cfgBuilder.returnBB, noSrc);
 
-        const name = CopyFunCompiler.getCopyName(this.type);
+        const name = CopyFunCompiler.getCopyName(this.fromT, this.toT);
 
         return this.finishCompile(noSrc, name, [srcM, dstM]);
     }
@@ -233,8 +278,10 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
         throw new Error(`NYI getTypeDesc(${t.pp()})`);
     }
 
-    public static getCopyName(t: ir.Type): string {
-        return `copy_${CopyFunCompiler.getTypeDesc(t)}`;
+    public static getCopyName(fromT: ir.Type, toT: ir.Type): string {
+        return `copy_from_${CopyFunCompiler.getTypeDesc(fromT)}_to_${CopyFunCompiler.getTypeDesc(
+            toT
+        )}`;
     }
 
     public static canCopy(srcT: ir.Type, dstT: ir.Type): boolean {

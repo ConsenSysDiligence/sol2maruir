@@ -242,7 +242,7 @@ export class JSONConfigTranspiler {
                 arr.values.push(elV);
             }
 
-            const loc = this.factory.memConstant(ir.noSrc, arg.location);
+            const loc = this.factory.memConstant(ir.noSrc, "exception");
 
             return this.getNewGlobal(
                 this.factory.pointerType(
@@ -417,18 +417,37 @@ export class JSONConfigTranspiler {
                         const jsRet = step.expectedReturns[i];
                         const maruirRet = this.compileJSArg(jsRet);
 
-                        entry.statements.push(
-                            this.factory.assert(
-                                ir.noSrc,
-                                this.factory.binaryOperation(
+                        if (jsRet.kind === "literal") {
+                            entry.statements.push(
+                                this.factory.assert(
                                     ir.noSrc,
-                                    lhss[i],
-                                    "==",
-                                    maruirRet,
-                                    boolT
+                                    this.factory.binaryOperation(
+                                        ir.noSrc,
+                                        lhss[i],
+                                        "==",
+                                        maruirRet,
+                                        boolT
+                                    )
                                 )
-                            )
-                        );
+                            );
+                        } else if (jsRet.kind === "array") {
+                            const eqId = this.builder.getTmpId(boolT, noSrc);
+                            const elT = this.compileJSType(jsRet.type, {});
+
+                            entry.statements.push(
+                                this.factory.functionCall(
+                                    noSrc,
+                                    [eqId],
+                                    this.factory.funIdentifier("sol_arr_eq"),
+                                    [
+                                        this.factory.memConstant(noSrc, "memory"),
+                                        this.factory.memConstant(noSrc, "exception")
+                                    ],
+                                    [elT],
+                                    [lhss[i], maruirRet]
+                                )
+                            );
+                        }
                     }
                 }
             } else if (step.act === "validateBySnapshot") {
