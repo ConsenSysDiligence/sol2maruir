@@ -1,4 +1,3 @@
-import { assert, pp } from "solc-typed-ast";
 import {
     BuiltinFrame,
     BuiltinFun,
@@ -8,8 +7,10 @@ import {
     GlobalVariable,
     InterpError,
     IntType,
+    LiteralEvaluator,
     noSrc,
     PointerVal,
+    pp,
     PrimitiveValue,
     Program,
     Resolving,
@@ -18,9 +19,10 @@ import {
     Type,
     Typing
 } from "maru-ir2";
-import { LiteralEvaluator } from "maru-ir2";
-import * as ir from "maru-ir2";
-import { encodeWithSignature } from "../utils";
+
+import { assert } from "solc-typed-ast";
+
+import { deref, encodeParameters, encodeWithSignature, toWeb3Value } from "../utils";
 
 export class SolMaruirInterp {
     resolving: Resolving;
@@ -32,7 +34,7 @@ export class SolMaruirInterp {
     nAddresses = 0;
 
     private decodeString(ptr: PointerVal): string {
-        const val = this.stmtExec.deref(ptr);
+        const val = deref(this.state, ptr);
 
         assert(
             val instanceof Map && val.has("arr"),
@@ -63,23 +65,10 @@ export class SolMaruirInterp {
 
         const struct = new Map<string, PrimitiveValue>([
             ["arr", arrPtr],
-            ["len", BigInt(arrPtr.length)]
+            ["len", BigInt(bigIntArr.length)]
         ]);
 
         return this.state.define(struct, inMem);
-    }
-
-    /**
-     * Converts interpreter value to Web3-compatible value.
-     *
-     * @see https://web3js.readthedocs.io/en/v1.2.6/web3-eth-abi.html#encodeparameters
-     */
-    toWeb3Value(arg: ir.PrimitiveValue, abiType: string, state: State): any {
-        if (abiType === "uint256") {
-            return arg;
-        }
-
-        throw new Error(`NYI toWeb3Value of abi type ${abiType}`);
     }
 
     private builtin_bin_op_overflows(frame: BuiltinFrame, op: string): boolean {
@@ -148,12 +137,50 @@ export class SolMaruirInterp {
         return !inRange;
     }
 
+    private builtin_encode(s: State, frame: BuiltinFrame): PointerVal {
+        assert(
+            frame.args.length % 2 === 0,
+            `Expected even count of args for builtin_encode, got {0}`,
+            frame.args.length
+        );
+
+        const abiTypes: string[] = [];
+        const abiValues: any[] = [];
+
+        for (let i = 1; i < frame.args.length; i += 2) {
+            const typePtr = frame.args[i - 1][1];
+            const value = frame.args[i][1];
+
+            assert(typePtr instanceof Array, `Expected pointer, got {0}`, typePtr);
+
+            const abiType = this.decodeString(typePtr);
+            const abiValue = toWeb3Value(value, abiType, s);
+
+            // console.error(abiType, abiValue);
+
+            abiTypes.push(abiType);
+            abiValues.push(abiValue);
+        }
+
+        const bytes = encodeParameters(abiTypes, ...abiValues);
+
+        // console.error(bytes.toString("hex"));
+
+        const ptr = this.defineBytes(bytes, "memory");
+
+        // console.error(ptr);
+
+        return ptr;
+    }
+
     constructor(public readonly defs: Program, rootTrans: boolean) {
         this.resolving = new Resolving(defs);
         this.typing = new Typing(defs, this.resolving);
         this.contractRegistry = new Map();
 
-        const entryPoint = defs.filter((x) => x instanceof FunctionDefinition && x.name === "main");
+        const entryPoint = defs.filter(
+            (def) => def instanceof FunctionDefinition && def.name === "main"
+        );
 
         // Tests need to have a main() entry function
         assert(entryPoint.length === 1, ``);
@@ -221,12 +248,33 @@ export class SolMaruirInterp {
                     const signature = this.decodeString(sigPtr);
                     const abiType = this.decodeString(typePtr);
 
-                    console.error(`Signature: ${signature} abi type: ${abiType} val: ${val}`);
+                    // console.error(`Signature: ${signature} abi type: ${abiType} val: ${val}`);
                     const result = encodeWithSignature(signature, [abiType], val);
-                    console.error(result.toString("hex"));
+                    // console.error(result.toString("hex"));
 
                     return [true, [this.defineBytes(result, "memory")]];
                 }
+            ],
+            [
+                "builtin_abi_encode_1",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    true,
+                    [this.builtin_encode(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_encode_2",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    true,
+                    [this.builtin_encode(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_encode_3",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    true,
+                    [this.builtin_encode(s, frame)]
+                ]
             ],
             [
                 "builtin_register_contract",
@@ -242,6 +290,7 @@ export class SolMaruirInterp {
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
                     const typ = frame.typeArgs[0];
                     const addr = frame.args[0][1] as bigint;
+
                     return [false, [this.isContractAt(addr, typ)]];
                 }
             ],

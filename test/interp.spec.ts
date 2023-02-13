@@ -171,22 +171,21 @@ const files = [
 ];
 */
 
-describe("Interpretor tests", async () => {
+describe("Interpretor tests", () => {
     const files = [
-        "test/samples/solidity/aliasing_and_copying.config.json",
-        "test/samples/solidity/MemoryAliasing.config.json",
-        "test/samples/solidity/StorageAliasing.config.json"
+        "test/samples/solidity/EncodingTest.config.json",
+        "test/samples/solidity/ABIEncoderV2_Structs.config.json"
     ];
 
     for (const jsonFile of files) {
-        const config = fse.readJsonSync(jsonFile);
-        const file = config.file;
+        it(jsonFile, async () => {
+            const config = await fse.readJson(jsonFile);
+            const file = config.file;
 
-        const result = await compileSol(file, "auto");
-        const reader = new ASTReader();
-        const units = reader.read(result.data);
+            const result = await compileSol(file, "auto");
+            const reader = new ASTReader();
+            const units = reader.read(result.data);
 
-        try {
             const compiler = new UnitCompiler(
                 result.compilerVersion as string,
                 ABIEncoderVersion.V2
@@ -223,10 +222,11 @@ describe("Interpretor tests", async () => {
 
             const [failed] = interp.call(main, [], true);
 
+            if (failed) {
+                console.log(interp.state.dump());
+            }
+
             expect(failed).not.toBeTruthy();
-            console.error(`------> Success ${jsonFile}`);
-        } catch (e) {
-            console.error(`------> Failed ${jsonFile} with ${e}`);
-        }
+        });
     }
 });

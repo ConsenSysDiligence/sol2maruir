@@ -1,12 +1,13 @@
-import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
-import { CFGBuilder } from "./cfg_builder";
-import { assert, ContractKind, pp } from "solc-typed-ast";
-import { ASTSource } from "../ir/source";
 import { BaseSrc, GlobalVariable, noSrc } from "maru-ir2";
-import { boolT, noType, transpileType, u160, u256, u8, u8ArrExcPtr, u8ArrMemPtr } from "./typing";
-import { single } from "../utils";
 import { gte } from "semver";
+import * as sol from "solc-typed-ast";
+import { assert, ContractKind, generalizeType, pp } from "solc-typed-ast";
+import { IRTuple2 } from "../ir";
+import { ASTSource } from "../ir/source";
+import { single } from "../utils";
+import { CFGBuilder } from "./cfg_builder";
+import { CopyFunCompiler } from "./copy_fun_compiler";
 import { IRFactory } from "./factory";
 import {
     FunctionScope,
@@ -15,8 +16,7 @@ import {
     getIRContractName,
     getIRStructDefName
 } from "./resolving";
-import { IRTuple2 } from "../ir";
-import { CopyFunCompiler } from "./copy_fun_compiler";
+import { boolT, noType, transpileType, u160, u256, u8, u8ArrExcPtr, u8ArrMemPtr } from "./typing";
 
 const overflowBuiltinMap = new Map<string, string>([
     ["+", "builtin_add_overflows"],
@@ -309,6 +309,7 @@ export class ExpressionCompiler {
         }
 
         assert(resT instanceof sol.IntType, `Expected int type not {0}`, resT);
+
         return resT;
     }
 
@@ -316,6 +317,32 @@ export class ExpressionCompiler {
         const val: bigint[] = [...Buffer.from(str, "utf-8")].map((x) => BigInt(x));
 
         const name = this.cfgBuilder.uid.get(`_str_lit_`);
+
+        this.cfgBuilder.globalScope.define(
+            this.factory.globalVariable(
+                noSrc,
+                name,
+                u8ArrExcPtr,
+                this.factory.structLiteral(noSrc, [
+                    ["len", this.factory.numberLiteral(noSrc, BigInt(val.length), 10, u256)],
+                    [
+                        "arr",
+                        this.factory.arrayLiteral(
+                            noSrc,
+                            val.map((v) => this.factory.numberLiteral(noSrc, v, 10, u8))
+                        )
+                    ]
+                ])
+            )
+        );
+
+        return this.factory.identifier(src, name, u8ArrExcPtr);
+    }
+
+    getBytesLit(bytes: string, src: ir.BaseSrc): ir.Identifier {
+        const val: bigint[] = [...Buffer.from(bytes, "hex")].map((x) => BigInt(x));
+
+        const name = this.cfgBuilder.uid.get(`_bytes_lit_`);
 
         this.cfgBuilder.globalScope.define(
             this.factory.globalVariable(
@@ -351,6 +378,7 @@ export class ExpressionCompiler {
                 sol.smallestFittingType(val) as sol.IntType,
                 this.factory
             ) as ir.IntType;
+
             return this.factory.numberLiteral(
                 src,
                 BigInt(expr.value),
@@ -359,15 +387,15 @@ export class ExpressionCompiler {
             );
         }
 
-        if (
-            expr.kind === sol.LiteralKind.HexString ||
-            expr.kind === sol.LiteralKind.String ||
-            expr.kind === sol.LiteralKind.UnicodeString
-        ) {
-            assert(expr.kind === "string", `NYI literal kind {0}`, expr.kind);
-
+        if (expr.kind === sol.LiteralKind.String) {
             return this.getStrLit(expr.value, src);
         }
+
+        if (expr.kind === sol.LiteralKind.HexString) {
+            return this.getBytesLit(expr.hexValue, src);
+        }
+
+        // Missing sol.LiteralKind.UnicodeString
 
         throw new Error(`NYI literal kind ${expr.kind}`);
     }
@@ -626,15 +654,45 @@ export class ExpressionCompiler {
         );
     }
 
+    /**
+     * @todo Please, be careful with encoder here. Things may get bad quickly.
+     *
+     * @see https://github.com/ConsenSys/solc-typed-ast/blob/f3236d354c811f3bfcf4dd6370b02255911db3ee/src/types/infer.ts#L2290-L2346
+     * @see https://github.com/ConsenSys/solc-typed-ast/blob/f3236d354c811f3bfcf4dd6370b02255911db3ee/src/types/infer.ts#L196-L215
+     * @see https://github.com/ConsenSys/solc-typed-ast/blob/f3236d354c811f3bfcf4dd6370b02255911db3ee/src/types/abi.ts#L31-L65
+     * @see https://github.com/ConsenSys/solc-typed-ast/blob/f3236d354c811f3bfcf4dd6370b02255911db3ee/src/types/abi.ts#L72-L122
+     */
     private prepEncodeArgs(solArgs: sol.Expression[]): [ir.Expression[], ir.Type[]] {
         const args: ir.Expression[] = [];
         const argTs: ir.Type[] = [];
 
         for (const solArg of solArgs) {
             const solType = this.cfgBuilder.infer.typeOf(solArg);
+
             const irArg = this.compile(solArg);
             const irArgT = this.typeOf(irArg);
-            const abiTypeName = this.getStrLit(sol.abiTypeToCanonicalName(solType), noSrc);
+
+            let abiSafeSolType: sol.TypeNode;
+
+            if (solType instanceof sol.IntLiteralType) {
+                const fitT = solType.smallestFittingType();
+
+                assert(
+                    fitT !== undefined,
+                    "Unable to detect smalles fitting type for {0}",
+                    solType
+                );
+
+                abiSafeSolType = fitT;
+            } else {
+                abiSafeSolType = solType;
+            }
+
+            const abiType = generalizeType(
+                this.cfgBuilder.infer.toABIEncodedType(abiSafeSolType, this.abiEncodeVersion)
+            )[0];
+
+            const abiTypeName = this.getStrLit(abiType.pp(), noSrc);
 
             args.push(abiTypeName, irArg);
             argTs.push(irArgT);
@@ -877,7 +935,27 @@ export class ExpressionCompiler {
         // There are several cases:
         if (callee instanceof sol.Identifier) {
             // 1. Internal call to the same contract or a free function call
-            throw new Error("NYI decoding identifier calls");
+            isExternal = false;
+
+            const def = expr.vReferencedDeclaration;
+
+            assert(
+                def instanceof sol.FunctionDefinition,
+                `Unexpected declaration {0} for {1}`,
+                def,
+                expr
+            );
+
+            assert(
+                funScope instanceof sol.ContractDefinition,
+                `NYI call free function via identifier`
+            );
+
+            const src = new ASTSource(expr);
+
+            thisExpr = this.mustCastTo(this.cfgBuilder.this(src), u160, src);
+
+            irFun = getDispatchName(funScope, def, this.cfgBuilder.infer, this.abiEncodeVersion);
         } else if (callee instanceof sol.MemberAccess) {
             const base = callee.vExpression;
             const baseT = this.cfgBuilder.infer.typeOf(base);
@@ -888,6 +966,7 @@ export class ExpressionCompiler {
             ) {
                 // 2. Call to another contract a.foo() (as a sub-case this.foo())
                 isExternal = true;
+
                 const def = expr.vReferencedDeclaration;
 
                 assert(
@@ -903,6 +982,7 @@ export class ExpressionCompiler {
                 );
 
                 const baseIRExpr = this.compile(base);
+
                 thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));
             } else if (
                 baseT instanceof sol.TypeNameType &&
@@ -1112,6 +1192,10 @@ export class ExpressionCompiler {
             const def = this.cfgBuilder.globalScope.getTypeDecl(baseT.toType);
 
             if (def instanceof ir.StructDefinition) {
+                if (expr.memberName === "length" && expr.vReferencedDeclaration === undefined) {
+                    return this.cfgBuilder.loadField(base, baseT, "len", new ASTSource(expr));
+                }
+
                 for (const [fieldName] of def.fields) {
                     if (fieldName === expr.memberName) {
                         return this.cfgBuilder.loadField(

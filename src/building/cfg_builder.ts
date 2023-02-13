@@ -8,6 +8,12 @@ import { transpileType, u256 } from "./typing";
 import { ASTSource } from "../ir/source";
 import { IRFactory } from "./factory";
 
+/**
+ * @todo This is a hack / workaround to avoid global literals resetting on each new CFG.
+ * Fix later.
+ */
+const uidGen = new UIDGenerator();
+
 export class CFGBuilder {
     /**
      * UID generator for unique BB/TMP Identifiers
@@ -83,7 +89,7 @@ export class CFGBuilder {
         public readonly solVersion: string,
         public readonly factory: IRFactory
     ) {
-        this.uid = new UIDGenerator();
+        this.uid = uidGen;
         this._nodes = [];
 
         this._entryBB = this.mkBB("entry");
