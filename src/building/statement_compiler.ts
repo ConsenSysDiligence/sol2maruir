@@ -1,17 +1,11 @@
 import * as ir from "maru-ir2";
+import { noSrc } from "maru-ir2";
 import * as sol from "solc-typed-ast";
-import {
-    ABIEncoderVersion,
-    abiTypeToCanonicalName,
-    assert,
-    ErrorDefinition,
-    pp
-} from "solc-typed-ast";
+import { abiTypeToCanonicalName, assert, ErrorDefinition, pp } from "solc-typed-ast";
+import { IRTuple2, IRTupleType2 } from "../ir";
+import { ASTSource } from "../ir/source";
 import { CFGBuilder } from "./cfg_builder";
 import { ExpressionCompiler } from "./expression_compiler";
-import { ASTSource } from "../ir/source";
-import { IRTuple2, IRTupleType2 } from "../ir";
-import { noSrc } from "maru-ir2";
 import { noType, u8ArrMemPtr } from "./typing";
 
 export type ModifierStack2 = Array<
@@ -24,6 +18,7 @@ export function flattenTuple(e: ir.Expression): ir.Expression[] {
     }
 
     const res: ir.Expression[] = [];
+
     for (const el of e.elements) {
         if (el !== null) {
             res.push(...flattenTuple(el));
@@ -39,8 +34,7 @@ export class StatementCompiler {
     constructor(
         private readonly cfgBuilder: CFGBuilder,
         private readonly exprCompiler: ExpressionCompiler,
-        private readonly modifierStack: ModifierStack2,
-        private readonly abiVersion: ABIEncoderVersion
+        private readonly modifierStack: ModifierStack2
     ) {
         this.cfgBuilder;
         this.exprCompiler;
@@ -140,6 +134,7 @@ export class StatementCompiler {
         this.cfgBuilder.branch(cond, trueBB, falseBB, new ASTSource(stmt));
 
         this.cfgBuilder.curBB = trueBB;
+
         this.compile(stmt.vTrueBody);
 
         if (this.cfgBuilder.isCurBBSet) {
@@ -341,7 +336,9 @@ export class StatementCompiler {
         }
 
         assert(type !== null, `Missing type for non-null expr {0}`, expr);
+
         const lhs = this.cfgBuilder.getTmpId(type, ir.noSrc);
+
         this.cfgBuilder.assign(lhs, expr, noSrc);
 
         return [lhs];
@@ -409,9 +406,8 @@ export class StatementCompiler {
     }
 
     /**
-     * Compile a revert statement. This needs to encode the error signature
-     * correctly.
-     * @param stmt
+     * Compile a revert statement.
+     * This needs to encode the error signature correctly.
      */
     compileRevert(stmt: sol.RevertStatement): void {
         const decl = stmt.errorCall.vReferencedDeclaration;
@@ -424,7 +420,7 @@ export class StatementCompiler {
             stmt.errorCall
         );
 
-        const sig = this.cfgBuilder.infer.signature(decl, this.abiVersion);
+        const sig = this.cfgBuilder.infer.signature(decl);
         const sigStr = this.exprCompiler.getStrLit(sig, noSrc);
         const args: ir.Expression[] = [];
 
@@ -465,31 +461,52 @@ export class StatementCompiler {
      */
     compile(stmt: sol.Statement): void {
         if (stmt instanceof sol.Block || stmt instanceof sol.UncheckedBlock) {
-            this.compileBlock(stmt);
-        } else if (stmt instanceof sol.PlaceholderStatement) {
-            this.compilePlaceholderStatement(stmt);
-        } else if (stmt instanceof sol.ExpressionStatement) {
-            this.compileExpressionStatement(stmt);
-        } else if (stmt instanceof sol.Return) {
-            this.compileReturn(stmt);
-        } else if (stmt instanceof sol.IfStatement) {
-            this.compileIfStatement(stmt);
-        } else if (stmt instanceof sol.VariableDeclarationStatement) {
-            this.compileVariableDeclarationStatement(stmt);
-        } else if (stmt instanceof sol.WhileStatement) {
-            this.compileWhileStatement(stmt);
-        } else if (stmt instanceof sol.DoWhileStatement) {
-            this.compileDoWhileStatement(stmt);
-        } else if (stmt instanceof sol.ForStatement) {
-            this.compileForStatement(stmt);
-        } else if (stmt instanceof sol.Break) {
-            this.compileBreak(stmt);
-        } else if (stmt instanceof sol.Continue) {
-            this.compileContinue(stmt);
-        } else if (stmt instanceof sol.RevertStatement) {
-            this.compileRevert(stmt);
-        } else {
-            throw new Error(`NYI Compiling ${pp(stmt)}`);
+            return this.compileBlock(stmt);
         }
+
+        if (stmt instanceof sol.PlaceholderStatement) {
+            return this.compilePlaceholderStatement(stmt);
+        }
+
+        if (stmt instanceof sol.ExpressionStatement) {
+            return this.compileExpressionStatement(stmt);
+        }
+
+        if (stmt instanceof sol.Return) {
+            return this.compileReturn(stmt);
+        }
+
+        if (stmt instanceof sol.IfStatement) {
+            return this.compileIfStatement(stmt);
+        }
+        if (stmt instanceof sol.VariableDeclarationStatement) {
+            return this.compileVariableDeclarationStatement(stmt);
+        }
+
+        if (stmt instanceof sol.WhileStatement) {
+            return this.compileWhileStatement(stmt);
+        }
+
+        if (stmt instanceof sol.DoWhileStatement) {
+            return this.compileDoWhileStatement(stmt);
+        }
+
+        if (stmt instanceof sol.ForStatement) {
+            return this.compileForStatement(stmt);
+        }
+
+        if (stmt instanceof sol.Break) {
+            return this.compileBreak(stmt);
+        }
+
+        if (stmt instanceof sol.Continue) {
+            return this.compileContinue(stmt);
+        }
+
+        if (stmt instanceof sol.RevertStatement) {
+            return this.compileRevert(stmt);
+        }
+
+        throw new Error(`NYI Compiling ${pp(stmt)}`);
     }
 }
