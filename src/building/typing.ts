@@ -64,11 +64,13 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: M
 
         if (def instanceof sol.EnumDefinition) {
             assert(def.vMembers.length < 256, `Enum {0} too big`, type.name);
+
             return factory.intType(ir.noSrc, 8, false);
         }
 
         if (def instanceof sol.StructDefinition) {
             assert(ptrLoc !== undefined, `Expected ptrLoc for sol struct`);
+
             return factory.userDefinedType(ir.noSrc, getIRStructDefName(def), [ptrLoc], []);
         }
 
@@ -120,7 +122,6 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: M
 
 /**
  * Returns true IFF all memory descriptors in a given type are concrete
- * @param t
  */
 export function isConcreteMemT(t: ir.Type, scope: Scope): boolean {
     const memDescs = collectMemDesc(t, scope);

@@ -28,12 +28,14 @@ function inferIntType(expr: sol.Literal, infer: InferType): sol.IntType {
         );
     } else if (parentE instanceof sol.Assignment) {
         assert(expr === parentE.vRightHandSide, `Unexpected position of literal in assignment`);
+
         resT = infer.typeOf(parentE.vLeftHandSide);
     } else {
         throw new Error(`NYI infer type of literal inside of an ${pp(parentE)}`);
     }
 
     assert(resT instanceof sol.IntType, `Expected int type not {0}`, resT);
+
     return resT;
 }
 

@@ -31,16 +31,17 @@ export class FunctionCompiler extends BaseFunctionCompiler {
         contractStruct?: ir.StructDefinition
     ) {
         super(factory, globalScope, solVersion, abiVersion, contractStruct);
+
         this.exprCompiler = new ExpressionCompiler(this.cfgBuilder, this.abiVersion);
 
         this.modifiers = this.getModifierStack();
+
         this.modifiers.push([this.fun.vBody, undefined]);
 
         this.stmtCompiler = new StatementCompiler(
             this.cfgBuilder,
             this.exprCompiler,
-            this.modifiers,
-            abiVersion
+            this.modifiers
         );
     }
 
@@ -59,12 +60,7 @@ export class FunctionCompiler extends BaseFunctionCompiler {
                 this.scope as sol.ContractDefinition
             );
         } else {
-            name = getDesugaredFunName(
-                this.fun,
-                this.scope,
-                this.abiVersion,
-                this.cfgBuilder.infer
-            );
+            name = getDesugaredFunName(this.fun, this.scope, this.cfgBuilder.infer);
         }
 
         this.collectArgs();
@@ -77,23 +73,21 @@ export class FunctionCompiler extends BaseFunctionCompiler {
         // 2. Execute any inline initializers
         if (this.isPartialConstructor) {
             const contract = this.fun.vScope;
+
             assert(
                 contract instanceof sol.ContractDefinition && this.contractStruct !== undefined,
                 `Constructors need a this struct`
             );
 
             for (const stateVar of contract.vStateVariables) {
-                let initialVal: ir.Expression;
                 const stateVarT = transpileType(
                     this.cfgBuilder.infer.variableDeclarationToTypeNode(stateVar),
                     this.cfgBuilder.factory
                 );
 
-                if (stateVar.vValue !== undefined) {
-                    initialVal = this.exprCompiler.compile(stateVar.vValue);
-                } else {
-                    initialVal = this.cfgBuilder.zeroValue(stateVarT);
-                }
+                const initialVal = stateVar.vValue
+                    ? this.exprCompiler.compile(stateVar.vValue)
+                    : this.cfgBuilder.zeroValue(stateVarT);
 
                 this.cfgBuilder.storeField(
                     this.cfgBuilder.this(noSrc),

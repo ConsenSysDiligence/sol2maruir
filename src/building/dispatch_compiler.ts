@@ -100,12 +100,7 @@ export class DispatchCompiler extends BaseFunctionCompiler {
 
         this.cfgBuilder.abort(noSrc);
 
-        const name = getDispatchName(
-            this.contract,
-            this.origDef,
-            this.cfgBuilder.infer,
-            this.abiVersion
-        );
+        const name = getDispatchName(this.contract, this.origDef, this.cfgBuilder.infer);
 
         return this.finishCompile(noSrc, name);
     }

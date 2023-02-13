@@ -4,7 +4,6 @@ import { BaseFunctionCompiler } from "./base_function_compiler";
 import { boolT, noSrc } from "maru-ir2";
 import { IRFactory } from "./factory";
 import { noType, u256 } from "./typing";
-import { assert } from "console";
 
 export class CopyFunCompiler extends BaseFunctionCompiler {
     constructor(
@@ -211,7 +210,7 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
                 const [srcFieldName, srcFieldT] = srcFields[i];
                 const [dstFieldName, dstFieldT] = dstFields[i];
 
-                assert(srcFieldName === dstFieldName, ``);
+                sol.assert(srcFieldName === dstFieldName, ``);
 
                 const srcField = this.cfgBuilder.loadField(src, srcT, srcFieldName, noSrc);
                 const dstFieldTmp = this.cfgBuilder.getTmpId(dstFieldT, noSrc);

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import fse from "fs-extra";
 import minimist from "minimist";
-import { ASTReader, compileSourceString } from "solc-typed-ast";
+import { ASTReader, compileSourceString, LatestCompilerVersion } from "solc-typed-ast";
 import { transpile } from "../transpile";
 
 const cli = {
@@ -38,7 +38,7 @@ OPTIONS:
             contents = await fse.readFile(process.stdin.fd, { encoding: "utf-8" });
         } else {
             fileName = args._[0];
-            contents = fse.readFileSync(fileName, { encoding: "utf-8" });
+            contents = await fse.readFile(fileName, { encoding: "utf-8" });
         }
 
         const result = await compileSourceString(fileName, contents, "auto");
@@ -46,11 +46,9 @@ OPTIONS:
 
         const units = reader.read(result.data);
 
-        const defs = transpile(units);
+        const defs = transpile(units, result.compilerVersion || LatestCompilerVersion);
 
-        for (const def of defs) {
-            console.log(def.pp());
-        }
+        console.log(defs.map((def) => def.pp()).join("\n"));
     }
 })().catch((e) => {
     console.log(e.message);

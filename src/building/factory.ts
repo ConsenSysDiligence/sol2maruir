@@ -38,12 +38,15 @@ export class IRFactory {
         typ: ir.Type
     ): ir.UnaryOperation {
         const res = new ir.UnaryOperation(src, op, subExp);
+
         this.typeMap.set(res, typ);
+
         return res;
     }
 
     booleanLiteral(src: BaseSrc, val: boolean): ir.BooleanLiteral {
         const res = new ir.BooleanLiteral(src, val);
+
         this.typeMap.set(res, boolT);
 
         return res;
@@ -51,7 +54,9 @@ export class IRFactory {
 
     numberLiteral(src: BaseSrc, val: bigint, radix: number, type: ir.Type): ir.NumberLiteral {
         assert(type instanceof ir.IntType, `Unexpected type ${type.pp()} for number literal`);
+
         const res = new ir.NumberLiteral(src, val, radix, type);
+
         this.typeMap.set(res, type);
 
         return res;
@@ -76,6 +81,7 @@ export class IRFactory {
 
     identifier(src: BaseSrc, name: string, type: ir.Type): ir.Identifier {
         const res = new ir.Identifier(src, name);
+
         this.typeMap.set(res, type);
 
         return res;
@@ -83,6 +89,7 @@ export class IRFactory {
 
     funIdentifier(name: string): ir.Identifier {
         const res = new ir.Identifier(noSrc, name);
+
         this.typeMap.set(res, noType);
 
         return res;
@@ -90,6 +97,7 @@ export class IRFactory {
 
     cast(src: BaseSrc, toType: ir.Type, expr: ir.Expression): ir.Cast {
         const res = new ir.Cast(src, toType, expr);
+
         this.typeMap.set(res, toType);
 
         return res;
@@ -97,6 +105,7 @@ export class IRFactory {
 
     tuple(src: BaseSrc, elements: Array<ir.Expression | null>, type: ir.Type): IRTuple2 {
         const res = new IRTuple2(src, elements);
+
         this.typeMap.set(res, type);
 
         return res;
@@ -108,6 +117,7 @@ export class IRFactory {
         type: ir.Type
     ): SolArrayLiteral {
         const res = new SolArrayLiteral(src, elements);
+
         this.typeMap.set(res, type);
 
         return res;

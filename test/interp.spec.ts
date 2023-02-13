@@ -1,12 +1,9 @@
-import { ASTReader, compileSol } from "solc-typed-ast";
-import { ABIEncoderVersion } from "solc-typed-ast/dist/types/abi";
-import { single, UnitCompiler } from "../src";
-import { Resolving, Typing } from "maru-ir2";
-import { buildMaps, JSONConfigTranspiler } from "./json_config_transpiler";
-import * as fse from "fs-extra";
-import * as ir from "maru-ir2";
-import { SolMaruirInterp } from "../src/interp";
 import expect from "expect";
+import * as fse from "fs-extra";
+import { ASTReader, compileSol } from "solc-typed-ast";
+import { UnitCompiler } from "../src";
+import { SolMaruirInterp } from "../src/interp";
+import { buildMaps, JSONConfigTranspiler } from "./json_config_transpiler";
 
 /*
 const files = [
@@ -179,54 +176,45 @@ describe("Interpretor tests", async () => {
     ];
 
     for (const jsonFile of files) {
-        const config = fse.readJsonSync(jsonFile);
-        const file = config.file;
+        it(jsonFile, async () => {
+            const config = await fse.readJson(jsonFile);
+            const file = config.file;
 
-        const result = await compileSol(file, "auto");
-        const reader = new ASTReader();
-        const units = reader.read(result.data);
+            const result = await compileSol(file, "auto");
+            const reader = new ASTReader();
+            const units = reader.read(result.data);
 
-        try {
-            const compiler = new UnitCompiler(
-                result.compilerVersion as string,
-                ABIEncoderVersion.V2
-            );
+            const compiler = new UnitCompiler(result.compilerVersion as string);
+
             const jsonCompiler = new JSONConfigTranspiler(
                 result.compilerVersion as string,
                 compiler.factory
             );
+
             const transpiledDefs = [...compiler.compile(units)];
             const [methodMap, contractMap] = buildMaps(
                 transpiledDefs,
-                result.compilerVersion as string,
-                ABIEncoderVersion.V2
+                result.compilerVersion as string
             );
-            const mainDefs = [...jsonCompiler.compileConfig(config, methodMap, contractMap)];
 
+            const mainDefs = [...jsonCompiler.compileConfig(config, methodMap, contractMap)];
             const defs = [...transpiledDefs, ...mainDefs];
 
-            let contents = "";
-            for (const def of defs) {
-                contents += def.pp() + "\n";
-            }
+            const contents = defs.map((def) => def.pp()).join("\n");
 
             console.log(contents);
 
-            const resolving = new Resolving(defs);
-            new Typing(defs, resolving);
-
             const interp = new SolMaruirInterp(defs, true);
 
-            const main = single(
-                defs.filter((def) => def instanceof ir.FunctionDefinition && def.name === "main")
-            ) as ir.FunctionDefinition;
+            interp.run();
 
-            const [failed] = interp.call(main, [], true);
+            if (interp.state.failure) {
+                console.log(interp.state.dump());
 
-            expect(failed).not.toBeTruthy();
-            console.error(`------> Success ${jsonFile}`);
-        } catch (e) {
-            console.error(`------> Failed ${jsonFile} with ${e}`);
-        }
+                throw interp.state.failure;
+            }
+
+            expect(interp.state.failed).not.toBeTruthy();
+        });
     }
 });

@@ -1,12 +1,13 @@
-import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
-import { CFGBuilder } from "./cfg_builder";
-import { assert, ContractKind, pp } from "solc-typed-ast";
-import { ASTSource } from "../ir/source";
 import { BaseSrc, GlobalVariable, noSrc } from "maru-ir2";
-import { boolT, noType, transpileType, u160, u256, u8, u8ArrExcPtr, u8ArrMemPtr } from "./typing";
-import { single } from "../utils";
 import { gte } from "semver";
+import * as sol from "solc-typed-ast";
+import { assert, ContractKind, pp } from "solc-typed-ast";
+import { IRTuple2 } from "../ir";
+import { ASTSource } from "../ir/source";
+import { single } from "../utils";
+import { CFGBuilder } from "./cfg_builder";
+import { CopyFunCompiler } from "./copy_fun_compiler";
 import { IRFactory } from "./factory";
 import {
     FunctionScope,
@@ -15,8 +16,7 @@ import {
     getIRContractName,
     getIRStructDefName
 } from "./resolving";
-import { IRTuple2 } from "../ir";
-import { CopyFunCompiler } from "./copy_fun_compiler";
+import { boolT, noType, transpileType, u160, u256, u8, u8ArrExcPtr, u8ArrMemPtr } from "./typing";
 
 const overflowBuiltinMap = new Map<string, string>([
     ["+", "builtin_add_overflows"],
@@ -52,10 +52,11 @@ export class ExpressionCompiler {
                 if (def.stateVariable) {
                     const thisId = builder.this(noSrc);
                     const thisT = builder.typeOfLocal("this");
+
                     return builder.loadField(thisId, thisT, def.name, src);
-                } else {
-                    return builder.getVarId(def, src);
                 }
+
+                return builder.getVarId(def, src);
             }
         }
 
@@ -91,6 +92,7 @@ export class ExpressionCompiler {
      */
     isStoragePtrExpr(expr: ir.Expression): boolean {
         const exprT = this.typeOf(expr);
+
         return (
             exprT instanceof ir.PointerType &&
             exprT.region instanceof ir.MemConstant &&
@@ -113,6 +115,7 @@ export class ExpressionCompiler {
     assignTo(lhs: sol.Expression, rhs: ir.Expression, assignSrc: ir.BaseSrc): ir.Expression {
         if (lhs instanceof sol.Identifier) {
             const def = lhs.vReferencedDeclaration;
+
             assert(def !== undefined, `No def for {0}`, lhs);
 
             if (def instanceof sol.VariableDeclaration) {
@@ -136,6 +139,7 @@ export class ExpressionCompiler {
 
                 const irVar = this.cfgBuilder.getVarId(def, new ASTSource(lhs));
                 this.cfgBuilder.assign(irVar, castedRHS, assignSrc);
+
                 return irVar;
             }
         }
@@ -153,6 +157,7 @@ export class ExpressionCompiler {
 
                 if (def instanceof ir.StructDefinition) {
                     this.cfgBuilder.storeField(base, lhs.memberName, rhs, assignSrc);
+
                     return rhs;
                 }
             }
@@ -160,6 +165,7 @@ export class ExpressionCompiler {
 
         if (lhs instanceof sol.IndexAccess) {
             assert(lhs.vIndexExpression !== undefined, ``);
+
             const base = this.compile(lhs.vBaseExpression);
             const idx = this.compile(lhs.vIndexExpression);
             const baseIrT = this.typeOf(base);
@@ -174,6 +180,7 @@ export class ExpressionCompiler {
                 baseIrT.toType.name === "ArrWithLen"
             ) {
                 this.solArrWrite(base, idx, rhs, assignSrc);
+
                 return rhs;
             }
         }
@@ -193,6 +200,7 @@ export class ExpressionCompiler {
 
         const elT = arrPtrT.toType.typeArgs[0];
         const res = this.cfgBuilder.getTmpId(elT, src);
+
         this.cfgBuilder.call(
             [res],
             this.factory.funIdentifier("sol_arr_read"),
@@ -219,6 +227,7 @@ export class ExpressionCompiler {
                 arrPtrT.toType.name === "ArrWithLen",
             ""
         );
+
         this.cfgBuilder.call(
             [],
             this.factory.funIdentifier("sol_arr_write"),
@@ -895,12 +904,7 @@ export class ExpressionCompiler {
                     `Unexpected declaration ${sol.pp(def)} for ${sol.pp(expr)}`
                 );
 
-                irFun = getDispatchName(
-                    baseT.definition,
-                    def,
-                    this.cfgBuilder.infer,
-                    this.abiEncodeVersion
-                );
+                irFun = getDispatchName(baseT.definition, def, this.cfgBuilder.infer);
 
                 const baseIRExpr = this.compile(base);
                 thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));
@@ -1081,6 +1085,7 @@ export class ExpressionCompiler {
         this.cfgBuilder.jump(unionBB, src);
 
         this.cfgBuilder.curBB = unionBB;
+
         return unionID;
     }
 
@@ -1112,6 +1117,17 @@ export class ExpressionCompiler {
             const def = this.cfgBuilder.globalScope.getTypeDecl(baseT.toType);
 
             if (def instanceof ir.StructDefinition) {
+                if (expr.memberName === "length" && expr.vReferencedDeclaration === undefined) {
+                    assert(
+                        def.name === "ArrWithLen",
+                        "Expected ArrWithLen struct to get length, got {0} when processing {1}",
+                        def.name,
+                        expr
+                    );
+
+                    return this.cfgBuilder.loadField(base, baseT, "len", new ASTSource(expr));
+                }
+
                 for (const [fieldName] of def.fields) {
                     if (fieldName === expr.memberName) {
                         return this.cfgBuilder.loadField(
@@ -1140,31 +1156,53 @@ export class ExpressionCompiler {
     compile(expr: sol.Expression): ir.Expression {
         if (expr instanceof sol.Identifier) {
             return this.compileIdentifier(expr);
-        } else if (expr instanceof sol.Assignment) {
+        }
+
+        if (expr instanceof sol.Assignment) {
             return this.compileAssignment(expr);
-        } else if (expr instanceof sol.BinaryOperation) {
+        }
+
+        if (expr instanceof sol.BinaryOperation) {
             return this.compileBinaryOperation(expr);
-        } else if (expr instanceof sol.UnaryOperation) {
+        }
+
+        if (expr instanceof sol.UnaryOperation) {
             return this.compileUnaryOperation(expr);
-        } else if (expr instanceof sol.Literal) {
+        }
+
+        if (expr instanceof sol.Literal) {
             return this.compileLiteral(expr);
-        } else if (expr instanceof sol.TupleExpression) {
+        }
+
+        if (expr instanceof sol.TupleExpression) {
             return this.compileTupleExpression(expr);
-        } else if (expr instanceof sol.FunctionCall) {
+        }
+
+        if (expr instanceof sol.FunctionCall) {
             if (expr.kind === sol.FunctionCallKind.FunctionCall) {
                 return this.compileFunctionCall(expr);
-            } else if (expr.kind === sol.FunctionCallKind.StructConstructorCall) {
-                return this.compileStructConstructorCall(expr);
-            } else if (expr.kind === sol.FunctionCallKind.TypeConversion) {
-                return this.compileTypeConversion(expr);
-            } else {
-                throw new Error(`Unknown function call kind ${expr.kind}`);
             }
-        } else if (expr instanceof sol.Conditional) {
+
+            if (expr.kind === sol.FunctionCallKind.StructConstructorCall) {
+                return this.compileStructConstructorCall(expr);
+            }
+
+            if (expr.kind === sol.FunctionCallKind.TypeConversion) {
+                return this.compileTypeConversion(expr);
+            }
+
+            throw new Error(`Unknown function call kind ${expr.kind}`);
+        }
+
+        if (expr instanceof sol.Conditional) {
             return this.compileConditional(expr);
-        } else if (expr instanceof sol.IndexAccess) {
+        }
+
+        if (expr instanceof sol.IndexAccess) {
             return this.compileIndexAccess(expr);
-        } else if (expr instanceof sol.MemberAccess) {
+        }
+
+        if (expr instanceof sol.MemberAccess) {
             return this.compileMemberAccess(expr);
         }
 
@@ -1321,6 +1359,7 @@ export class ExpressionCompiler {
 
             return lhs;
         }
+
         return undefined;
     }
 
@@ -1330,6 +1369,7 @@ export class ExpressionCompiler {
 
         if (decl !== undefined) {
             assert(decl instanceof ir.FunctionDefinition, ``);
+
             return this.factory.identifier(noSrc, name, noType);
         }
 
@@ -1343,6 +1383,7 @@ export class ExpressionCompiler {
         );
 
         const fun = compiler.compile();
+
         this.cfgBuilder.globalScope.define(fun);
 
         return this.factory.identifier(noSrc, name, noType);

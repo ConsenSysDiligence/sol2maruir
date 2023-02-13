@@ -189,6 +189,7 @@ export class ConstructorCompiler {
 
         // Set __address__
         const addrTmp = builder.getTmpId(u160, noSrc);
+
         builder.call(
             [addrTmp],
             this.factory.identifier(noSrc, "builtin_register_contract", noType),
@@ -225,6 +226,7 @@ export class ConstructorCompiler {
         builder.zeroInitLocals();
 
         builder.curBB = builder.returnBB;
+
         builder.return([builder.this(noSrc)], noSrc);
 
         return this.factory.functionDefinition(
