@@ -47,17 +47,14 @@ export class ImplicitConstructorCompiler extends BaseFunctionCompiler {
         const exprCompiler = new ExpressionCompiler(this.cfgBuilder, this.abiVersion);
 
         for (const stateVar of this.contract.vStateVariables) {
-            let initialVal: ir.Expression;
             const stateVarT = transpileType(
                 this.cfgBuilder.infer.variableDeclarationToTypeNode(stateVar),
                 this.cfgBuilder.factory
             );
 
-            if (stateVar.vValue !== undefined) {
-                initialVal = exprCompiler.compile(stateVar.vValue);
-            } else {
-                initialVal = this.cfgBuilder.zeroValue(stateVarT);
-            }
+            const initialVal = stateVar.vValue
+                ? exprCompiler.compile(stateVar.vValue)
+                : this.cfgBuilder.zeroValue(stateVarT);
 
             this.cfgBuilder.storeField(
                 this.cfgBuilder.this(noSrc),

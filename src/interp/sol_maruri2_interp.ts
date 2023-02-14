@@ -4,7 +4,6 @@ import {
     eq,
     FunctionDefinition,
     getTypeRange,
-    GlobalVariable,
     InterpError,
     IntType,
     LiteralEvaluator,
@@ -14,14 +13,13 @@ import {
     PrimitiveValue,
     Program,
     Resolving,
+    runProgram,
     State,
     StatementExecutor,
     Type,
     Typing
 } from "maru-ir2";
-
 import { assert } from "solc-typed-ast";
-
 import { deref, encodeParameters, encodeWithSignature, toWeb3Value } from "../utils";
 
 export class SolMaruirInterp {
@@ -29,6 +27,7 @@ export class SolMaruirInterp {
     typing: Typing;
     state: State;
     main: FunctionDefinition;
+    litEvaluator: LiteralEvaluator;
     stmtExec: StatementExecutor;
     contractRegistry: Map<bigint, [Type, PrimitiveValue]>;
     nAddresses = 0;
@@ -313,8 +312,9 @@ export class SolMaruirInterp {
             ]
         ]);
 
-        this.state = new State(defs, this.main, [], [], rootTrans, builtins);
+        this.state = new State(defs, [], rootTrans, builtins);
 
+        this.litEvaluator = new LiteralEvaluator(this.resolving, this.state);
         this.stmtExec = new StatementExecutor(this.resolving, this.typing, this.state);
     }
 
@@ -344,47 +344,33 @@ export class SolMaruirInterp {
 
     registerContact(type: Type, ptr: PrimitiveValue): bigint {
         const newAddr = BigInt(this.contractRegistry.size);
+
         this.contractRegistry.set(newAddr, [type, ptr]);
 
         return newAddr;
     }
 
-    call(
-        fun: FunctionDefinition,
-        args: PrimitiveValue[],
-        rootTrans: boolean
-    ): [boolean, PrimitiveValue[] | undefined] {
-        const litEvaluator = new LiteralEvaluator(this.resolving, this.state);
-
-        // First initialize globals
-        for (const def of this.defs) {
-            if (def instanceof GlobalVariable) {
-                this.state.globals.set(
-                    def.name,
-                    litEvaluator.evalLiteral(def.initialValue, def.type)
-                );
-            }
-        }
-
-        // Next initialize root call
-        this.state.startRootCall(fun, args, [], [], rootTrans);
-
-        this.run();
-
-        return [this.state.failed, this.state.externalReturns];
-    }
-
-    run(): void {
+    run(): [boolean, PrimitiveValue[] | undefined] {
         const state = this.state;
 
-        while (state.running) {
-            const curStmt = state.curMachFrame.curBB.statements[state.curMachFrame.curBBInd];
+        const flow = runProgram(
+            this.litEvaluator,
+            this.stmtExec,
+            this.defs,
+            state,
+            this.main,
+            [],
+            true
+        );
+
+        for (const stmt of flow) {
             console.error(
                 `${state.curMachFrame.fun.name}:${state.curMachFrame.curBB.label}:${
                     state.curMachFrame.curBBInd
-                } ${curStmt.pp()} store ${pp(state.curMachFrame.store)}`
+                } ${stmt.pp()} store ${pp(state.curMachFrame.store)}`
             );
-            this.stmtExec.execStatement(curStmt);
         }
+
+        return [state.failed, state.externalReturns];
     }
 }

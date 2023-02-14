@@ -264,15 +264,10 @@ export class CFGBuilder {
     }
 
     public getCFG(): ir.CFG {
-        const edges: ir.Edge[] = [];
-        for (const node of this._nodes) {
-            edges.push(...node.outgoing);
-        }
-
         // Make sure the entry is always the first block in the CFG
         const nodes: BasicBlock[] = [this.entry, ...this._nodes.filter((nd) => nd !== this.entry)];
 
-        return new ir.CFG(nodes, edges, this.entry, this.exits);
+        return new ir.CFG(nodes, this.entry, this.exits);
     }
 
     addStmt(stmt: ir.Statement): void {

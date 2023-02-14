@@ -1,16 +1,14 @@
-import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
-import { noSrc } from "maru-ir2";
-import { transpileType, u16, u160 } from "./typing";
+import * as sol from "solc-typed-ast";
 import { ASTSource } from "../ir/source";
-import { FunctionCompiler } from "./function_compiler";
-import { assert, InferType } from "solc-typed-ast";
-import { compileGlobalVarInitializer } from "./literal_compiler";
-import { getDesugaredGlobalVarName, getIRStructDefName } from "./resolving";
 import { ConstructorCompiler } from "./constructor_compiler";
-import { preamble } from "./preamble";
-import { IRFactory } from "./factory";
 import { DispatchCompiler } from "./dispatch_compiler";
+import { IRFactory } from "./factory";
+import { FunctionCompiler } from "./function_compiler";
+import { compileGlobalVarInitializer } from "./literal_compiler";
+import { preamble } from "./preamble";
+import { getDesugaredGlobalVarName, getIRStructDefName } from "./resolving";
+import { transpileType, u16, u160 } from "./typing";
 
 type InheritMap = Map<sol.ContractDefinition, sol.ContractDefinition[]>;
 
@@ -28,9 +26,9 @@ function isExternallyVisible(fun: sol.FunctionDefinition): boolean {
 
 export class UnitCompiler {
     private readonly globalScope: ir.Scope;
-    private readonly versionMap: Map<sol.SourceUnit, [string, string]>;
-    private readonly inferMap: Map<string, sol.InferType>;
-    public readonly factory: IRFactory = new IRFactory();
+
+    readonly inference: sol.InferType;
+    readonly factory: IRFactory = new IRFactory();
 
     private emittedStructMap = new Map<sol.ContractDefinition, ir.StructDefinition>();
     private emittedMethodMap = new Map<
@@ -38,15 +36,13 @@ export class UnitCompiler {
         Map<string, ir.FunctionDefinition>
     >();
 
-    constructor(
-        private readonly solVersion: string,
-        private readonly abiVersion: sol.ABIEncoderVersion
-    ) {
+    constructor(private readonly solVersion: string) {
         this.globalScope = new ir.Scope();
-        this.solVersion;
-        this.abiVersion;
-        this.versionMap = new Map();
-        this.inferMap = new Map();
+        this.inference = new sol.InferType(solVersion);
+    }
+
+    private detectAbiEncoderVersion(unit: sol.SourceUnit): sol.ABIEncoderVersion {
+        return sol.getABIEncoderVersion(unit, this.solVersion);
     }
 
     globalDefine(def: ir.FunctionDefinition | ir.StructDefinition | ir.GlobalVariable): void {
@@ -67,11 +63,6 @@ export class UnitCompiler {
         }
 
         for (const unit of units) {
-            const [compilerVersion, abiVersion] = this.detectVersions(unit);
-            this.versionMap.set(unit, [compilerVersion, abiVersion]);
-        }
-
-        for (const unit of units) {
             this.compileUnit(unit);
         }
 
@@ -79,45 +70,28 @@ export class UnitCompiler {
         const overrideMap = this.buildOverrideMap(inheritMap);
 
         for (const [contract, methodOverrideMap] of overrideMap) {
+            const abiVersion = this.detectAbiEncoderVersion(contract.vScope);
+
             for (const [method, overridingImpls] of methodOverrideMap) {
-                this.globalDefine(this.compileMethodDispatch(contract, method, overridingImpls));
+                this.globalDefine(
+                    this.compileMethodDispatch(contract, method, overridingImpls, abiVersion)
+                );
             }
         }
 
         return this.globalScope.definitions();
     }
 
-    private getInfer(arg: string | sol.SourceUnit): sol.InferType {
-        if (arg instanceof sol.SourceUnit) {
-            const [version] = this.versionMap.get(arg) as [string, string];
-
-            arg = version;
-        }
-
-        if (!this.inferMap.has(arg)) {
-            this.inferMap.set(arg, new sol.InferType(arg));
-        }
-
-        return this.inferMap.get(arg) as sol.InferType;
-    }
-
-    private detectVersions(unit: sol.SourceUnit): [string, sol.ABIEncoderVersion] {
-        // @note For now we just assume all units have the same sol/abi version.
-        // In the future We may want to detect them per unit.
-        // @todo: After upgrading to solc-typed-ast 11.0.3 change the abi logic here
-        return [this.solVersion, this.abiVersion];
-    }
-
-    compileStructDef(def: sol.StructDefinition, infer: sol.InferType): ir.StructDefinition {
+    compileStructDef(def: sol.StructDefinition): ir.StructDefinition {
         const fields: Array<[string, ir.Type]> = [];
 
         for (const decl of def.vMembers) {
             fields.push([
                 decl.name,
                 transpileType(
-                    infer.variableDeclarationToTypeNode(decl),
+                    this.inference.variableDeclarationToTypeNode(decl),
                     this.factory,
-                    new ir.MemIdentifier(noSrc, "M")
+                    new ir.MemIdentifier(ir.noSrc, "M")
                 )
             ]);
         }
@@ -126,7 +100,7 @@ export class UnitCompiler {
 
         const res = this.factory.structDefinition(
             new ASTSource(def),
-            [new ir.MemVariableDeclaration(noSrc, "M")],
+            [new ir.MemVariableDeclaration(ir.noSrc, "M")],
             [],
             name,
             fields
@@ -136,19 +110,19 @@ export class UnitCompiler {
     }
 
     compileUnit(unit: sol.SourceUnit): void {
-        const [compilerVersion] = this.detectVersions(unit);
-        const infer = this.getInfer(compilerVersion);
+        const abiVersion = this.detectAbiEncoderVersion(unit);
 
         for (const structDef of unit.getChildrenByType(sol.StructDefinition)) {
-            const struct = this.compileStructDef(structDef, infer);
+            const struct = this.compileStructDef(structDef);
+
             this.globalDefine(struct);
         }
 
         for (const contract of unit.vContracts) {
-            const struct = this.getContractStruct(contract, infer);
+            const struct = this.getContractStruct(contract);
 
             this.globalDefine(struct);
-            this.compileContractMethods(contract, struct, infer);
+            this.compileContractMethods(contract, struct, abiVersion);
         }
 
         for (const fun of unit.vFunctions) {
@@ -157,7 +131,7 @@ export class UnitCompiler {
                 fun,
                 this.globalScope,
                 this.solVersion,
-                this.abiVersion,
+                abiVersion,
                 unit
             );
 
@@ -167,16 +141,17 @@ export class UnitCompiler {
         }
 
         for (const globConst of unit.vVariables) {
-            this.globalDefine(this.compileGlobalConst(globConst, infer));
+            this.globalDefine(this.compileGlobalConst(globConst));
         }
     }
 
-    compileGlobalConst(c: sol.VariableDeclaration, infer: InferType): ir.GlobalVariable {
-        const solT = infer.variableDeclarationToTypeNode(c);
+    compileGlobalConst(c: sol.VariableDeclaration): ir.GlobalVariable {
+        const solT = this.inference.variableDeclarationToTypeNode(c);
         const irT = transpileType(solT, this.factory);
 
-        assert(c.vValue !== undefined, `NYI zero-intializing of global vars`);
-        const initialValue = compileGlobalVarInitializer(c.vValue, infer, this.factory);
+        sol.assert(c.vValue !== undefined, `NYI zero-intializing of global vars`);
+
+        const initialValue = compileGlobalVarInitializer(c.vValue, this.inference, this.factory);
 
         return this.factory.globalVariable(
             new ASTSource(c),
@@ -189,14 +164,14 @@ export class UnitCompiler {
     compileContractMethods(
         contract: sol.ContractDefinition,
         irContract: ir.StructDefinition,
-        infer: InferType
+        abiVersion: sol.ABIEncoderVersion
     ): void {
         const constrCompiler = new ConstructorCompiler(
             this.factory,
             contract,
             this.globalScope,
             this.solVersion,
-            this.abiVersion,
+            abiVersion,
             irContract
         );
 
@@ -217,7 +192,7 @@ export class UnitCompiler {
                     continue;
                 }
 
-                const sig = infer.signature(method, this.abiVersion);
+                const sig = this.inference.signature(method);
 
                 if (seenSigs.has(sig)) {
                     continue;
@@ -230,7 +205,7 @@ export class UnitCompiler {
                     method,
                     this.globalScope,
                     this.solVersion,
-                    this.abiVersion,
+                    abiVersion,
                     contract,
                     irContract
                 );
@@ -253,7 +228,8 @@ export class UnitCompiler {
     compileMethodDispatch(
         contract: sol.ContractDefinition,
         solMethod: sol.FunctionDefinition,
-        overridingImpls: OverridenImplsList
+        overridingImpls: OverridenImplsList,
+        abiVersion: sol.ABIEncoderVersion
     ): ir.FunctionDefinition {
         const dispatchCompiler = new DispatchCompiler(
             this.factory,
@@ -262,13 +238,13 @@ export class UnitCompiler {
             overridingImpls,
             this.globalScope,
             this.solVersion,
-            this.abiVersion
+            abiVersion
         );
 
         return dispatchCompiler.compile();
     }
 
-    getContractStruct(contract: sol.ContractDefinition, infer: sol.InferType): ir.StructDefinition {
+    getContractStruct(contract: sol.ContractDefinition): ir.StructDefinition {
         const name = `${contract.name}_${contract.id}`;
 
         const fields: Array<[string, ir.Type]> = [
@@ -278,7 +254,7 @@ export class UnitCompiler {
 
         for (const base of contract.vLinearizedBaseContracts) {
             for (const decl of base.vStateVariables) {
-                const solType = infer.variableDeclarationToTypeNode(decl);
+                const solType = this.inference.variableDeclarationToTypeNode(decl);
                 const irType = transpileType(solType, this.factory);
 
                 fields.push([decl.name, irType]);
@@ -286,11 +262,13 @@ export class UnitCompiler {
         }
 
         const res = this.factory.structDefinition(new ASTSource(contract), [], [], name, fields);
+
         this.emittedStructMap.set(contract, res);
+
         return res;
     }
 
-    private buildInheritMap(units: sol.SourceUnit[]): InheritMap {
+    buildInheritMap(units: sol.SourceUnit[]): InheritMap {
         const res: InheritMap = new Map();
 
         for (const unit of units) {
@@ -313,10 +291,6 @@ export class UnitCompiler {
         const res: OverrideMap = new Map();
 
         for (const [contract, subContracts] of inhMap) {
-            const unit = contract.vScope;
-            const infer = this.getInfer(unit);
-            const [, abiVersion] = this.versionMap.get(unit) as [string, sol.ABIEncoderVersion];
-
             const seenSigs = new Map<string, sol.FunctionDefinition>();
 
             const overridenImplMap: OverridenImplsMap = new Map();
@@ -329,7 +303,8 @@ export class UnitCompiler {
                         continue;
                     }
 
-                    const sig = infer.signature(method, abiVersion);
+                    const sig = this.inference.signature(method);
+
                     // Ignore constructors, receive and fallback
                     if (sig === "" || sig === "receive" || sig === "fallback") {
                         continue;

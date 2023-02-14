@@ -1,35 +1,25 @@
-import {
-    ABIEncoderVersion,
-    assert,
-    ContractDefinition,
-    FunctionDefinition,
-    InferType,
-    pp
-} from "solc-typed-ast";
 import * as ir from "maru-ir2";
+import { noSrc } from "maru-ir2";
+import { assert, ContractDefinition, FunctionDefinition, InferType, pp } from "solc-typed-ast";
+import { CFGBuilder } from "../src";
+import { IRFactory } from "../src/building/factory";
 import {
     blockPtrT,
     blockT,
+    boolT,
     msgPtrT,
     msgT,
+    noType,
     u160,
     u256,
-    boolT,
-    u8,
-    noType
+    u8
 } from "../src/building/typing";
-import { CFGBuilder } from "../src";
 import { ASTSource } from "../src/ir/source";
-import { noSrc } from "maru-ir2";
-import { IRFactory } from "../src/building/factory";
 
 export type MethodMap = Map<string, Map<string, ir.FunctionDefinition>>;
 export type ContractMap = Map<string, ir.StructDefinition>;
-export function buildMaps(
-    defs: ir.Definition[],
-    solVersion: string,
-    abiVersion: ABIEncoderVersion
-): [MethodMap, ContractMap] {
+
+export function buildMaps(defs: ir.Definition[], solVersion: string): [MethodMap, ContractMap] {
     const mMap = new Map<string, Map<string, ir.FunctionDefinition>>();
     const cMap = new Map<string, ir.StructDefinition>();
 
@@ -58,9 +48,10 @@ export function buildMaps(
                 def.src.nd.vScope instanceof ContractDefinition
             ) {
                 contract = def.src.nd.vScope;
+
                 sig = def.name.includes("_constructor")
                     ? "constructor"
-                    : infer.signature(def.src.nd, abiVersion);
+                    : infer.signature(def.src.nd);
             } else {
                 continue;
             }
@@ -108,6 +99,7 @@ export class JSONConfigTranspiler {
     getNewConstStr(s: string, mem: string): ir.Expression {
         const val = [...Buffer.from(s, "utf-8")].map((x) => BigInt(x));
         const memC = this.factory.memConstant(ir.noSrc, mem);
+
         return this.getNewGlobal(
             this.factory.pointerType(
                 ir.noSrc,
@@ -150,10 +142,12 @@ export class JSONConfigTranspiler {
         }
 
         const fixedBytesRx = /bytes([0-9]+)/;
+
         let m = strType.match(fixedBytesRx);
 
         if (m) {
             const nBytes = Number(m[1]);
+
             return this.factory.intType(ir.noSrc, nBytes * 8, false);
         }
 
@@ -186,9 +180,9 @@ export class JSONConfigTranspiler {
             if (litT instanceof ir.IntType) {
                 if (arg.type.startsWith("bytes")) {
                     return this.factory.numberLiteral(ir.noSrc, BigInt("0x" + arg.value), 16, litT);
-                } else {
-                    return this.factory.numberLiteral(ir.noSrc, BigInt(arg.value), 10, litT);
                 }
+
+                return this.factory.numberLiteral(ir.noSrc, BigInt(arg.value), 10, litT);
             }
 
             throw new Error(`NYI transpiling JS value ${litT.pp()}`);
@@ -196,7 +190,9 @@ export class JSONConfigTranspiler {
 
         if (arg.kind === "bytes") {
             const byteStr = arg.elements;
+
             assert(byteStr.length % 2 === 0, ``);
+
             const values: bigint[] = [];
 
             for (let i = 0; i < byteStr.length / 2; i++) {
@@ -273,7 +269,8 @@ export class JSONConfigTranspiler {
         this.builder.addIRLocal("msg", msgPtrT, ir.noSrc);
 
         const entry = new ir.BasicBlock("entry");
-        const body = new ir.CFG([entry], [], entry, [entry]);
+        const body = new ir.CFG([entry], entry, [entry]);
+
         let lCtr = 0;
         let lastObjName: string | undefined;
         let lastContractName: string | undefined;
@@ -319,7 +316,9 @@ export class JSONConfigTranspiler {
                 this.builder.addIRLocal(lastObjName as string, thisT, ir.noSrc);
             } else if (step.act === "call") {
                 const fun = methodMap.get(step.definingContract)?.get(step.method);
+
                 assert(fun !== undefined, `Missing fun ${step.method} in ${step.definingContract}`);
+
                 const args: ir.Expression[] = step.args.map((jsArg: any) =>
                     this.compileJSArg(jsArg)
                 );
@@ -330,6 +329,7 @@ export class JSONConfigTranspiler {
                     this.factory.identifier(ir.noSrc, "block", blockPtrT),
                     this.factory.identifier(ir.noSrc, "msg", msgPtrT)
                 );
+
                 const lhss: ir.Identifier[] = [];
 
                 for (const retT of fun.returns) {
@@ -339,6 +339,7 @@ export class JSONConfigTranspiler {
                 }
 
                 const aborted = this.builder.getTmpId(boolT, ir.noSrc);
+
                 lhss.push(aborted);
 
                 const funName = fun.name;

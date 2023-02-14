@@ -12,7 +12,6 @@ import {
     StructDefinition,
     VariableDeclaration
 } from "solc-typed-ast";
-import { ABIEncoderVersion } from "solc-typed-ast/dist/types/abi";
 
 export type FunctionScope = ContractDefinition | SourceUnit;
 /**
@@ -217,7 +216,6 @@ export function resolveDesugaredFunModifierScope(
 export function getDesugaredFunName(
     f: FunctionDefinition,
     scope: FunctionScope,
-    abiEncoderVersion: ABIEncoderVersion,
     infer: InferType
 ): string {
     assert(
@@ -233,7 +231,7 @@ export function getDesugaredFunName(
     } else if (f.kind === FunctionKind.Receive) {
         overloadingSuffix = "receive";
     } else {
-        overloadingSuffix = `${f.name}_${infer.signatureHash(f, abiEncoderVersion)}`;
+        overloadingSuffix = `${f.name}_${infer.signatureHash(f)}`;
     }
 
     // Free functions don't get a class prefix
@@ -261,12 +259,8 @@ export function getDesugaredFunName(
  * Events follow a simple naming logic - <defining contract>_<event name>_<canonical hash>
  * @param evt - raw event
  */
-export function getDesugaredEventName(
-    evt: EventDefinition,
-    infer: InferType,
-    abiEncoderVersion: ABIEncoderVersion
-): string {
-    return `${evt.vScope.name}_${evt.name}_${infer.signatureHash(evt, abiEncoderVersion)}`;
+export function getDesugaredEventName(evt: EventDefinition, infer: InferType): string {
+    return `${evt.vScope.name}_${evt.name}_${infer.signatureHash(evt)}`;
 }
 
 /**
@@ -317,10 +311,9 @@ export function getDesugaredGlobalVarName(v: VariableDeclaration): string {
 export function getDispatchName(
     contract: ContractDefinition,
     fun: FunctionDefinition,
-    infer: InferType,
-    abiVersion: ABIEncoderVersion
+    infer: InferType
 ): string {
-    return `${contract.name}_${fun.name}_${infer.signatureHash(fun, abiVersion)}_dispatch`;
+    return `${contract.name}_${fun.name}_${infer.signatureHash(fun)}_dispatch`;
 }
 
 export function getIRContractName(contract: ContractDefinition): string {
