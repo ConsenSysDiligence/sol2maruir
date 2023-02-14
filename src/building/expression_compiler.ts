@@ -1,5 +1,5 @@
 import * as ir from "maru-ir2";
-import { BaseSrc, GlobalVariable, noSrc } from "maru-ir2";
+import { BaseSrc, noSrc } from "maru-ir2";
 import { gte } from "semver";
 import * as sol from "solc-typed-ast";
 import { assert, ContractKind, generalizeType, pp } from "solc-typed-ast";
@@ -12,6 +12,7 @@ import { IRFactory } from "./factory";
 import {
     FunctionScope,
     getDesugaredConstructorName,
+    getDesugaredFunName,
     getDispatchName,
     getIRContractName,
     getIRStructDefName
@@ -31,7 +32,8 @@ export class ExpressionCompiler {
 
     constructor(
         public readonly cfgBuilder: CFGBuilder,
-        public readonly abiEncodeVersion: sol.ABIEncoderVersion
+        public readonly abiEncodeVersion: sol.ABIEncoderVersion,
+        public readonly solScope: FunctionScope
     ) {
         this.factory = cfgBuilder.factory;
     }
@@ -122,7 +124,7 @@ export class ExpressionCompiler {
      * 1. Assignment between different memories (done by mustCastTo)
      * 2. Assignment to storage (that is not a local storage variable)
      */
-    assignTo(lhs: sol.Expression, rhs: ir.Expression, assignSrc: ir.BaseSrc): ir.Expression {
+    assignTo(lhs: sol.Expression | null, rhs: ir.Expression, assignSrc: ir.BaseSrc): ir.Expression {
         if (
             lhs instanceof sol.TupleExpression &&
             lhs.vOriginalComponents.length === 1 &&
@@ -201,6 +203,44 @@ export class ExpressionCompiler {
 
                 return rhs;
             }
+        }
+
+        if (rhs instanceof IRTuple2) {
+            assert(
+                (lhs instanceof sol.TupleExpression &&
+                    lhs.vOriginalComponents.length === rhs.elements.length) ||
+                    lhs === null,
+                `Mismatch between lhs {0} and rhs {1} in tuple assignment`,
+                lhs,
+                rhs
+            );
+
+            const resExprs: ir.Expression[] = [];
+
+            for (let i = 0; i < rhs.elements.length; i++) {
+                const lhsC = lhs === null ? lhs : lhs.vOriginalComponents[i];
+                const rhsC = rhs.elements[i];
+
+                if (rhsC === null) {
+                    assert(lhsC === null, `Unexpected null assignment to non-null lhs {0}`, lhsC);
+                    continue;
+                }
+
+                resExprs.push(this.assignTo(lhsC, rhsC, assignSrc));
+            }
+
+            const resT = this.factory.tupleType(
+                noSrc,
+                resExprs.map((e) => this.typeOf(e))
+            );
+
+            return this.factory.tuple(assignSrc, resExprs, resT);
+        }
+
+        if (lhs === null) {
+            const irLHS = this.cfgBuilder.getTmpId(this.typeOf(rhs), assignSrc);
+            this.cfgBuilder.assign(irLHS, rhs, assignSrc);
+            return irLHS;
         }
 
         throw new Error(`NYI Assigning to solidity expression ${pp(lhs)}`);
@@ -1002,38 +1042,39 @@ export class ExpressionCompiler {
         let isExternal: boolean;
         let irFun: string;
 
-        let funScope: FunctionScope | undefined = expr.getClosestParentByType(
-            sol.ContractDefinition
-        );
-
-        if (funScope === undefined) {
-            funScope = expr.getClosestParentByType(sol.SourceUnit) as sol.SourceUnit;
-        }
-
         // There are several cases:
         if (callee instanceof sol.Identifier) {
             // 1. Internal call to the same contract or a free function call
+            thisExpr = this.cfgBuilder.this(noSrc);
             isExternal = false;
-
-            const def = expr.vReferencedDeclaration;
-
-            assert(
-                def instanceof sol.FunctionDefinition,
-                `Unexpected declaration {0} for {1}`,
-                def,
-                expr
-            );
+            let solDef: sol.FunctionDefinition | sol.VariableDeclaration | undefined;
 
             assert(
-                funScope instanceof sol.ContractDefinition,
-                `NYI call free function via identifier`
+                callee.vReferencedDeclaration instanceof sol.FunctionDefinition,
+                `Unsupported calle with non-functiondef decl {0}`,
+                callee.vReferencedDeclaration
             );
 
-            const src = new ASTSource(expr);
+            if (this.solScope instanceof sol.ContractDefinition) {
+                // Contract function
+                console.error(this.solScope.name, callee.vReferencedDeclaration.name);
+                solDef = sol.resolveCallable(
+                    this.solScope,
+                    callee.vReferencedDeclaration,
+                    this.cfgBuilder.infer
+                );
+            } else {
+                // Free function
+                solDef = callee.vReferencedDeclaration;
+            }
 
-            thisExpr = this.mustCastTo(this.cfgBuilder.this(src), u160, src);
+            assert(
+                solDef instanceof sol.FunctionDefinition,
+                `Unexpected most resolved definition {0}`,
+                solDef
+            );
 
-            irFun = getDispatchName(funScope, def, this.cfgBuilder.infer);
+            irFun = getDesugaredFunName(solDef, this.solScope, this.cfgBuilder.infer);
         } else if (callee instanceof sol.MemberAccess) {
             const base = callee.vExpression;
             const baseT = this.cfgBuilder.infer.typeOf(base);
@@ -1119,9 +1160,8 @@ export class ExpressionCompiler {
 
         args.splice(0, 0, irCallee, this.cfgBuilder.blockPtr(noSrc), this.cfgBuilder.msgPtr(noSrc));
 
-        const lhss = retTs.map((retT) =>
-            this.cfgBuilder.getTmpId(transpileType(retT, this.factory), src)
-        );
+        const irRetTs = retTs.map((retT) => transpileType(retT, this.factory));
+        const lhss = irRetTs.map((retT) => this.cfgBuilder.getTmpId(retT, src));
         const callee = this.factory.identifier(src, irFun, noType);
 
         this.cfgBuilder.call(lhss, callee, [], [], args, src);
@@ -1134,7 +1174,7 @@ export class ExpressionCompiler {
             return lhss[0];
         }
 
-        return new IRTuple2(src, lhss);
+        return this.factory.tuple(src, lhss, this.factory.tupleType(noSrc, irRetTs));
     }
 
     compileStructConstructorCall(expr: sol.FunctionCall): ir.Expression {
@@ -1476,7 +1516,7 @@ export class ExpressionCompiler {
         ) {
             const def = this.cfgBuilder.globalScope.get(expr.name);
 
-            if (def instanceof GlobalVariable) {
+            if (def instanceof ir.GlobalVariable) {
                 const size = (def.initialValue as ir.StructLiteral).field("len");
 
                 if (size instanceof ir.NumberLiteral && size.value < BigInt(toT.nbits / 8)) {

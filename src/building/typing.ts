@@ -39,6 +39,14 @@ export const msgT = new ir.UserDefinedType(noSrc, "Message", [], []);
 export const msgPtrT = new ir.PointerType(noSrc, msgT, new ir.MemConstant(noSrc, "memory"));
 
 export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: MemDesc): ir.Type {
+    if (type instanceof sol.IntLiteralType) {
+        assert(type.literal !== undefined, `Missing literal in type {0}`, type);
+        const smallestT = sol.smallestFittingType(type.literal);
+        assert(smallestT !== undefined, `Can't fit literal {0} in a type`, type.literal);
+
+        return transpileType(smallestT, factory, ptrLoc);
+    }
+
     if (type instanceof sol.IntType) {
         return factory.intType(ir.noSrc, type.nBits === undefined ? 256 : type.nBits, type.signed);
     }
@@ -113,7 +121,7 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: M
     if (type instanceof sol.TupleType) {
         return factory.tupleType(
             ir.noSrc,
-            type.elements.map((solT) => transpileType(solT, factory))
+            type.elements.map((solT) => (solT ? transpileType(solT, factory) : null))
         );
     }
 

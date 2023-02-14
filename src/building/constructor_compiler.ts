@@ -79,7 +79,7 @@ export class ConstructorCompiler {
             this.factory
         );
 
-        const exprCompiler = new ExpressionCompiler(builder, this.abiVersion);
+        const exprCompiler = new ExpressionCompiler(builder, this.abiVersion, this.contract);
 
         const irContractT = this.factory.userDefinedType(noSrc, this.irContract.name, [], []);
         const thisT = this.factory.pointerType(

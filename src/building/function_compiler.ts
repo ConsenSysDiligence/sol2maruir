@@ -34,7 +34,11 @@ export class FunctionCompiler extends BaseFunctionCompiler {
     ) {
         super(factory, globalUid, globalScope, solVersion, abiVersion, contractStruct);
 
-        this.exprCompiler = new ExpressionCompiler(this.cfgBuilder, this.abiVersion);
+        this.exprCompiler = new ExpressionCompiler(
+            this.cfgBuilder,
+            this.abiVersion,
+            this.abiVersion
+        );
 
         this.modifiers = this.getModifierStack();
 
