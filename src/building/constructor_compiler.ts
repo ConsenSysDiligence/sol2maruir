@@ -3,7 +3,7 @@ import * as ir from "maru-ir2";
 import { FunctionCompiler } from "./function_compiler";
 import { CFGBuilder } from "./cfg_builder";
 import { noSrc } from "maru-ir2";
-import { grabInheritanceArgs } from "../utils";
+import { grabInheritanceArgs, UIDGenerator } from "../utils";
 import { getDesugaredConstructorName, getDesugaredPartialConstructorName } from "./resolving";
 import { ExpressionCompiler } from "./expression_compiler";
 import { ASTSource } from "../ir/source";
@@ -20,6 +20,7 @@ export class ConstructorCompiler {
         private readonly factory: IRFactory,
         private readonly contract: sol.ContractDefinition,
         private readonly globalScope: ir.Scope,
+        private readonly globalUid: UIDGenerator,
         private readonly solVersion: string,
         private readonly abiVersion: sol.ABIEncoderVersion,
         private readonly irContract: ir.StructDefinition
@@ -34,6 +35,7 @@ export class ConstructorCompiler {
                     this.factory,
                     base.vConstructor,
                     this.globalScope,
+                    this.globalUid,
                     this.solVersion,
                     this.abiVersion,
                     this.contract,
@@ -54,6 +56,7 @@ export class ConstructorCompiler {
                 base,
                 this.contract,
                 this.globalScope,
+                this.globalUid,
                 this.solVersion,
                 this.abiVersion,
                 this.irContract
@@ -67,7 +70,15 @@ export class ConstructorCompiler {
 
     public compileConstructor(): ir.FunctionDefinition {
         const funScope = new ir.Scope(this.globalScope);
-        const builder = new CFGBuilder(this.globalScope, funScope, this.solVersion, this.factory);
+
+        const builder = new CFGBuilder(
+            this.globalScope,
+            funScope,
+            this.globalUid,
+            this.solVersion,
+            this.factory
+        );
+
         const exprCompiler = new ExpressionCompiler(builder, this.abiVersion);
 
         const irContractT = this.factory.userDefinedType(noSrc, this.irContract.name, [], []);

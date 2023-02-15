@@ -3,6 +3,7 @@ import * as ir from "maru-ir2";
 import { CFGBuilder } from "./cfg_builder";
 import { BaseSrc, noSrc } from "maru-ir2";
 import { IRFactory } from "./factory";
+import { UIDGenerator } from "../utils";
 
 export abstract class BaseFunctionCompiler {
     protected readonly cfgBuilder: CFGBuilder;
@@ -10,13 +11,20 @@ export abstract class BaseFunctionCompiler {
 
     constructor(
         factory: IRFactory,
+        globalUid: UIDGenerator,
         protected readonly globalScope: ir.Scope,
         protected readonly solVersion: string,
         protected readonly abiVersion: sol.ABIEncoderVersion,
         protected readonly contractStruct?: ir.StructDefinition
     ) {
         this.funScope = new ir.Scope(globalScope);
-        this.cfgBuilder = new CFGBuilder(this.globalScope, this.funScope, this.solVersion, factory);
+        this.cfgBuilder = new CFGBuilder(
+            this.globalScope,
+            this.funScope,
+            globalUid,
+            this.solVersion,
+            factory
+        );
     }
 
     /**

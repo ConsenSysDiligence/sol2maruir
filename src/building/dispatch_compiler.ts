@@ -5,6 +5,7 @@ import { blockPtrT, msgPtrT, noType, u160 } from "./typing";
 import { noSrc } from "maru-ir2";
 import { getDispatchName } from "./resolving";
 import { IRFactory } from "./factory";
+import { UIDGenerator } from "../utils";
 
 export class DispatchCompiler extends BaseFunctionCompiler {
     constructor(
@@ -13,10 +14,11 @@ export class DispatchCompiler extends BaseFunctionCompiler {
         private readonly origDef: sol.FunctionDefinition,
         private readonly overridingImpls: Array<[ir.StructDefinition, ir.FunctionDefinition]>,
         globalScope: ir.Scope,
+        globalUid: UIDGenerator,
         solVersion: string,
         abiVersion: sol.ABIEncoderVersion
     ) {
-        super(factory, globalScope, solVersion, abiVersion);
+        super(factory, globalUid, globalScope, solVersion, abiVersion);
     }
 
     /**

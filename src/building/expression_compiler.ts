@@ -325,7 +325,7 @@ export class ExpressionCompiler {
     getStrLit(str: string, src: ir.BaseSrc): ir.Identifier {
         const val: bigint[] = [...Buffer.from(str, "utf-8")].map((x) => BigInt(x));
 
-        const name = this.cfgBuilder.uid.get(`_str_lit_`);
+        const name = this.cfgBuilder.globalUid.get(`_str_lit_`);
 
         this.cfgBuilder.globalScope.define(
             this.factory.globalVariable(
@@ -351,7 +351,7 @@ export class ExpressionCompiler {
     getBytesLit(bytes: string, src: ir.BaseSrc): ir.Identifier {
         const val: bigint[] = [...Buffer.from(bytes, "hex")].map((x) => BigInt(x));
 
-        const name = this.cfgBuilder.uid.get(`_bytes_lit_`);
+        const name = this.cfgBuilder.globalUid.get(`_bytes_lit_`);
 
         this.cfgBuilder.globalScope.define(
             this.factory.globalVariable(
@@ -1456,6 +1456,7 @@ export class ExpressionCompiler {
         const compiler = new CopyFunCompiler(
             this.factory,
             this.cfgBuilder.globalScope,
+            this.cfgBuilder.globalUid,
             this.cfgBuilder.solVersion,
             this.abiEncodeVersion,
             fromT,

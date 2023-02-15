@@ -14,24 +14,23 @@ contract EncodingTest {
     }
 
     struct Arg {
-        uint val;
+        uint u;
+        bool b;
+        int i;
+        address a;
     }
 
     function encodeStructs() public pure returns (bytes memory) {
-        Arg[] memory args = new Arg[](3);
+        Arg memory arg = Arg(3, true, -1, 0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF);
 
-        args[0].val = 1;
-        args[1].val = 2;
-        args[2].val = 3;
-
-        return abi.encode(Arg(1));
+        return abi.encode(arg);
     }
 
     function test() public pure {
         assert(
             isSame(
                 encodeStructs(),
-                hex"00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003"
+                hex"00000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000001ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000000000000000deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
             )
         );
 

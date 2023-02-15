@@ -1,7 +1,7 @@
 import * as ir from "maru-ir2";
 import { noSrc } from "maru-ir2";
 import { assert, ContractDefinition, FunctionDefinition, InferType, pp } from "solc-typed-ast";
-import { CFGBuilder } from "../src";
+import { CFGBuilder, UIDGenerator } from "../src";
 import { IRFactory } from "../src/building/factory";
 import {
     blockPtrT,
@@ -75,10 +75,18 @@ export class JSONConfigTranspiler {
     private readonly factory: IRFactory;
     private nGlboals = 0;
 
-    constructor(solVersion: string, factory: IRFactory) {
+    constructor(solVersion: string, factory: IRFactory, globalUid: UIDGenerator) {
         this.globalScope = new ir.Scope();
         this.funScope = new ir.Scope(this.globalScope);
-        this.builder = new CFGBuilder(this.globalScope, this.funScope, solVersion, factory);
+
+        this.builder = new CFGBuilder(
+            this.globalScope,
+            this.funScope,
+            globalUid,
+            solVersion,
+            factory
+        );
+
         this.factory = factory;
     }
 

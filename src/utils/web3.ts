@@ -103,12 +103,9 @@ export function deref(state: State, ptr: PointerVal): ComplexValue {
  * @see https://web3js.readthedocs.io/en/v1.2.6/web3-eth-abi.html#encodeparameters
  * @see https://github.com/web3/web3.js/blob/5807398c7647a9c31a61bc8a114722779c8d1848/packages/web3-eth-abi/src/index.js#L100
  * @see https://github.com/ethers-io/ethers.js/blob/0bf53d7804109f5c0322d8c9a0c10d73abc84136/src.ts/abi/abi-coder.ts#L126
- *
- * @todo Fix this in case when values has nested pointers.
- * This would probably require recursive dereferencing, also avoiding map values somehow.
  */
-export function toWeb3Value(arg: any, abiType: string, s: State): any {
-    const type = abiTypeStringToTypeNode(abiType);
+export function toWeb3Value(arg: any, abiType: string | sol.TypeNode, s: State): any {
+    const type = abiType instanceof sol.TypeNode ? abiType : abiTypeStringToTypeNode(abiType);
 
     if (type instanceof sol.BoolType) {
         assert(
@@ -142,21 +139,21 @@ export function toWeb3Value(arg: any, abiType: string, s: State): any {
 
         assert(struct instanceof Map, "Expected struct pointer for array type, got {0}", arg);
 
-        // const len = arr.get("len");
-
         const arrPtr = struct.get("arr");
 
         assert(
-            arrPtr !== undefined,
+            arrPtr instanceof Array,
             "Expected nested array pointer for array type, got {0}",
             struct
         );
 
-        const arrVal = deref(s, arrPtr as PointerVal);
+        const arrVal = deref(s, arrPtr);
 
-        // console.error(arrVal);
+        assert(arrVal instanceof Array, "Expeced array value, got {0}", arrVal);
 
-        return arrVal;
+        const t = type.elementT;
+
+        return arrVal.map((v) => toWeb3Value(v, t, s));
     }
 
     if (type instanceof sol.TupleType) {
@@ -164,7 +161,23 @@ export function toWeb3Value(arg: any, abiType: string, s: State): any {
 
         // console.error(struct);
 
-        return [...struct.values()];
+        const vals = [...struct.values()];
+        const res = [];
+
+        for (let i = 0; i < type.elements.length; i++) {
+            const t = type.elements[i];
+
+            /**
+             * @todo NYI avoid mappings.
+             * This means that type and value may not follow "one-to-one" rule here.
+             * Current implementation is very fragile.
+             */
+            const v = vals[i];
+
+            res.push(toWeb3Value(v, t, s));
+        }
+
+        return res;
     }
 
     throw new Error(`NYI toWeb3Value of ABI type ${abiType}`);

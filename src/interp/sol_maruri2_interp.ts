@@ -93,6 +93,7 @@ export class SolMaruirInterp {
         const y = frame.args[1][1];
 
         const [min, max] = getTypeRange(typ.nbits, typ.signed);
+
         assert(typeof x === "bigint" && typeof y === "bigint", ``);
 
         let res: bigint;
@@ -126,11 +127,13 @@ export class SolMaruirInterp {
         const x = frame.args[0][1];
 
         const [min, max] = getTypeRange(typ.nbits, typ.signed);
+
         assert(typeof x === "bigint", ``);
 
         const res: bigint = -x;
 
         assert(op === "-", "NYI unary op overflow for {0}", op);
+
         const inRange = min <= res && res <= max;
 
         return !inRange;
@@ -139,31 +142,31 @@ export class SolMaruirInterp {
     private builtin_encode(s: State, frame: BuiltinFrame): PointerVal {
         assert(
             frame.args.length % 2 === 0,
-            `Expected even count of args for builtin_encode, got {0}`,
+            "Expected even count of args for builtin_encode, got {0}",
             frame.args.length
         );
 
-        const abiTypes: string[] = [];
-        const abiValues: any[] = [];
+        const abiTs: string[] = [];
+        const abiVs: any[] = [];
 
         for (let i = 1; i < frame.args.length; i += 2) {
             const typePtr = frame.args[i - 1][1];
             const value = frame.args[i][1];
 
-            assert(typePtr instanceof Array, `Expected pointer, got {0}`, typePtr);
+            assert(typePtr instanceof Array, "Expected pointer, got {0}", typePtr);
 
-            const abiType = this.decodeString(typePtr);
-            const abiValue = toWeb3Value(value, abiType, s);
+            const abiT = this.decodeString(typePtr);
+            const abiV = toWeb3Value(value, abiT, s);
 
-            // console.error(abiType, abiValue);
+            // console.error(abiT, abiV);
 
-            abiTypes.push(abiType);
-            abiValues.push(abiValue);
+            abiTs.push(abiT);
+            abiVs.push(abiV);
         }
 
-        const bytes = encodeParameters(abiTypes, ...abiValues);
+        const bytes = encodeParameters(abiTs, ...abiVs);
 
-        // console.error(bytes.toString("hex"));
+        // console.error(bytes.toString("hex"), abiTs, abiVs);
 
         const ptr = this.defineBytes(bytes, "memory");
 

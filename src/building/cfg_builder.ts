@@ -8,17 +8,11 @@ import { transpileType, u256 } from "./typing";
 import { ASTSource } from "../ir/source";
 import { IRFactory } from "./factory";
 
-/**
- * @todo This is a hack / workaround to avoid global literals resetting on each new CFG.
- * Fix later.
- */
-const uidGen = new UIDGenerator();
-
 export class CFGBuilder {
     /**
-     * UID generator for unique BB/TMP Identifiers
+     * UID generator for local unique BB/TMP Identifiers
      */
-    readonly uid: UIDGenerator;
+    readonly localUid: UIDGenerator;
 
     /**
      * Function entry block
@@ -86,10 +80,12 @@ export class CFGBuilder {
     constructor(
         public readonly globalScope: ir.Scope,
         public readonly funScope: ir.Scope,
+        public readonly globalUid: UIDGenerator,
         public readonly solVersion: string,
         public readonly factory: IRFactory
     ) {
-        this.uid = uidGen;
+        this.localUid = new UIDGenerator();
+
         this._nodes = [];
 
         this._entryBB = this.mkBB("entry");
@@ -230,7 +226,7 @@ export class CFGBuilder {
     }
 
     mkBB(name?: string): BasicBlock {
-        const bb = new BasicBlock(name ? name : this.uid.get("BB"));
+        const bb = new BasicBlock(name ? name : this.localUid.get("BB"));
         this._nodes.push(bb);
         return bb;
     }
@@ -275,7 +271,7 @@ export class CFGBuilder {
     }
 
     getTmpId(type: ir.Type, src: ir.BaseSrc = noSrc): ir.Identifier {
-        const name = this.uid.get("TMP");
+        const name = this.localUid.get("TMP");
         this.addIRLocalImpl(name, type, src, this.temps);
         const newId = this.factory.identifier(src, name, type);
 

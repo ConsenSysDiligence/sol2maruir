@@ -7,6 +7,7 @@ import { getDesugaredPartialConstructorName } from "./resolving";
 import { IRFactory } from "./factory";
 import { ExpressionCompiler } from "./expression_compiler";
 import { ASTSource } from "../ir/source";
+import { UIDGenerator } from "../utils";
 
 export class ImplicitConstructorCompiler extends BaseFunctionCompiler {
     constructor(
@@ -14,11 +15,12 @@ export class ImplicitConstructorCompiler extends BaseFunctionCompiler {
         private readonly contract: sol.ContractDefinition,
         private readonly mdc: sol.ContractDefinition,
         globalScope: ir.Scope,
+        globalUid: UIDGenerator,
         solVersion: string,
         abiVersion: sol.ABIEncoderVersion,
         contractStruct: ir.StructDefinition
     ) {
-        super(factory, globalScope, solVersion, abiVersion, contractStruct);
+        super(factory, globalUid, globalScope, solVersion, abiVersion, contractStruct);
     }
 
     /**
