@@ -366,11 +366,11 @@ export class SolMaruirInterp {
             true
         );
 
-        for (const stmt of flow) {
+        for (let step = flow.next(); !step.done; step = flow.next()) {
             console.error(
                 `${state.curMachFrame.fun.name}:${state.curMachFrame.curBB.label}:${
                     state.curMachFrame.curBBInd
-                } ${stmt.pp()} store ${pp(state.curMachFrame.store)}`
+                } ${step.value.pp()} store ${pp(state.curMachFrame.store)}`
             );
         }
 

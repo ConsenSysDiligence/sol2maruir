@@ -60,7 +60,17 @@ export class ExpressionCompiler {
             }
         }
 
-        throw new Error(`NYI compileIdnetifier(${pp(expr)})`);
+        if (expr.vIdentifierType === sol.ExternalReferenceType.Builtin) {
+            if (expr.name === "msg") {
+                return builder.msgPtr(src);
+            }
+
+            if (expr.name === "block") {
+                return builder.blockPtr(src);
+            }
+        }
+
+        throw new Error(`NYI compileIdentifier(${pp(expr)})`);
     }
 
     /**
@@ -1185,7 +1195,7 @@ export class ExpressionCompiler {
         }
 
         throw new Error(
-            `NYI compiling index expression ${expr.print()} wth base type ${baseT.pp()}`
+            `NYI compiling index expression ${expr.print()} with base type ${baseT.pp()}`
         );
     }
 
@@ -1222,7 +1232,7 @@ export class ExpressionCompiler {
         }
 
         throw new Error(
-            `NYI compiling member expression ${expr.print()} wth base ${base.pp()} of type ${baseT.pp()} and member ${
+            `NYI compiling member expression ${expr.print()} with base ${base.pp()} of type ${baseT.pp()} and member ${
                 expr.memberName
             }`
         );
