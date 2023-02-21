@@ -166,7 +166,20 @@ export class ExpressionCompiler {
                 const def = this.cfgBuilder.globalScope.getTypeDecl(baseIrT.toType);
 
                 if (def instanceof ir.StructDefinition) {
-                    this.cfgBuilder.storeField(base, lhs.memberName, rhs, assignSrc);
+                    let memberName = lhs.memberName;
+
+                    if (lhs.memberName === "length" && lhs.vReferencedDeclaration === undefined) {
+                        assert(
+                            def.name === "ArrWithLen",
+                            "Expected ArrWithLen struct to modify length, got {0} when processing {1}",
+                            def.name,
+                            lhs
+                        );
+
+                        memberName = "len";
+                    }
+
+                    this.cfgBuilder.storeField(base, memberName, rhs, assignSrc);
 
                     return rhs;
                 }
@@ -563,8 +576,8 @@ export class ExpressionCompiler {
         const src = new ASTSource(expr);
         const subExp = this.compile(expr.vSubExpression);
 
-        if (expr.operator === "!") {
-            return this.factory.unaryOperation(src, "!", subExp, boolT);
+        if (expr.operator === "!" || expr.operator === "~") {
+            return this.factory.unaryOperation(src, expr.operator, subExp, boolT);
         }
 
         if (expr.operator === "-") {
@@ -1148,8 +1161,6 @@ export class ExpressionCompiler {
             transpileType(calleeT.type, this.factory),
             new ASTSource(expr)
         );
-
-        throw new Error("NYI compileTypeConversion");
     }
 
     compileConditional(expr: sol.Conditional): ir.Expression {
