@@ -123,6 +123,14 @@ export class ExpressionCompiler {
      * 2. Assignment to storage (that is not a local storage variable)
      */
     assignTo(lhs: sol.Expression, rhs: ir.Expression, assignSrc: ir.BaseSrc): ir.Expression {
+        if (
+            lhs instanceof sol.TupleExpression &&
+            lhs.vOriginalComponents.length === 1 &&
+            lhs.vOriginalComponents[0] !== null
+        ) {
+            return this.assignTo(lhs.vOriginalComponents[0], rhs, assignSrc);
+        }
+
         if (lhs instanceof sol.Identifier) {
             const def = lhs.vReferencedDeclaration;
 
@@ -271,16 +279,19 @@ export class ExpressionCompiler {
      *  - desugaring assignments of the shape +=, -=...
      */
     compileAssignment(expr: sol.Assignment): ir.Expression {
+        const src = new ASTSource(expr);
+
         const lhsT = this.cfgBuilder.infer.typeOf(expr.vLeftHandSide);
         const lhsIRT = transpileType(lhsT, this.factory);
-        const rhsSolT = this.cfgBuilder.infer.typeOf(expr.vRightHandSide);
 
-        let rhs: ir.Expression = this.compile(expr.vRightHandSide);
+        let rhs = this.compile(expr.vRightHandSide);
+
+        const rhsIRT = this.factory.typeOf(rhs);
 
         // Perform any implicit casts from the rhs to the lhs (e.g. u8 to u16)
-        const castedRHS = this.castTo(rhs, lhsIRT, new ASTSource(expr));
+        const castedRHS = this.castTo(rhs, lhsIRT, src);
 
-        assert(castedRHS !== undefined, `Cannot assign ${rhsSolT.pp()} to ${lhsT.pp()}`);
+        assert(castedRHS !== undefined, "Cannot assign {0} to {1}", rhsIRT, lhsIRT);
 
         rhs = castedRHS;
 
@@ -288,15 +299,15 @@ export class ExpressionCompiler {
         if (expr.operator !== "=") {
             rhs = this.makeBinaryOperation(
                 this.compile(expr.vLeftHandSide),
-                expr.operator[0] as ir.BinaryOperator,
+                expr.operator.slice(0, -1) as ir.BinaryOperator,
                 rhs,
                 this.isArithmeticChecked(expr),
-                new ASTSource(expr)
+                src
             );
         }
 
         // Make the actual assignment
-        return this.assignTo(expr.vLeftHandSide, rhs, new ASTSource(expr));
+        return this.assignTo(expr.vLeftHandSide, rhs, src);
     }
 
     /**
@@ -501,6 +512,13 @@ export class ExpressionCompiler {
             }
         }
 
+        if (
+            sol.BINARY_OPERATOR_GROUPS.Comparison.includes(op) ||
+            sol.BINARY_OPERATOR_GROUPS.Equality.includes(op)
+        ) {
+            return this.factory.binaryOperation(src, lhs, op as ir.BinaryOperator, rhs, boolT);
+        }
+
         return this.factory.binaryOperation(src, lhs, op as ir.BinaryOperator, rhs, lhsT);
     }
 
@@ -549,16 +567,18 @@ export class ExpressionCompiler {
 
         if (typeof val === "boolean") {
             return this.factory.booleanLiteral(src, val);
-        } else if (typeof val === "bigint") {
+        }
+
+        if (typeof val === "bigint") {
             return this.factory.numberLiteral(
                 src,
                 val,
                 10,
                 transpileType(sol.smallestFittingType(val) as sol.IntType, this.factory)
             );
-        } else {
-            throw new Error(`NYI compileConstExpr(${pp(expr)}) with val ${val}`);
         }
+
+        throw new Error(`NYI compileConstExpr(${pp(expr)}) with val ${val}`);
     }
 
     isArithmeticChecked(node: sol.ASTNode): boolean {
@@ -576,12 +596,21 @@ export class ExpressionCompiler {
         const src = new ASTSource(expr);
         const subExp = this.compile(expr.vSubExpression);
 
-        if (expr.operator === "!" || expr.operator === "~") {
+        if (expr.operator === "!") {
             return this.factory.unaryOperation(src, expr.operator, subExp, boolT);
         }
 
+        const subT = this.typeOf(subExp);
+
+        if (expr.operator === "delete") {
+            return this.assignTo(expr.vSubExpression, this.cfgBuilder.zeroValue(subT, src), src);
+        }
+
+        if (expr.operator === "~") {
+            return this.factory.unaryOperation(src, expr.operator, subExp, subT);
+        }
+
         if (expr.operator === "-") {
-            const subT = this.typeOf(subExp);
             if (this.isArithmeticChecked(expr)) {
                 const isOverflowing = this.cfgBuilder.getTmpId(boolT, noSrc);
 
@@ -601,14 +630,15 @@ export class ExpressionCompiler {
         }
 
         if (expr.operator === "++" || expr.operator === "--") {
-            const subT = this.typeOf(subExp);
             assert(subT instanceof ir.IntType, `Unexpected type {0} of {1}`, subT, subExp);
+
             let res: ir.Expression;
 
             if (expr.prefix) {
                 res = this.compile(expr.vSubExpression);
             } else {
                 res = this.cfgBuilder.getTmpId(subT, src);
+
                 this.cfgBuilder.assign(res as ir.Identifier, subExp, src);
             }
 

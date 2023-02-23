@@ -211,7 +211,7 @@ describe("Interpreter tests", () => {
             interp.run();
 
             if (interp.state.failure) {
-                console.log(interp.state.dump());
+                console.log(JSON.stringify(interp.state.dump(), undefined, 4));
 
                 throw interp.state.failure;
             }
