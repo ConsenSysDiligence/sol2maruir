@@ -95,6 +95,7 @@ const preambleStr = `
         fail:
             call sol_panic(1_u256);
             abort;
+
         exit:
             return;
     }
@@ -155,7 +156,7 @@ const preambleStr = `
     }
 
 
-    fun sol_revert(): never 
+    fun sol_revert(): never
     locals 
         panicBytes: ArrWithLen<#exception; u8> *#exception,
         panicBytesArr: u8[] *#exception;
@@ -177,6 +178,30 @@ const preambleStr = `
             panicBytes := call copy_u8arr<M, #exception>(bytes);
             call builtin_setExceptionBytes(panicBytes);
             abort;
+    }
+
+    fun sol_require(cond: bool)
+    {
+        entry:
+            branch cond exit fail;
+
+        fail:
+            call sol_revert();
+
+        exit:
+            return;
+    }
+
+    fun sol_require_msg<M>(cond: bool, message: ArrWithLen<M; u8> *M)
+    {
+        entry:
+            branch cond exit fail;
+
+        fail:
+            call sol_revert_08<M>(message);
+
+        exit:
+            return;
     }
 
     fun new_array<M; T>(size: u256): ArrWithLen<M; T> *M

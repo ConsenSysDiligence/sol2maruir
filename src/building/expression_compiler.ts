@@ -764,14 +764,17 @@ export class ExpressionCompiler {
     }
 
     compileBuiltinFunctionCall(expr: sol.FunctionCall): ir.Expression {
+        const exprSrc = new ASTSource(expr);
+        const calleeSrc = new ASTSource(expr.vCallee);
+
         if (expr.vFunctionName === "assert") {
             this.cfgBuilder.call(
                 [],
-                this.factory.identifier(new ASTSource(expr.vCallee), "sol_assert", noType),
+                this.factory.identifier(calleeSrc, "sol_assert", noType),
                 [],
                 [],
                 [this.compile(single(expr.vArguments))],
-                new ASTSource(expr)
+                exprSrc
             );
 
             return this.factory.tuple(noSrc, [], noType);
@@ -780,11 +783,37 @@ export class ExpressionCompiler {
         if (expr.vFunctionName === "revert") {
             this.cfgBuilder.call(
                 [],
-                this.factory.identifier(new ASTSource(expr.vCallee), "sol_revert", noType),
+                this.factory.identifier(calleeSrc, "sol_revert", noType),
                 [],
                 [],
                 [],
-                new ASTSource(expr)
+                exprSrc
+            );
+
+            return this.factory.tuple(noSrc, [], noType);
+        }
+
+        if (expr.vFunctionName === "require") {
+            const args = expr.vArguments.map((arg) => this.compile(arg));
+            const argTs: ir.Type[] = [];
+
+            let name: string;
+
+            if (args.length === 2) {
+                name = "sol_require_msg";
+
+                argTs.push(this.typeOf(args[1]));
+            } else {
+                name = "sol_require";
+            }
+
+            this.cfgBuilder.call(
+                [],
+                this.factory.identifier(calleeSrc, name, noType),
+                [],
+                argTs,
+                args,
+                exprSrc
             );
 
             return this.factory.tuple(noSrc, [], noType);
@@ -797,11 +826,11 @@ export class ExpressionCompiler {
 
             this.cfgBuilder.call(
                 [res],
-                this.factory.identifier(noSrc, builtinName, noType),
+                this.factory.identifier(calleeSrc, builtinName, noType),
                 [],
                 argTs,
                 args,
-                new ASTSource(expr)
+                exprSrc
             );
 
             return res;
@@ -1337,7 +1366,7 @@ export class ExpressionCompiler {
             return this.compileMemberAccess(expr);
         }
 
-        throw new Error(`NYI Compiling ${pp(expr)}`);
+        throw new Error(`NYI compiling ${pp(expr)}`);
     }
 
     typeOf(expr: ir.Expression): ir.Type {
