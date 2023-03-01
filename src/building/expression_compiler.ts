@@ -174,20 +174,7 @@ export class ExpressionCompiler {
                 const def = this.cfgBuilder.globalScope.getTypeDecl(baseIrT.toType);
 
                 if (def instanceof ir.StructDefinition) {
-                    let memberName = lhs.memberName;
-
-                    if (lhs.memberName === "length" && lhs.vReferencedDeclaration === undefined) {
-                        assert(
-                            def.name === "ArrWithLen",
-                            "Expected ArrWithLen struct to modify length, got {0} when processing {1}",
-                            def.name,
-                            lhs
-                        );
-
-                        memberName = "len";
-                    }
-
-                    this.cfgBuilder.storeField(base, memberName, rhs, assignSrc);
+                    this.cfgBuilder.storeField(base, lhs.memberName, rhs, assignSrc);
 
                     return rhs;
                 }
