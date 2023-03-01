@@ -2,7 +2,7 @@ import * as ir from "maru-ir2";
 import { BaseSrc, GlobalVariable, noSrc } from "maru-ir2";
 import { gte } from "semver";
 import * as sol from "solc-typed-ast";
-import { assert, ContractKind, pp } from "solc-typed-ast";
+import { assert, ContractKind, generalizeType, pp } from "solc-typed-ast";
 import { IRTuple2 } from "../ir";
 import { ASTSource } from "../ir/source";
 import { single } from "../utils";
@@ -60,7 +60,17 @@ export class ExpressionCompiler {
             }
         }
 
-        throw new Error(`NYI compileIdnetifier(${pp(expr)})`);
+        if (expr.vIdentifierType === sol.ExternalReferenceType.Builtin) {
+            if (expr.name === "msg") {
+                return builder.msgPtr(src);
+            }
+
+            if (expr.name === "block") {
+                return builder.blockPtr(src);
+            }
+        }
+
+        throw new Error(`NYI compileIdentifier(${pp(expr)})`);
     }
 
     /**
@@ -113,6 +123,14 @@ export class ExpressionCompiler {
      * 2. Assignment to storage (that is not a local storage variable)
      */
     assignTo(lhs: sol.Expression, rhs: ir.Expression, assignSrc: ir.BaseSrc): ir.Expression {
+        if (
+            lhs instanceof sol.TupleExpression &&
+            lhs.vOriginalComponents.length === 1 &&
+            lhs.vOriginalComponents[0] !== null
+        ) {
+            return this.assignTo(lhs.vOriginalComponents[0], rhs, assignSrc);
+        }
+
         if (lhs instanceof sol.Identifier) {
             const def = lhs.vReferencedDeclaration;
 
@@ -248,16 +266,19 @@ export class ExpressionCompiler {
      *  - desugaring assignments of the shape +=, -=...
      */
     compileAssignment(expr: sol.Assignment): ir.Expression {
+        const src = new ASTSource(expr);
+
         const lhsT = this.cfgBuilder.infer.typeOf(expr.vLeftHandSide);
         const lhsIRT = transpileType(lhsT, this.factory);
-        const rhsSolT = this.cfgBuilder.infer.typeOf(expr.vRightHandSide);
 
-        let rhs: ir.Expression = this.compile(expr.vRightHandSide);
+        let rhs = this.compile(expr.vRightHandSide);
+
+        const rhsIRT = this.factory.typeOf(rhs);
 
         // Perform any implicit casts from the rhs to the lhs (e.g. u8 to u16)
-        const castedRHS = this.castTo(rhs, lhsIRT, new ASTSource(expr));
+        const castedRHS = this.castTo(rhs, lhsIRT, src);
 
-        assert(castedRHS !== undefined, `Cannot assign ${rhsSolT.pp()} to ${lhsT.pp()}`);
+        assert(castedRHS !== undefined, "Cannot assign {0} to {1}", rhsIRT, lhsIRT);
 
         rhs = castedRHS;
 
@@ -265,15 +286,15 @@ export class ExpressionCompiler {
         if (expr.operator !== "=") {
             rhs = this.makeBinaryOperation(
                 this.compile(expr.vLeftHandSide),
-                expr.operator[0] as ir.BinaryOperator,
+                expr.operator.slice(0, -1) as ir.BinaryOperator,
                 rhs,
                 this.isArithmeticChecked(expr),
-                new ASTSource(expr)
+                src
             );
         }
 
         // Make the actual assignment
-        return this.assignTo(expr.vLeftHandSide, rhs, new ASTSource(expr));
+        return this.assignTo(expr.vLeftHandSide, rhs, src);
     }
 
     /**
@@ -318,13 +339,40 @@ export class ExpressionCompiler {
         }
 
         assert(resT instanceof sol.IntType, `Expected int type not {0}`, resT);
+
         return resT;
     }
 
     getStrLit(str: string, src: ir.BaseSrc): ir.Identifier {
         const val: bigint[] = [...Buffer.from(str, "utf-8")].map((x) => BigInt(x));
 
-        const name = this.cfgBuilder.uid.get(`_str_lit_`);
+        const name = this.cfgBuilder.globalUid.get(`_str_lit_`);
+
+        this.cfgBuilder.globalScope.define(
+            this.factory.globalVariable(
+                noSrc,
+                name,
+                u8ArrExcPtr,
+                this.factory.structLiteral(noSrc, [
+                    ["len", this.factory.numberLiteral(noSrc, BigInt(val.length), 10, u256)],
+                    [
+                        "arr",
+                        this.factory.arrayLiteral(
+                            noSrc,
+                            val.map((v) => this.factory.numberLiteral(noSrc, v, 10, u8))
+                        )
+                    ]
+                ])
+            )
+        );
+
+        return this.factory.identifier(src, name, u8ArrExcPtr);
+    }
+
+    getBytesLit(bytes: string, src: ir.BaseSrc): ir.Identifier {
+        const val: bigint[] = [...Buffer.from(bytes, "hex")].map((x) => BigInt(x));
+
+        const name = this.cfgBuilder.globalUid.get(`_bytes_lit_`);
 
         this.cfgBuilder.globalScope.define(
             this.factory.globalVariable(
@@ -360,6 +408,7 @@ export class ExpressionCompiler {
                 sol.smallestFittingType(val) as sol.IntType,
                 this.factory
             ) as ir.IntType;
+
             return this.factory.numberLiteral(
                 src,
                 BigInt(expr.value),
@@ -368,15 +417,15 @@ export class ExpressionCompiler {
             );
         }
 
-        if (
-            expr.kind === sol.LiteralKind.HexString ||
-            expr.kind === sol.LiteralKind.String ||
-            expr.kind === sol.LiteralKind.UnicodeString
-        ) {
-            assert(expr.kind === "string", `NYI literal kind {0}`, expr.kind);
-
+        if (expr.kind === sol.LiteralKind.String) {
             return this.getStrLit(expr.value, src);
         }
+
+        if (expr.kind === sol.LiteralKind.HexString) {
+            return this.getBytesLit(expr.hexValue, src);
+        }
+
+        // Missing sol.LiteralKind.UnicodeString
 
         throw new Error(`NYI literal kind ${expr.kind}`);
     }
@@ -450,6 +499,13 @@ export class ExpressionCompiler {
             }
         }
 
+        if (
+            sol.BINARY_OPERATOR_GROUPS.Comparison.includes(op) ||
+            sol.BINARY_OPERATOR_GROUPS.Equality.includes(op)
+        ) {
+            return this.factory.binaryOperation(src, lhs, op as ir.BinaryOperator, rhs, boolT);
+        }
+
         return this.factory.binaryOperation(src, lhs, op as ir.BinaryOperator, rhs, lhsT);
     }
 
@@ -498,16 +554,18 @@ export class ExpressionCompiler {
 
         if (typeof val === "boolean") {
             return this.factory.booleanLiteral(src, val);
-        } else if (typeof val === "bigint") {
+        }
+
+        if (typeof val === "bigint") {
             return this.factory.numberLiteral(
                 src,
                 val,
                 10,
                 transpileType(sol.smallestFittingType(val) as sol.IntType, this.factory)
             );
-        } else {
-            throw new Error(`NYI compileConstExpr(${pp(expr)}) with val ${val}`);
         }
+
+        throw new Error(`NYI compileConstExpr(${pp(expr)}) with val ${val}`);
     }
 
     isArithmeticChecked(node: sol.ASTNode): boolean {
@@ -526,11 +584,20 @@ export class ExpressionCompiler {
         const subExp = this.compile(expr.vSubExpression);
 
         if (expr.operator === "!") {
-            return this.factory.unaryOperation(src, "!", subExp, boolT);
+            return this.factory.unaryOperation(src, expr.operator, subExp, boolT);
+        }
+
+        const subT = this.typeOf(subExp);
+
+        if (expr.operator === "delete") {
+            return this.assignTo(expr.vSubExpression, this.cfgBuilder.zeroValue(subT, src), src);
+        }
+
+        if (expr.operator === "~") {
+            return this.factory.unaryOperation(src, expr.operator, subExp, subT);
         }
 
         if (expr.operator === "-") {
-            const subT = this.typeOf(subExp);
             if (this.isArithmeticChecked(expr)) {
                 const isOverflowing = this.cfgBuilder.getTmpId(boolT, noSrc);
 
@@ -550,14 +617,15 @@ export class ExpressionCompiler {
         }
 
         if (expr.operator === "++" || expr.operator === "--") {
-            const subT = this.typeOf(subExp);
             assert(subT instanceof ir.IntType, `Unexpected type {0} of {1}`, subT, subExp);
+
             let res: ir.Expression;
 
             if (expr.prefix) {
                 res = this.compile(expr.vSubExpression);
             } else {
                 res = this.cfgBuilder.getTmpId(subT, src);
+
                 this.cfgBuilder.assign(res as ir.Identifier, subExp, src);
             }
 
@@ -635,15 +703,45 @@ export class ExpressionCompiler {
         );
     }
 
+    /**
+     * @todo Please, be careful with encoder here. Things may get bad quickly.
+     *
+     * @see https://github.com/ConsenSys/solc-typed-ast/blob/f3236d354c811f3bfcf4dd6370b02255911db3ee/src/types/infer.ts#L2290-L2346
+     * @see https://github.com/ConsenSys/solc-typed-ast/blob/f3236d354c811f3bfcf4dd6370b02255911db3ee/src/types/infer.ts#L196-L215
+     * @see https://github.com/ConsenSys/solc-typed-ast/blob/f3236d354c811f3bfcf4dd6370b02255911db3ee/src/types/abi.ts#L31-L65
+     * @see https://github.com/ConsenSys/solc-typed-ast/blob/f3236d354c811f3bfcf4dd6370b02255911db3ee/src/types/abi.ts#L72-L122
+     */
     private prepEncodeArgs(solArgs: sol.Expression[]): [ir.Expression[], ir.Type[]] {
         const args: ir.Expression[] = [];
         const argTs: ir.Type[] = [];
 
         for (const solArg of solArgs) {
             const solType = this.cfgBuilder.infer.typeOf(solArg);
+
             const irArg = this.compile(solArg);
             const irArgT = this.typeOf(irArg);
-            const abiTypeName = this.getStrLit(sol.abiTypeToCanonicalName(solType), noSrc);
+
+            let abiSafeSolType: sol.TypeNode;
+
+            if (solType instanceof sol.IntLiteralType) {
+                const fitT = solType.smallestFittingType();
+
+                assert(
+                    fitT !== undefined,
+                    "Unable to detect smalles fitting type for {0}",
+                    solType
+                );
+
+                abiSafeSolType = fitT;
+            } else {
+                abiSafeSolType = solType;
+            }
+
+            const abiType = generalizeType(
+                this.cfgBuilder.infer.toABIEncodedType(abiSafeSolType, this.abiEncodeVersion)
+            )[0];
+
+            const abiTypeName = this.getStrLit(abiType.pp(), noSrc);
 
             args.push(abiTypeName, irArg);
             argTs.push(irArgT);
@@ -653,14 +751,17 @@ export class ExpressionCompiler {
     }
 
     compileBuiltinFunctionCall(expr: sol.FunctionCall): ir.Expression {
+        const exprSrc = new ASTSource(expr);
+        const calleeSrc = new ASTSource(expr.vCallee);
+
         if (expr.vFunctionName === "assert") {
             this.cfgBuilder.call(
                 [],
-                this.factory.identifier(new ASTSource(expr.vCallee), "sol_assert", noType),
+                this.factory.identifier(calleeSrc, "sol_assert", noType),
                 [],
                 [],
                 [this.compile(single(expr.vArguments))],
-                new ASTSource(expr)
+                exprSrc
             );
 
             return this.factory.tuple(noSrc, [], noType);
@@ -669,11 +770,37 @@ export class ExpressionCompiler {
         if (expr.vFunctionName === "revert") {
             this.cfgBuilder.call(
                 [],
-                this.factory.identifier(new ASTSource(expr.vCallee), "sol_revert", noType),
+                this.factory.identifier(calleeSrc, "sol_revert", noType),
                 [],
                 [],
                 [],
-                new ASTSource(expr)
+                exprSrc
+            );
+
+            return this.factory.tuple(noSrc, [], noType);
+        }
+
+        if (expr.vFunctionName === "require") {
+            const args = expr.vArguments.map((arg) => this.compile(arg));
+            const argTs: ir.Type[] = [];
+
+            let name: string;
+
+            if (args.length === 2) {
+                name = "sol_require_msg";
+
+                argTs.push(this.typeOf(args[1]));
+            } else {
+                name = "sol_require";
+            }
+
+            this.cfgBuilder.call(
+                [],
+                this.factory.identifier(calleeSrc, name, noType),
+                [],
+                argTs,
+                args,
+                exprSrc
             );
 
             return this.factory.tuple(noSrc, [], noType);
@@ -686,11 +813,11 @@ export class ExpressionCompiler {
 
             this.cfgBuilder.call(
                 [res],
-                this.factory.identifier(noSrc, builtinName, noType),
+                this.factory.identifier(calleeSrc, builtinName, noType),
                 [],
                 argTs,
                 args,
-                new ASTSource(expr)
+                exprSrc
             );
 
             return res;
@@ -886,7 +1013,27 @@ export class ExpressionCompiler {
         // There are several cases:
         if (callee instanceof sol.Identifier) {
             // 1. Internal call to the same contract or a free function call
-            throw new Error("NYI decoding identifier calls");
+            isExternal = false;
+
+            const def = expr.vReferencedDeclaration;
+
+            assert(
+                def instanceof sol.FunctionDefinition,
+                `Unexpected declaration {0} for {1}`,
+                def,
+                expr
+            );
+
+            assert(
+                funScope instanceof sol.ContractDefinition,
+                `NYI call free function via identifier`
+            );
+
+            const src = new ASTSource(expr);
+
+            thisExpr = this.mustCastTo(this.cfgBuilder.this(src), u160, src);
+
+            irFun = getDispatchName(funScope, def, this.cfgBuilder.infer);
         } else if (callee instanceof sol.MemberAccess) {
             const base = callee.vExpression;
             const baseT = this.cfgBuilder.infer.typeOf(base);
@@ -897,6 +1044,7 @@ export class ExpressionCompiler {
             ) {
                 // 2. Call to another contract a.foo() (as a sub-case this.foo())
                 isExternal = true;
+
                 const def = expr.vReferencedDeclaration;
 
                 assert(
@@ -907,6 +1055,7 @@ export class ExpressionCompiler {
                 irFun = getDispatchName(baseT.definition, def, this.cfgBuilder.infer);
 
                 const baseIRExpr = this.compile(base);
+
                 thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));
             } else if (
                 baseT instanceof sol.TypeNameType &&
@@ -1058,8 +1207,6 @@ export class ExpressionCompiler {
             transpileType(calleeT.type, this.factory),
             new ASTSource(expr)
         );
-
-        throw new Error("NYI compileTypeConversion");
     }
 
     compileConditional(expr: sol.Conditional): ir.Expression {
@@ -1105,7 +1252,7 @@ export class ExpressionCompiler {
         }
 
         throw new Error(
-            `NYI compiling index expression ${expr.print()} wth base type ${baseT.pp()}`
+            `NYI compiling index expression ${expr.print()} with base type ${baseT.pp()}`
         );
     }
 
@@ -1142,7 +1289,7 @@ export class ExpressionCompiler {
         }
 
         throw new Error(
-            `NYI compiling member expression ${expr.print()} wth base ${base.pp()} of type ${baseT.pp()} and member ${
+            `NYI compiling member expression ${expr.print()} with base ${base.pp()} of type ${baseT.pp()} and member ${
                 expr.memberName
             }`
         );
@@ -1206,7 +1353,7 @@ export class ExpressionCompiler {
             return this.compileMemberAccess(expr);
         }
 
-        throw new Error(`NYI Compiling ${pp(expr)}`);
+        throw new Error(`NYI compiling ${pp(expr)}`);
     }
 
     typeOf(expr: ir.Expression): ir.Type {
@@ -1376,6 +1523,7 @@ export class ExpressionCompiler {
         const compiler = new CopyFunCompiler(
             this.factory,
             this.cfgBuilder.globalScope,
+            this.cfgBuilder.globalUid,
             this.cfgBuilder.solVersion,
             this.abiEncodeVersion,
             fromT,

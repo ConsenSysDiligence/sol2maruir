@@ -1,6 +1,6 @@
 import expect from "expect";
 import * as fse from "fs-extra";
-import { ASTReader, compileSol } from "solc-typed-ast";
+import { assert, ASTReader, compileSol } from "solc-typed-ast";
 import { UnitCompiler } from "../src";
 import { SolMaruirInterp } from "../src/interp";
 import { buildMaps, JSONConfigTranspiler } from "./json_config_transpiler";
@@ -168,11 +168,10 @@ const files = [
 ];
 */
 
-describe("Interpretor tests", async () => {
+describe("Interpreter tests", () => {
     const files = [
-        "test/samples/solidity/aliasing_and_copying.config.json",
-        "test/samples/solidity/MemoryAliasing.config.json",
-        "test/samples/solidity/StorageAliasing.config.json"
+        "test/samples/solidity/EncodingTest.config.json",
+        "test/samples/solidity/ABIEncoderV2_Structs.config.json"
     ];
 
     for (const jsonFile of files) {
@@ -184,11 +183,14 @@ describe("Interpretor tests", async () => {
             const reader = new ASTReader();
             const units = reader.read(result.data);
 
-            const compiler = new UnitCompiler(result.compilerVersion as string);
+            assert(result.compilerVersion !== undefined, "Unable to detect compiler version");
+
+            const compiler = new UnitCompiler(result.compilerVersion);
 
             const jsonCompiler = new JSONConfigTranspiler(
                 result.compilerVersion as string,
-                compiler.factory
+                compiler.factory,
+                compiler.globalUid
             );
 
             const transpiledDefs = [...compiler.compile(units)];
@@ -209,7 +211,7 @@ describe("Interpretor tests", async () => {
             interp.run();
 
             if (interp.state.failure) {
-                console.log(interp.state.dump());
+                console.log(JSON.stringify(interp.state.dump(), undefined, 4));
 
                 throw interp.state.failure;
             }

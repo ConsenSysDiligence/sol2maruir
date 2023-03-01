@@ -456,6 +456,22 @@ export class StatementCompiler {
     }
 
     /**
+     * Compile a throw statement
+     */
+    compileThrow(stmt: sol.Throw): void {
+        const src = new ASTSource(stmt);
+
+        this.cfgBuilder.call(
+            [],
+            this.cfgBuilder.factory.identifier(src, "sol_revert", noType),
+            [],
+            [],
+            [],
+            src
+        );
+    }
+
+    /**
      * Compile a single Solidity statment `stmt`. Note that this may
      * add multiple ir statements, or even new basic blocks (e.g. for ternaries)
      */
@@ -507,6 +523,10 @@ export class StatementCompiler {
             return this.compileRevert(stmt);
         }
 
-        throw new Error(`NYI Compiling ${pp(stmt)}`);
+        if (stmt instanceof sol.Throw) {
+            return this.compileThrow(stmt);
+        }
+
+        throw new Error(`NYI compiling ${pp(stmt)}`);
     }
 }

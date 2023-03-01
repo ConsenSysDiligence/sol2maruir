@@ -4,17 +4,19 @@ import { BaseFunctionCompiler } from "./base_function_compiler";
 import { boolT, noSrc } from "maru-ir2";
 import { IRFactory } from "./factory";
 import { noType, u256 } from "./typing";
+import { UIDGenerator } from "../utils";
 
 export class CopyFunCompiler extends BaseFunctionCompiler {
     constructor(
         factory: IRFactory,
         globalScope: ir.Scope,
+        globalUid: UIDGenerator,
         solVersion: string,
         abiVersion: sol.ABIEncoderVersion,
         private readonly fromT: ir.Type,
         private readonly toT: ir.Type
     ) {
-        super(factory, globalScope, solVersion, abiVersion);
+        super(factory, globalUid, globalScope, solVersion, abiVersion);
     }
 
     templateType(t: ir.Type, memVar: ir.MemVariableDeclaration): ir.Type {

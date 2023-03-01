@@ -9,6 +9,7 @@ import { ASTSource } from "../ir/source";
 import { getDesugaredFunName, getDesugaredPartialConstructorName } from "./resolving";
 import { BaseFunctionCompiler } from "./base_function_compiler";
 import { IRFactory } from "./factory";
+import { UIDGenerator } from "../utils";
 
 type FunctionScope = sol.ContractDefinition | sol.SourceUnit;
 
@@ -25,12 +26,13 @@ export class FunctionCompiler extends BaseFunctionCompiler {
         factory: IRFactory,
         private readonly fun: sol.FunctionDefinition,
         globalScope: ir.Scope,
+        globalUid: UIDGenerator,
         solVersion: string,
         abiVersion: sol.ABIEncoderVersion,
         private readonly scope: FunctionScope,
         contractStruct?: ir.StructDefinition
     ) {
-        super(factory, globalScope, solVersion, abiVersion, contractStruct);
+        super(factory, globalUid, globalScope, solVersion, abiVersion, contractStruct);
 
         this.exprCompiler = new ExpressionCompiler(this.cfgBuilder, this.abiVersion);
 

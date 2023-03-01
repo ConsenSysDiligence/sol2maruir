@@ -1,23 +1,55 @@
-import "./utils.sol";
-
 contract EncodingTest {
-    function test() public {
+    function isSame(bytes memory a, bytes memory b) public pure returns (bool) {
+        if (a.length != b.length) {
+            return false;
+        }
+
+        for (uint256 i = 0; i < a.length; i++) {
+            if (a[i] != b[i]) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    struct Arg {
+        uint u;
+        bool b;
+        int i;
+        address a;
+    }
+
+    function encodeStructs() public pure returns (bytes memory) {
+        Arg memory arg = Arg(3, true, -1, 0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF);
+
+        return abi.encode(arg);
+    }
+
+    function test() public pure {
         assert(
-            BytesLib.isSame(
+            isSame(
+                encodeStructs(),
+                hex"00000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000001ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000000000000000deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+            )
+        );
+
+        assert(
+            isSame(
                 abi.encode(true, false),
                 hex"00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000"
             )
         );
 
         assert(
-            BytesLib.isSame(
+            isSame(
                 abi.encode(bytes1(0x01)),
                 hex"0100000000000000000000000000000000000000000000000000000000000000"
             )
         );
 
         assert(
-            BytesLib.isSame(
+            isSame(
                 abi.encode(
                     bytes32(0x0102030405060708091011121314151617181920212223242526272829303132)
                 ),
@@ -26,21 +58,21 @@ contract EncodingTest {
         );
 
         assert(
-            BytesLib.isSame(
+            isSame(
                 abi.encode(-123, 123),
                 hex"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff85000000000000000000000000000000000000000000000000000000000000007b"
             )
         );
 
         assert(
-            BytesLib.isSame(
+            isSame(
                 abi.encode([uint256(1), 2, 3]),
                 hex"000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003"
             )
         );
 
         assert(
-            BytesLib.isSame(
+            isSame(
                 abi.encode(address(0xc03c4bF79eB0a0fD5fB75C35AddA741BC90Cf6b4)),
                 hex"000000000000000000000000c03c4bf79eb0a0fd5fb75c35adda741bc90cf6b4"
             )

@@ -1,6 +1,7 @@
 import * as ir from "maru-ir2";
 import * as sol from "solc-typed-ast";
 import { ASTSource } from "../ir/source";
+import { UIDGenerator } from "../utils";
 import { ConstructorCompiler } from "./constructor_compiler";
 import { DispatchCompiler } from "./dispatch_compiler";
 import { IRFactory } from "./factory";
@@ -28,7 +29,8 @@ export class UnitCompiler {
     private readonly globalScope: ir.Scope;
 
     readonly inference: sol.InferType;
-    readonly factory: IRFactory = new IRFactory();
+    readonly factory = new IRFactory();
+    readonly globalUid = new UIDGenerator();
 
     private emittedStructMap = new Map<sol.ContractDefinition, ir.StructDefinition>();
     private emittedMethodMap = new Map<
@@ -130,6 +132,7 @@ export class UnitCompiler {
                 this.factory,
                 fun,
                 this.globalScope,
+                this.globalUid,
                 this.solVersion,
                 abiVersion,
                 unit
@@ -170,6 +173,7 @@ export class UnitCompiler {
             this.factory,
             contract,
             this.globalScope,
+            this.globalUid,
             this.solVersion,
             abiVersion,
             irContract
@@ -204,6 +208,7 @@ export class UnitCompiler {
                     this.factory,
                     method,
                     this.globalScope,
+                    this.globalUid,
                     this.solVersion,
                     abiVersion,
                     contract,
@@ -237,6 +242,7 @@ export class UnitCompiler {
             solMethod,
             overridingImpls,
             this.globalScope,
+            this.globalUid,
             this.solVersion,
             abiVersion
         );

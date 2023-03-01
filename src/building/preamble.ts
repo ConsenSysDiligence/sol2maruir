@@ -2,10 +2,19 @@ import * as ir from "maru-ir2";
 
 const preambleStr = `
     var _exception_code_: u256 = 0_u256
-    var _exception_bytes_: ArrWithLen<#exception; u8> *#exception = { arr: [], len: 0_u256 }
+    var _exception_bytes_: ArrWithLen<#exception; u8> *#exception = {
+        arr: [],
+        len: 0_u256
+    }
 
-    var _panic_signature: ArrWithLen<#exception; u8> *#exception = { arr: [80_u8, 97_u8, 110_u8, 105_u8, 99_u8, 40_u8, 117_u8, 105_u8, 110_u8, 116_u8, 50_u8, 53_u8, 54_u8, 41_u8], len: 14_u256 }
-    var _uint256_str_: ArrWithLen<#exception; u8> *#exception = { arr: [117_u8, 105_u8, 110_u8, 116_u8, 50_u8, 53_u8, 54_u8], len: 7_u256 }
+    var _panic_signature: ArrWithLen<#exception; u8> *#exception = {
+        arr: [80_u8, 97_u8, 110_u8, 105_u8, 99_u8, 40_u8, 117_u8, 105_u8, 110_u8, 116_u8, 50_u8, 53_u8, 54_u8, 41_u8],
+        len: 14_u256
+    }
+    var _uint256_str_: ArrWithLen<#exception; u8> *#exception = {
+        arr: [117_u8, 105_u8, 110_u8, 116_u8, 50_u8, 53_u8, 54_u8],
+        len: 7_u256
+    }
 
     struct Block {
         number: u256;
@@ -86,6 +95,7 @@ const preambleStr = `
         fail:
             call sol_panic(1_u256);
             abort;
+
         exit:
             return;
     }
@@ -146,7 +156,7 @@ const preambleStr = `
     }
 
 
-    fun sol_revert(): never 
+    fun sol_revert(): never
     locals 
         panicBytes: ArrWithLen<#exception; u8> *#exception,
         panicBytesArr: u8[] *#exception;
@@ -168,6 +178,30 @@ const preambleStr = `
             panicBytes := call copy_u8arr<M, #exception>(bytes);
             call builtin_setExceptionBytes(panicBytes);
             abort;
+    }
+
+    fun sol_require(cond: bool)
+    {
+        entry:
+            branch cond exit fail;
+
+        fail:
+            call sol_revert();
+
+        exit:
+            return;
+    }
+
+    fun sol_require_msg<M>(cond: bool, message: ArrWithLen<M; u8> *M)
+    {
+        entry:
+            branch cond exit fail;
+
+        fail:
+            call sol_revert_08<M>(message);
+
+        exit:
+            return;
     }
 
     fun new_array<M; T>(size: u256): ArrWithLen<M; T> *M
@@ -214,11 +248,46 @@ const preambleStr = `
             return false;
     }
 
-    fun builtin_abi_encode_1<;T1>(arg1AbiT: ArrWithLen<#exception; u8> *#exception, arg1: T1): ArrWithLen<#memory; u8> *#memory
+    fun builtin_abi_encode_1<;T1>(
+        arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg1: T1
+    ): ArrWithLen<#memory; u8> *#memory
+    fun builtin_abi_encode_2<;T1, T2>(
+        arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg1: T1,
+        arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg2: T2
+    ): ArrWithLen<#memory; u8> *#memory
+    fun builtin_abi_encode_3<;T1, T2, T3>(
+        arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg1: T1,
+        arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg2: T2,
+        arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg3: T3
+    ): ArrWithLen<#memory; u8> *#memory
 
-    fun builtin_abi_encodeWithSignature_1<SigM; T1>(sig: ArrWithLen<SigM; u8> *SigM, arg1AbiT: ArrWithLen<#exception; u8> *#exception, arg1: T1): ArrWithLen<#memory; u8> *#memory
-    fun builtin_abi_encodeWithSignature_2<SigM; T1, T2>(sig: ArrWithLen<SigM; u8> *SigM, arg1AbiT: ArrWithLen<#exception; u8> *#exception, arg1: T1, arg2AbiT: ArrWithLen<#exception; u8> *#exception, arg2: T2): ArrWithLen<#memory; u8> *#memory
-    fun builtin_abi_encodeWithSignature_3<SigM; T1, T2, T3>(sig: ArrWithLen<SigM; u8> *SigM, arg1AbiT: ArrWithLen<#exception; u8> *#exception, arg1: T1, arg2AbiT: ArrWithLen<#exception; u8> *#exception, arg2: T2, arg3AbiT: ArrWithLen<#exception; u8> *#exception, arg3: T3): ArrWithLen<#memory; u8> *#memory
+    fun builtin_abi_encodeWithSignature_1<SigM; T1>(
+        sig: ArrWithLen<SigM; u8> *SigM,
+        arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg1: T1
+    ): ArrWithLen<#memory; u8> *#memory
+    fun builtin_abi_encodeWithSignature_2<SigM; T1, T2>(
+        sig: ArrWithLen<SigM; u8> *SigM,
+        arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg1: T1,
+        arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg2: T2
+    ): ArrWithLen<#memory; u8> *#memory
+    fun builtin_abi_encodeWithSignature_3<SigM; T1, T2, T3>(
+        sig: ArrWithLen<SigM; u8> *SigM,
+        arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg1: T1,
+        arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg2: T2,
+        arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg3: T3
+    ): ArrWithLen<#memory; u8> *#memory
     
 
     fun builtin_add_overflows<;IntT>(x: IntT, y: IntT): bool
