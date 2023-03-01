@@ -1,4 +1,4 @@
-import { ComplexValue, PointerVal, State } from "maru-ir2";
+import { State } from "maru-ir2";
 import * as sol from "solc-typed-ast";
 import { assert, InferType, LatestCompilerVersion } from "solc-typed-ast";
 
@@ -85,18 +85,6 @@ function abiTypeStringToTypeNode(t: string): sol.TypeNode {
     return elementaryT;
 }
 
-export function deref(state: State, ptr: PointerVal): ComplexValue {
-    const mem = state.memories.get(ptr[0]);
-
-    assert(mem !== undefined, `Memory {0} not found.`, ptr[0]);
-
-    const val = mem.get(ptr[1]);
-
-    assert(val !== undefined, `Pointer ${ptr[1]} in ${ptr[0]} is undefined`);
-
-    return val;
-}
-
 /**
  * Converts IR value to Web3-compatible value.
  *
@@ -135,7 +123,7 @@ export function toWeb3Value(arg: any, abiType: string | sol.TypeNode, s: State):
     }
 
     if (type instanceof sol.ArrayType) {
-        const struct = deref(s, arg);
+        const struct = s.deref(arg);
 
         assert(struct instanceof Map, "Expected struct pointer for array type, got {0}", arg);
 
@@ -147,7 +135,7 @@ export function toWeb3Value(arg: any, abiType: string | sol.TypeNode, s: State):
             struct
         );
 
-        const arrVal = deref(s, arrPtr);
+        const arrVal = s.deref(arrPtr);
 
         assert(arrVal instanceof Array, "Expeced array value, got {0}", arrVal);
 
@@ -157,7 +145,7 @@ export function toWeb3Value(arg: any, abiType: string | sol.TypeNode, s: State):
     }
 
     if (type instanceof sol.TupleType) {
-        const struct = deref(s, arg);
+        const struct = s.deref(arg);
 
         // console.error(struct);
 

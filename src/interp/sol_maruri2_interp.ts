@@ -20,7 +20,7 @@ import {
     Typing
 } from "maru-ir2";
 import { assert } from "solc-typed-ast";
-import { deref, encodeParameters, encodeWithSignature, toWeb3Value } from "../utils";
+import { encodeParameters, encodeWithSignature, toWeb3Value } from "../utils";
 
 export class SolMaruirInterp {
     resolving: Resolving;
@@ -33,7 +33,7 @@ export class SolMaruirInterp {
     nAddresses = 0;
 
     private decodeString(ptr: PointerVal): string {
-        const val = deref(this.state, ptr);
+        const val = this.state.deref(ptr);
 
         assert(
             val instanceof Map && val.has("arr"),
