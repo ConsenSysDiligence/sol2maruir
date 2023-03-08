@@ -823,6 +823,30 @@ export class ExpressionCompiler {
             return res;
         }
 
+        if (expr.vFunctionName === "keccak256") {
+            assert(
+                gte(this.cfgBuilder.infer.version, "0.5.0"),
+                "NYI function call to keccak256() for Solidity 0.4 in {0}",
+                expr
+            );
+
+            const args = expr.vArguments.map((arg) => this.compile(arg));
+
+            const builtinName = `builtin_keccak256_05`;
+            const res = this.cfgBuilder.getTmpId(u256);
+
+            this.cfgBuilder.call(
+                [res],
+                this.factory.identifier(calleeSrc, builtinName, noType),
+                [],
+                [],
+                args,
+                exprSrc
+            );
+
+            return res;
+        }
+
         throw new Error(`NYI compileBuiltinFunctionCall(${expr.vFunctionName})`);
     }
 
