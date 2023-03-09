@@ -46,7 +46,11 @@ export class ImplicitConstructorCompiler extends BaseFunctionCompiler {
         this.cfgBuilder.addIRArg("block", blockPtrT, noSrc);
         this.cfgBuilder.addIRArg("msg", msgPtrT, noSrc);
 
-        const exprCompiler = new ExpressionCompiler(this.cfgBuilder, this.abiVersion);
+        const exprCompiler = new ExpressionCompiler(
+            this.cfgBuilder,
+            this.abiVersion,
+            this.contract
+        );
 
         for (const stateVar of this.contract.vStateVariables) {
             const stateVarT = transpileType(

@@ -51,6 +51,9 @@ export abstract class BaseFunctionCompiler {
             noSrc
         );
 
+        this.cfgBuilder.curBB = this.cfgBuilder._exceptionBB;
+        this.cfgBuilder.abort(noSrc);
+
         return factory.functionDefinition(
             src,
             memArgs,

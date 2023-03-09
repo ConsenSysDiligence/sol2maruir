@@ -39,6 +39,14 @@ export const msgT = new ir.UserDefinedType(noSrc, "Message", [], []);
 export const msgPtrT = new ir.PointerType(noSrc, msgT, new ir.MemConstant(noSrc, "memory"));
 
 export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: MemDesc): ir.Type {
+    if (type instanceof sol.IntLiteralType) {
+        assert(type.literal !== undefined, `Missing literal in type {0}`, type);
+        const smallestT = sol.smallestFittingType(type.literal);
+        assert(smallestT !== undefined, `Can't fit literal {0} in a type`, type.literal);
+
+        return transpileType(smallestT, factory, ptrLoc);
+    }
+
     if (type instanceof sol.IntType) {
         return factory.intType(ir.noSrc, type.nBits === undefined ? 256 : type.nBits, type.signed);
     }
@@ -83,11 +91,7 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: M
         const loc = ptrLoc ? ptrLoc : factory.memConstant(ir.noSrc, type.location);
 
         if (type.to instanceof sol.StringType || type.to instanceof sol.BytesType) {
-            return factory.pointerType(
-                ir.noSrc,
-                factory.userDefinedType(ir.noSrc, "ArrWithLen", [loc], [u8]),
-                loc
-            );
+            return factory.pointerType(ir.noSrc, transpileType(type.to, factory, loc), loc);
         }
 
         if (type.to instanceof sol.ArrayType) {
@@ -113,7 +117,16 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: M
     if (type instanceof sol.TupleType) {
         return factory.tupleType(
             ir.noSrc,
-            type.elements.map((solT) => transpileType(solT, factory))
+            type.elements.map((solT) => (solT ? transpileType(solT, factory) : null))
+        );
+    }
+
+    if (type instanceof sol.StringType || type instanceof sol.BytesType) {
+        return factory.userDefinedType(
+            ir.noSrc,
+            "ArrWithLen",
+            [ptrLoc ? ptrLoc : factory.memConstant(ir.noSrc, "memory")],
+            [u8]
         );
     }
 
@@ -180,4 +193,34 @@ export function isSingleMem(t: ir.Type, scope: Scope): boolean {
     }
 
     return mems.size <= 1;
+}
+
+/**
+ * Given a type, return a new type with  all memory region references in the original substituted to `mem`.
+ */
+export function convertToMem(typ: ir.Type, mem: string, factory: IRFactory): ir.Type {
+    if (typ instanceof ir.PointerType) {
+        return factory.pointerType(
+            typ.src,
+            convertToMem(typ.toType, mem, factory),
+            factory.memConstant(noSrc, mem)
+        );
+    }
+
+    if (typ instanceof ir.ArrayType) {
+        return factory.arrayType(typ.src, convertToMem(typ.baseType, mem, factory));
+    }
+
+    if (typ instanceof ir.UserDefinedType) {
+        sol.assert(typ.memArgs.length === 1, `Can't template type {0} with multiple mem args`, typ);
+
+        return factory.userDefinedType(
+            typ.src,
+            typ.name,
+            typ.memArgs.map(() => factory.memConstant(noSrc, mem)),
+            typ.typeArgs.map((tArg) => convertToMem(tArg, mem, factory))
+        );
+    }
+
+    return typ;
 }

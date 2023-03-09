@@ -250,7 +250,23 @@ export function getDesugaredFunName(
      */
     assert(scope instanceof ContractDefinition, ``);
 
-    return `${scope.name}_${overloadingSuffix}`;
+    return `${definingScope.name}_in_${scope.name}_${overloadingSuffix}`;
+}
+
+export function getDesugaredGetterName(
+    v: VariableDeclaration,
+    scope: FunctionScope,
+    infer: InferType
+): string {
+    const definingScope = v.vScope as ContractDefinition;
+    const overloadingSuffix = `${v.name}_${infer.signatureHash(v)}`;
+
+    /**
+     * At this point this must be a normal virtual function either in the current contract or
+     * inherited from a parent contract.
+     */
+    assert(scope instanceof ContractDefinition, ``);
+    return `${definingScope.name}_in_${scope.name}_${overloadingSuffix}`;
 }
 
 /**
@@ -310,7 +326,7 @@ export function getDesugaredGlobalVarName(v: VariableDeclaration): string {
 
 export function getDispatchName(
     contract: ContractDefinition,
-    fun: FunctionDefinition,
+    fun: FunctionDefinition | VariableDeclaration,
     infer: InferType
 ): string {
     return `${contract.name}_${fun.name}_${infer.signatureHash(fun)}_dispatch`;

@@ -91,7 +91,7 @@ export class CFGBuilder {
         this._entryBB = this.mkBB("entry");
         this.curBB = this._entryBB;
 
-        this.returnBB = this.mkBB("return");
+        this.returnBB = this.mkBB("returnBB");
         this._exceptionBB = this.mkBB("exception");
 
         this.args = [];

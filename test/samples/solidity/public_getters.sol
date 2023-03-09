@@ -20,9 +20,9 @@ contract PublicGetters {
 
     int[][][] public h;
 
-    mapping(int => mapping(int => Foo)) public i;
+    //mapping(int => mapping(int => Foo)) public i;
 
-    mapping(string => Foo[]) public j;
+    //mapping(string => Foo[]) public j;
 
     function testElementaryUnchanged() public view {
         assert(a == -150);

@@ -6,6 +6,7 @@ import { ConstructorCompiler } from "./constructor_compiler";
 import { DispatchCompiler } from "./dispatch_compiler";
 import { IRFactory } from "./factory";
 import { FunctionCompiler } from "./function_compiler";
+import { GetterCompiler } from "./getter_compiler";
 import { compileGlobalVarInitializer } from "./literal_compiler";
 import { preamble } from "./preamble";
 import { getDesugaredGlobalVarName, getIRStructDefName } from "./resolving";
@@ -13,8 +14,10 @@ import { transpileType, u16, u160 } from "./typing";
 
 type InheritMap = Map<sol.ContractDefinition, sol.ContractDefinition[]>;
 
-type OverridenImplsList = Array<[ir.StructDefinition, ir.FunctionDefinition]>;
-type OverridenImplsMap = Map<sol.FunctionDefinition, OverridenImplsList>;
+type OverridenImplsList = Array<
+    [ir.StructDefinition, ir.FunctionDefinition | ir.VariableDeclaration]
+>;
+type OverridenImplsMap = Map<sol.FunctionDefinition | sol.VariableDeclaration, OverridenImplsList>;
 type OverrideMap = Map<sol.ContractDefinition, OverridenImplsMap>;
 
 function isExternallyVisible(fun: sol.FunctionDefinition): boolean {
@@ -74,9 +77,9 @@ export class UnitCompiler {
         for (const [contract, methodOverrideMap] of overrideMap) {
             const abiVersion = this.detectAbiEncoderVersion(contract.vScope);
 
-            for (const [method, overridingImpls] of methodOverrideMap) {
+            for (const [methodOrVar, overridingImpls] of methodOverrideMap) {
                 this.globalDefine(
-                    this.compileMethodDispatch(contract, method, overridingImpls, abiVersion)
+                    this.compileMethodDispatch(contract, methodOrVar, overridingImpls, abiVersion)
                 );
             }
         }
@@ -164,6 +167,33 @@ export class UnitCompiler {
         );
     }
 
+    compileContractGetters(
+        contract: sol.ContractDefinition,
+        irContract: ir.StructDefinition,
+        abiVersion: sol.ABIEncoderVersion
+    ): void {
+        for (const sVar of contract.vStateVariables) {
+            if (sVar.visibility !== sol.StateVariableVisibility.Public) {
+                continue;
+            }
+
+            const compiler = new GetterCompiler(
+                this.factory,
+                sVar,
+                this.globalScope,
+                this.globalUid,
+                this.solVersion,
+                abiVersion,
+                contract,
+                irContract
+            );
+
+            const getter = compiler.compile();
+
+            this.globalDefine(getter);
+        }
+    }
+
     compileContractMethods(
         contract: sol.ContractDefinition,
         irContract: ir.StructDefinition,
@@ -227,19 +257,54 @@ export class UnitCompiler {
                     fun
                 );
             }
+
+            // Emit all the public getters. Note that these can be overriden by normal methods potentially
+            for (const sVar of base.vStateVariables) {
+                if (sVar.visibility !== sol.StateVariableVisibility.Public) {
+                    continue;
+                }
+
+                const sig = this.inference.signature(sVar);
+
+                if (seenSigs.has(sig)) {
+                    continue;
+                }
+
+                seenSigs.add(sig);
+
+                const compiler = new GetterCompiler(
+                    this.factory,
+                    sVar,
+                    this.globalScope,
+                    this.globalUid,
+                    this.solVersion,
+                    abiVersion,
+                    contract,
+                    irContract
+                );
+
+                const getter = compiler.compile();
+
+                this.globalDefine(getter);
+
+                (this.emittedMethodMap.get(contract) as Map<string, ir.FunctionDefinition>).set(
+                    sig,
+                    getter
+                );
+            }
         }
     }
 
     compileMethodDispatch(
         contract: sol.ContractDefinition,
-        solMethod: sol.FunctionDefinition,
+        solMethodOrVar: sol.FunctionDefinition | sol.VariableDeclaration,
         overridingImpls: OverridenImplsList,
         abiVersion: sol.ABIEncoderVersion
     ): ir.FunctionDefinition {
         const dispatchCompiler = new DispatchCompiler(
             this.factory,
             contract,
-            solMethod,
+            solMethodOrVar,
             overridingImpls,
             this.globalScope,
             this.globalUid,
@@ -297,7 +362,7 @@ export class UnitCompiler {
         const res: OverrideMap = new Map();
 
         for (const [contract, subContracts] of inhMap) {
-            const seenSigs = new Map<string, sol.FunctionDefinition>();
+            const seenSigs = new Map<string, sol.FunctionDefinition | sol.VariableDeclaration>();
 
             const overridenImplMap: OverridenImplsMap = new Map();
 
@@ -318,9 +383,18 @@ export class UnitCompiler {
 
                     seenSigs.set(sig, method);
                 }
+
+                for (const sVar of base.vStateVariables) {
+                    if (sVar.visibility !== sol.StateVariableVisibility.Public) {
+                        continue;
+                    }
+
+                    const sig = this.inference.signature(sVar);
+                    seenSigs.set(sig, sVar);
+                }
             }
 
-            for (const [sig, method] of seenSigs) {
+            for (const [sig, methodOrVar] of seenSigs) {
                 const implementations: Array<[ir.StructDefinition, ir.FunctionDefinition]> = [];
 
                 for (const subContract of subContracts) {
@@ -334,9 +408,9 @@ export class UnitCompiler {
                             irFun
                         ]);
                     }
-
-                    overridenImplMap.set(method, implementations);
                 }
+
+                overridenImplMap.set(methodOrVar, implementations);
             }
 
             res.set(contract, overridenImplMap);
