@@ -217,7 +217,7 @@ export function convertToMem(typ: ir.Type, mem: string, factory: IRFactory): ir.
         return factory.userDefinedType(
             typ.src,
             typ.name,
-            [],
+            typ.memArgs.map(() => factory.memConstant(noSrc, mem)),
             typ.typeArgs.map((tArg) => convertToMem(tArg, mem, factory))
         );
     }

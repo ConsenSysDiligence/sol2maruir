@@ -13,7 +13,6 @@ import {
     FunctionScope,
     getDesugaredConstructorName,
     getDesugaredFunName,
-    getDesugaredGetterName,
     getDispatchName,
     getIRContractName,
     getIRStructDefName
@@ -1110,7 +1109,11 @@ export class ExpressionCompiler {
 
                     thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));
                 } else if (def instanceof sol.VariableDeclaration) {
-                    irFun = getDesugaredGetterName(def, this.solScope, this.cfgBuilder.infer);
+                    irFun = getDispatchName(
+                        this.solScope as sol.ContractDefinition,
+                        def,
+                        this.cfgBuilder.infer
+                    );
                     const baseIRExpr = this.compile(base);
 
                     thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));

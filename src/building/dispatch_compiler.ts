@@ -1,7 +1,7 @@
 import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
 import { BaseFunctionCompiler } from "./base_function_compiler";
-import { blockPtrT, msgPtrT, noType, u160 } from "./typing";
+import { blockPtrT, msgPtrT, noType, transpileType, u160 } from "./typing";
 import { noSrc } from "maru-ir2";
 import { getDispatchName } from "./resolving";
 import { IRFactory } from "./factory";
@@ -11,8 +11,10 @@ export class DispatchCompiler extends BaseFunctionCompiler {
     constructor(
         factory: IRFactory,
         private readonly contract: sol.ContractDefinition,
-        private readonly origDef: sol.FunctionDefinition,
-        private readonly overridingImpls: Array<[ir.StructDefinition, ir.FunctionDefinition]>,
+        private readonly origDef: sol.FunctionDefinition | sol.VariableDeclaration,
+        private readonly overridingImpls: Array<
+            [ir.StructDefinition, ir.FunctionDefinition | ir.VariableDeclaration]
+        >,
         globalScope: ir.Scope,
         globalUid: UIDGenerator,
         solVersion: string,
@@ -33,12 +35,40 @@ export class DispatchCompiler extends BaseFunctionCompiler {
         this.cfgBuilder.addIRArg("block", blockPtrT, noSrc);
         this.cfgBuilder.addIRArg("msg", msgPtrT, noSrc);
 
-        for (const solArg of this.origDef.vParameters.vParameters) {
-            this.cfgBuilder.addArg(solArg);
-        }
+        if (this.origDef instanceof sol.FunctionDefinition) {
+            for (const solArg of this.origDef.vParameters.vParameters) {
+                this.cfgBuilder.addArg(solArg);
+            }
 
-        for (const solRet of this.origDef.vReturnParameters.vParameters) {
-            this.cfgBuilder.addRet(solRet);
+            for (const solRet of this.origDef.vReturnParameters.vParameters) {
+                this.cfgBuilder.addRet(solRet);
+            }
+        } else {
+            const [argTs, retT] = this.cfgBuilder.infer.getterArgsAndReturn(this.origDef);
+
+            argTs.forEach((argT, i) =>
+                this.cfgBuilder.addIRArg(
+                    `ARG_${i}`,
+                    transpileType(argT, this.cfgBuilder.factory),
+                    noSrc
+                )
+            );
+
+            if (retT instanceof sol.TupleType) {
+                retT.elements.forEach((retElT, i) =>
+                    this.cfgBuilder.addIRRet(
+                        `RET_${i}`,
+                        transpileType(retElT, this.cfgBuilder.factory),
+                        noSrc
+                    )
+                );
+            } else {
+                this.cfgBuilder.addIRRet(
+                    `RET_0`,
+                    transpileType(retT, this.cfgBuilder.factory),
+                    noSrc
+                );
+            }
         }
 
         for (let i = 0; i < this.overridingImpls.length; i++) {
@@ -87,11 +117,9 @@ export class DispatchCompiler extends BaseFunctionCompiler {
                 [],
                 [
                     contractPtr,
-                    this.cfgBuilder.blockPtr(noSrc),
-                    this.cfgBuilder.msgPtr(noSrc),
-                    ...this.origDef.vParameters.vParameters.map((solDecl) =>
-                        this.cfgBuilder.getVarId(solDecl, noSrc)
-                    )
+                    ...this.cfgBuilder.args
+                        .slice(1)
+                        .map((arg) => factory.identifier(noSrc, arg.name, arg.type))
                 ],
                 noSrc
             );

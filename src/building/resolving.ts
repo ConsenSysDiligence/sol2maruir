@@ -326,7 +326,7 @@ export function getDesugaredGlobalVarName(v: VariableDeclaration): string {
 
 export function getDispatchName(
     contract: ContractDefinition,
-    fun: FunctionDefinition,
+    fun: FunctionDefinition | VariableDeclaration,
     infer: InferType
 ): string {
     return `${contract.name}_${fun.name}_${infer.signatureHash(fun)}_dispatch`;
