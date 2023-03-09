@@ -1,5 +1,5 @@
 import * as ir from "maru-ir2";
-import { BaseSrc, GlobalVariable, noSrc } from "maru-ir2";
+import { BaseSrc, noSrc } from "maru-ir2";
 import { gte } from "semver";
 import * as sol from "solc-typed-ast";
 import { assert, ContractKind, generalizeType, pp } from "solc-typed-ast";
@@ -12,11 +12,22 @@ import { IRFactory } from "./factory";
 import {
     FunctionScope,
     getDesugaredConstructorName,
+    getDesugaredFunName,
     getDispatchName,
     getIRContractName,
     getIRStructDefName
 } from "./resolving";
-import { boolT, noType, transpileType, u160, u256, u8, u8ArrExcPtr, u8ArrMemPtr } from "./typing";
+import {
+    boolT,
+    convertToMem,
+    noType,
+    transpileType,
+    u160,
+    u256,
+    u8,
+    u8ArrExcPtr,
+    u8ArrMemPtr
+} from "./typing";
 
 const overflowBuiltinMap = new Map<string, string>([
     ["+", "builtin_add_overflows"],
@@ -31,7 +42,8 @@ export class ExpressionCompiler {
 
     constructor(
         public readonly cfgBuilder: CFGBuilder,
-        public readonly abiEncodeVersion: sol.ABIEncoderVersion
+        public readonly abiEncodeVersion: sol.ABIEncoderVersion,
+        public readonly solScope: FunctionScope
     ) {
         this.factory = cfgBuilder.factory;
     }
@@ -67,6 +79,10 @@ export class ExpressionCompiler {
 
             if (expr.name === "block") {
                 return builder.blockPtr(src);
+            }
+
+            if (expr.name === "this") {
+                return builder.this(src);
             }
         }
 
@@ -122,7 +138,7 @@ export class ExpressionCompiler {
      * 1. Assignment between different memories (done by mustCastTo)
      * 2. Assignment to storage (that is not a local storage variable)
      */
-    assignTo(lhs: sol.Expression, rhs: ir.Expression, assignSrc: ir.BaseSrc): ir.Expression {
+    assignTo(lhs: sol.Expression | null, rhs: ir.Expression, assignSrc: ir.BaseSrc): ir.Expression {
         if (
             lhs instanceof sol.TupleExpression &&
             lhs.vOriginalComponents.length === 1 &&
@@ -203,10 +219,48 @@ export class ExpressionCompiler {
             }
         }
 
+        if (rhs instanceof IRTuple2) {
+            assert(
+                (lhs instanceof sol.TupleExpression &&
+                    lhs.vOriginalComponents.length === rhs.elements.length) ||
+                    lhs === null,
+                `Mismatch between lhs {0} and rhs {1} in tuple assignment`,
+                lhs,
+                rhs
+            );
+
+            const resExprs: ir.Expression[] = [];
+
+            for (let i = 0; i < rhs.elements.length; i++) {
+                const lhsC = lhs === null ? lhs : lhs.vOriginalComponents[i];
+                const rhsC = rhs.elements[i];
+
+                if (rhsC === null) {
+                    assert(lhsC === null, `Unexpected null assignment to non-null lhs {0}`, lhsC);
+                    continue;
+                }
+
+                resExprs.push(this.assignTo(lhsC, rhsC, assignSrc));
+            }
+
+            const resT = this.factory.tupleType(
+                noSrc,
+                resExprs.map((e) => this.typeOf(e))
+            );
+
+            return this.factory.tuple(assignSrc, resExprs, resT);
+        }
+
+        if (lhs === null) {
+            const irLHS = this.cfgBuilder.getTmpId(this.typeOf(rhs), assignSrc);
+            this.cfgBuilder.assign(irLHS, rhs, assignSrc);
+            return irLHS;
+        }
+
         throw new Error(`NYI Assigning to solidity expression ${pp(lhs)}`);
     }
 
-    private solArrRead(arrPtr: ir.Expression, idx: ir.Expression, src: BaseSrc): ir.Expression {
+    solArrRead(arrPtr: ir.Expression, idx: ir.Expression, src: BaseSrc): ir.Identifier {
         const arrPtrT = this.typeOf(arrPtr);
 
         assert(
@@ -1026,38 +1080,38 @@ export class ExpressionCompiler {
         let isExternal: boolean;
         let irFun: string;
 
-        let funScope: FunctionScope | undefined = expr.getClosestParentByType(
-            sol.ContractDefinition
-        );
-
-        if (funScope === undefined) {
-            funScope = expr.getClosestParentByType(sol.SourceUnit) as sol.SourceUnit;
-        }
-
         // There are several cases:
         if (callee instanceof sol.Identifier) {
             // 1. Internal call to the same contract or a free function call
+            thisExpr = this.cfgBuilder.this(noSrc);
             isExternal = false;
-
-            const def = expr.vReferencedDeclaration;
-
-            assert(
-                def instanceof sol.FunctionDefinition,
-                `Unexpected declaration {0} for {1}`,
-                def,
-                expr
-            );
+            let solDef: sol.FunctionDefinition | sol.VariableDeclaration | undefined;
 
             assert(
-                funScope instanceof sol.ContractDefinition,
-                `NYI call free function via identifier`
+                callee.vReferencedDeclaration instanceof sol.FunctionDefinition,
+                `Unsupported calle with non-functiondef decl {0}`,
+                callee.vReferencedDeclaration
             );
 
-            const src = new ASTSource(expr);
+            if (this.solScope instanceof sol.ContractDefinition) {
+                // Contract function
+                solDef = sol.resolveCallable(
+                    this.solScope,
+                    callee.vReferencedDeclaration,
+                    this.cfgBuilder.infer
+                );
+            } else {
+                // Free function
+                solDef = callee.vReferencedDeclaration;
+            }
 
-            thisExpr = this.mustCastTo(this.cfgBuilder.this(src), u160, src);
+            assert(
+                solDef instanceof sol.FunctionDefinition,
+                `Unexpected most resolved definition {0}`,
+                solDef
+            );
 
-            irFun = getDispatchName(funScope, def, this.cfgBuilder.infer);
+            irFun = getDesugaredFunName(solDef, this.solScope, this.cfgBuilder.infer);
         } else if (callee instanceof sol.MemberAccess) {
             const base = callee.vExpression;
             const baseT = this.cfgBuilder.infer.typeOf(base);
@@ -1071,16 +1125,24 @@ export class ExpressionCompiler {
 
                 const def = expr.vReferencedDeclaration;
 
-                assert(
-                    def instanceof sol.FunctionDefinition,
-                    `Unexpected declaration ${sol.pp(def)} for ${sol.pp(expr)}`
-                );
+                if (def instanceof sol.FunctionDefinition) {
+                    irFun = getDispatchName(baseT.definition, def, this.cfgBuilder.infer);
 
-                irFun = getDispatchName(baseT.definition, def, this.cfgBuilder.infer);
+                    const baseIRExpr = this.compile(base);
 
-                const baseIRExpr = this.compile(base);
+                    thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));
+                } else if (def instanceof sol.VariableDeclaration) {
+                    irFun = getDispatchName(
+                        this.solScope as sol.ContractDefinition,
+                        def,
+                        this.cfgBuilder.infer
+                    );
+                    const baseIRExpr = this.compile(base);
 
-                thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));
+                    thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));
+                } else {
+                    assert(false, `Unexpected declaration ${sol.pp(def)} for ${sol.pp(expr)}`);
+                }
             } else if (
                 baseT instanceof sol.TypeNameType &&
                 baseT.type instanceof sol.UserDefinedType &&
@@ -1143,9 +1205,8 @@ export class ExpressionCompiler {
 
         args.splice(0, 0, irCallee, this.cfgBuilder.blockPtr(noSrc), this.cfgBuilder.msgPtr(noSrc));
 
-        const lhss = retTs.map((retT) =>
-            this.cfgBuilder.getTmpId(transpileType(retT, this.factory), src)
-        );
+        const irRetTs = retTs.map((retT) => transpileType(retT, this.factory));
+        const lhss = irRetTs.map((retT) => this.cfgBuilder.getTmpId(retT, src));
         const callee = this.factory.identifier(src, irFun, noType);
 
         this.cfgBuilder.call(lhss, callee, [], [], args, src);
@@ -1158,7 +1219,7 @@ export class ExpressionCompiler {
             return lhss[0];
         }
 
-        return new IRTuple2(src, lhss);
+        return this.factory.tuple(src, lhss, this.factory.tupleType(noSrc, irRetTs));
     }
 
     compileStructConstructorCall(expr: sol.FunctionCall): ir.Expression {
@@ -1226,11 +1287,19 @@ export class ExpressionCompiler {
 
         assert(expr.vArguments.length === 1, ``);
 
-        return this.mustCastTo(
-            this.compile(expr.vArguments[0]),
-            transpileType(calleeT.type, this.factory),
-            new ASTSource(expr)
-        );
+        let toT = transpileType(calleeT.type, this.factory);
+
+        // Cast to string/bytes. Wrap in a pointer type around it
+        if (toT instanceof ir.UserDefinedType) {
+            assert(toT.name === "ArrWithLen", `Unexpected cast to user defined type {0}`, toT);
+            toT = this.factory.pointerType(
+                new ASTSource(expr.vExpression),
+                toT,
+                this.factory.memConstant(ir.noSrc, "memory")
+            );
+        }
+
+        return this.mustCastTo(this.compile(expr.vArguments[0]), toT, new ASTSource(expr));
     }
 
     compileConditional(expr: sol.Conditional): ir.Expression {
@@ -1431,6 +1500,22 @@ export class ExpressionCompiler {
         return res;
     }
 
+    copyToMem(expr: ir.Expression, fromT: ir.Type, toMem: ir.MemConstant): ir.Expression {
+        const toT = convertToMem(fromT, toMem.name, this.cfgBuilder.factory);
+
+        if (!(fromT instanceof ir.PointerType)) {
+            return expr;
+        }
+
+        assert(toT instanceof ir.PointerType, ``);
+
+        const copyFunId = this.getCopyFun(fromT, toT);
+        const lhs = this.cfgBuilder.getTmpId(toT, expr.src);
+        this.cfgBuilder.call([lhs], copyFunId, [fromT.region, toT.region], [], [expr], expr.src);
+
+        return lhs;
+    }
+
     castTo(expr: ir.Expression, toT: ir.Type, src: BaseSrc): ir.Expression | undefined {
         const fromT = this.typeOf(expr);
 
@@ -1500,7 +1585,7 @@ export class ExpressionCompiler {
         ) {
             const def = this.cfgBuilder.globalScope.get(expr.name);
 
-            if (def instanceof GlobalVariable) {
+            if (def instanceof ir.GlobalVariable) {
                 const size = (def.initialValue as ir.StructLiteral).field("len");
 
                 if (size instanceof ir.NumberLiteral && size.value < BigInt(toT.nbits / 8)) {
@@ -1529,6 +1614,25 @@ export class ExpressionCompiler {
             );
 
             return lhs;
+        }
+
+        // Cast from singleton string literal to byte
+        if (
+            fromT instanceof ir.PointerType &&
+            fromT.toType instanceof ir.UserDefinedType &&
+            fromT.toType.name === `ArrWithLen` &&
+            toT instanceof ir.IntType &&
+            expr instanceof ir.Identifier &&
+            expr.name.match(/_str_lit_[0-9]*/)
+        ) {
+            const def = this.cfgBuilder.funScope.get(expr.name);
+
+            if (def instanceof ir.GlobalVariable && def.initialValue instanceof ir.StructLiteral) {
+                const arr = def.initialValue.field("arr");
+                if (arr instanceof ir.ArrayLiteral && arr.values.length === 1) {
+                    return arr.values[0];
+                }
+            }
         }
 
         return undefined;

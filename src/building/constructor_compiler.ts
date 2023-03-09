@@ -79,7 +79,7 @@ export class ConstructorCompiler {
             this.factory
         );
 
-        const exprCompiler = new ExpressionCompiler(builder, this.abiVersion);
+        const exprCompiler = new ExpressionCompiler(builder, this.abiVersion, this.contract);
 
         const irContractT = this.factory.userDefinedType(noSrc, this.irContract.name, [], []);
         const thisT = this.factory.pointerType(
@@ -239,6 +239,10 @@ export class ConstructorCompiler {
         builder.curBB = builder.returnBB;
 
         builder.return([builder.this(noSrc)], noSrc);
+
+        builder.curBB = builder._exceptionBB;
+
+        builder.abort(noSrc);
 
         return this.factory.functionDefinition(
             new ASTSource(this.contract.vConstructor ? this.contract.vConstructor : this.contract),
