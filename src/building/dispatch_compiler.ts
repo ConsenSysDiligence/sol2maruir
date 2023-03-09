@@ -54,21 +54,15 @@ export class DispatchCompiler extends BaseFunctionCompiler {
                 )
             );
 
-            if (retT instanceof sol.TupleType) {
-                retT.elements.forEach((retElT, i) =>
-                    this.cfgBuilder.addIRRet(
-                        `RET_${i}`,
-                        transpileType(retElT, this.cfgBuilder.factory),
-                        noSrc
-                    )
-                );
-            } else {
+            const retTs = retT instanceof sol.TupleType ? retT.elements : [retT];
+
+            retTs.forEach((retElT, i) =>
                 this.cfgBuilder.addIRRet(
-                    `RET_0`,
-                    transpileType(retT, this.cfgBuilder.factory),
+                    `RET_${i}`,
+                    transpileType(retElT, this.cfgBuilder.factory),
                     noSrc
-                );
-            }
+                )
+            );
         }
 
         for (let i = 0; i < this.overridingImpls.length; i++) {

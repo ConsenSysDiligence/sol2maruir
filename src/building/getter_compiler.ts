@@ -52,17 +52,15 @@ export class GetterCompiler extends BaseFunctionCompiler {
         this.cfgBuilder.addIRArg("block", blockPtrT, noSrc);
         this.cfgBuilder.addIRArg("msg", msgPtrT, noSrc);
 
-        if (retT instanceof sol.TupleType) {
-            retT.elements.forEach((elT, i) => {
-                this.cfgBuilder.addIRRet(
-                    `RET_${i}`,
-                    transpileType(elT, this.cfgBuilder.factory),
-                    noSrc
-                );
-            });
-        } else {
-            this.cfgBuilder.addIRRet("RET_0", transpileType(retT, this.cfgBuilder.factory), noSrc);
-        }
+        const retTs = retT instanceof sol.TupleType ? retT.elements : [retT];
+
+        retTs.forEach((retElT, i) =>
+            this.cfgBuilder.addIRRet(
+                `RET_${i}`,
+                transpileType(retElT, this.cfgBuilder.factory),
+                noSrc
+            )
+        );
 
         let fieldRef = this.cfgBuilder.loadField(
             this.cfgBuilder.this(ir.noSrc),
@@ -137,43 +135,6 @@ export class GetterCompiler extends BaseFunctionCompiler {
                 );
             });
         }
-
-        /*
-        if (fieldT instanceof ir.PointerType && fieldT.toType instanceof ir.UserDefinedType) {
-            const decl = this.cfgBuilder.resolve(fieldT.toType.name);
-
-            // Packed array - just return a copy
-            if (
-                decl instanceof ir.StructDefinition &&
-                decl.name === `ArrWithLen` &&
-                ir.eq(fieldT.toType.typeArgs[0], u8)
-            ) {
-                fieldRef = this.exprCompiler.copyToMem(
-                    fieldRef,
-                    fieldT,
-                    factory.memConstant(noSrc, "memory")
-                ) as ir.Identifier;
-
-                this.cfgBuilder.assign(
-                    factory.identifier(noSrc, ret0.name, ret0.type),
-                    fieldRef,
-                    noSrc
-                );
-            } else {
-                // Generic tuple return - iterate over fields returning
-            }
-        } else {
-            sol.assert(
-                !(fieldT instanceof ir.PointerType),
-                `Unexpected return type ${fieldT.pp()} for getter for ${this.def.name}`
-            );
-
-            this.cfgBuilder.assign(
-                factory.identifier(noSrc, ret0.name, ret0.type),
-                fieldRef,
-                noSrc
-            );
-        }*/
 
         this.cfgBuilder.jump(this.cfgBuilder.returnBB, noSrc);
 

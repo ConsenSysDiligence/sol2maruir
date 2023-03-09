@@ -1071,7 +1071,6 @@ export class ExpressionCompiler {
 
             if (this.solScope instanceof sol.ContractDefinition) {
                 // Contract function
-                console.error(this.solScope.name, callee.vReferencedDeclaration.name);
                 solDef = sol.resolveCallable(
                     this.solScope,
                     callee.vReferencedDeclaration,
