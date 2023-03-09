@@ -1611,6 +1611,30 @@ export class ExpressionCompiler {
             }
         }
 
+        // In 0.4.x you can cast values greater than 20 bytes to address, and they get the lower bits
+        if (
+            fromT instanceof ir.IntType &&
+            toT instanceof ir.IntType &&
+            toT.md.get("sol_type") === "address"
+        ) {
+            return this.factory.cast(
+                src,
+                toT,
+                this.factory.binaryOperation(
+                    src,
+                    expr,
+                    "&",
+                    this.factory.numberLiteral(
+                        src,
+                        BigInt("0xffffffffffffffffffffffffffffffffffffffff"),
+                        16,
+                        fromT
+                    ),
+                    fromT
+                )
+            );
+        }
+
         return undefined;
     }
 
