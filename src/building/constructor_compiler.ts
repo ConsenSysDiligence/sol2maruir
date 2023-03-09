@@ -240,6 +240,10 @@ export class ConstructorCompiler {
 
         builder.return([builder.this(noSrc)], noSrc);
 
+        builder.curBB = builder._exceptionBB;
+
+        builder.abort(noSrc);
+
         return this.factory.functionDefinition(
             new ASTSource(this.contract.vConstructor ? this.contract.vConstructor : this.contract),
             [],

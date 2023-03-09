@@ -170,8 +170,9 @@ const files = [
 
 describe("Interpreter tests", () => {
     const files = [
-        "test/samples/solidity/EncodingTest.config.json",
-        "test/samples/solidity/ABIEncoderV2_Structs.config.json"
+        //"test/samples/solidity/EncodingTest.config.json",
+        //"test/samples/solidity/ABIEncoderV2_Structs.config.json"
+        "test/samples/solidity/public_getters.config.json"
     ];
 
     for (const jsonFile of files) {
@@ -204,7 +205,11 @@ describe("Interpreter tests", () => {
 
             const contents = defs.map((def) => def.pp()).join("\n");
 
-            console.log(contents);
+            const maruirFile = jsonFile.replace(".config.json", ".maruir");
+            fse.writeFileSync(maruirFile, contents, {
+                encoding: "utf8"
+            });
+            console.error(`Writing out ${maruirFile}`);
 
             const interp = new SolMaruirInterp(defs, true);
 

@@ -13,11 +13,22 @@ import {
     FunctionScope,
     getDesugaredConstructorName,
     getDesugaredFunName,
+    getDesugaredGetterName,
     getDispatchName,
     getIRContractName,
     getIRStructDefName
 } from "./resolving";
-import { boolT, noType, transpileType, u160, u256, u8, u8ArrExcPtr, u8ArrMemPtr } from "./typing";
+import {
+    boolT,
+    convertToMem,
+    noType,
+    transpileType,
+    u160,
+    u256,
+    u8,
+    u8ArrExcPtr,
+    u8ArrMemPtr
+} from "./typing";
 
 const overflowBuiltinMap = new Map<string, string>([
     ["+", "builtin_add_overflows"],
@@ -69,6 +80,10 @@ export class ExpressionCompiler {
 
             if (expr.name === "block") {
                 return builder.blockPtr(src);
+            }
+
+            if (expr.name === "this") {
+                return builder.this(src);
             }
         }
 
@@ -246,7 +261,7 @@ export class ExpressionCompiler {
         throw new Error(`NYI Assigning to solidity expression ${pp(lhs)}`);
     }
 
-    private solArrRead(arrPtr: ir.Expression, idx: ir.Expression, src: BaseSrc): ir.Expression {
+    solArrRead(arrPtr: ir.Expression, idx: ir.Expression, src: BaseSrc): ir.Identifier {
         const arrPtrT = this.typeOf(arrPtr);
 
         assert(
@@ -1088,16 +1103,20 @@ export class ExpressionCompiler {
 
                 const def = expr.vReferencedDeclaration;
 
-                assert(
-                    def instanceof sol.FunctionDefinition,
-                    `Unexpected declaration ${sol.pp(def)} for ${sol.pp(expr)}`
-                );
+                if (def instanceof sol.FunctionDefinition) {
+                    irFun = getDispatchName(baseT.definition, def, this.cfgBuilder.infer);
 
-                irFun = getDispatchName(baseT.definition, def, this.cfgBuilder.infer);
+                    const baseIRExpr = this.compile(base);
 
-                const baseIRExpr = this.compile(base);
+                    thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));
+                } else if (def instanceof sol.VariableDeclaration) {
+                    irFun = getDesugaredGetterName(def, this.solScope, this.cfgBuilder.infer);
+                    const baseIRExpr = this.compile(base);
 
-                thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));
+                    thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));
+                } else {
+                    assert(false, `Unexpected declaration ${sol.pp(def)} for ${sol.pp(expr)}`);
+                }
             } else if (
                 baseT instanceof sol.TypeNameType &&
                 baseT.type instanceof sol.UserDefinedType &&
@@ -1242,11 +1261,19 @@ export class ExpressionCompiler {
 
         assert(expr.vArguments.length === 1, ``);
 
-        return this.mustCastTo(
-            this.compile(expr.vArguments[0]),
-            transpileType(calleeT.type, this.factory),
-            new ASTSource(expr)
-        );
+        let toT = transpileType(calleeT.type, this.factory);
+
+        // Cast to string/bytes. Wrap in a pointer type around it
+        if (toT instanceof ir.UserDefinedType) {
+            assert(toT.name === "ArrWithLen", `Unexpected cast to user defined type {0}`, toT);
+            toT = this.factory.pointerType(
+                new ASTSource(expr.vExpression),
+                toT,
+                this.factory.memConstant(ir.noSrc, "memory")
+            );
+        }
+
+        return this.mustCastTo(this.compile(expr.vArguments[0]), toT, new ASTSource(expr));
     }
 
     compileConditional(expr: sol.Conditional): ir.Expression {
@@ -1447,6 +1474,22 @@ export class ExpressionCompiler {
         return res;
     }
 
+    copyToMem(expr: ir.Expression, fromT: ir.Type, toMem: ir.MemConstant): ir.Expression {
+        const toT = convertToMem(fromT, toMem.name, this.cfgBuilder.factory);
+
+        if (!(fromT instanceof ir.PointerType)) {
+            return expr;
+        }
+
+        assert(toT instanceof ir.PointerType, ``);
+
+        const copyFunId = this.getCopyFun(fromT, toT);
+        const lhs = this.cfgBuilder.getTmpId(toT, expr.src);
+        this.cfgBuilder.call([lhs], copyFunId, [fromT.region, toT.region], [], [expr], expr.src);
+
+        return lhs;
+    }
+
     castTo(expr: ir.Expression, toT: ir.Type, src: BaseSrc): ir.Expression | undefined {
         const fromT = this.typeOf(expr);
 
@@ -1545,6 +1588,25 @@ export class ExpressionCompiler {
             );
 
             return lhs;
+        }
+
+        // Cast from singleton string literal to byte
+        if (
+            fromT instanceof ir.PointerType &&
+            fromT.toType instanceof ir.UserDefinedType &&
+            fromT.toType.name === `ArrWithLen` &&
+            toT instanceof ir.IntType &&
+            expr instanceof ir.Identifier &&
+            expr.name.match(/_str_lit_[0-9]*/)
+        ) {
+            const def = this.cfgBuilder.funScope.get(expr.name);
+
+            if (def instanceof ir.GlobalVariable && def.initialValue instanceof ir.StructLiteral) {
+                const arr = def.initialValue.field("arr");
+                if (arr instanceof ir.ArrayLiteral && arr.values.length === 1) {
+                    return arr.values[0];
+                }
+            }
         }
 
         return undefined;
