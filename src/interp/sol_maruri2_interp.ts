@@ -20,7 +20,13 @@ import {
     Typing
 } from "maru-ir2";
 import { assert } from "solc-typed-ast";
-import { encodeParameters, encodeWithSignature, toWeb3Value } from "../utils";
+import {
+    encodeParameters,
+    encodeWithSignature,
+    hexStringToBytes,
+    keccak256,
+    toWeb3Value
+} from "../utils";
 
 export class SolMaruirInterp {
     resolving: Resolving;
@@ -32,29 +38,33 @@ export class SolMaruirInterp {
     contractRegistry: Map<bigint, [Type, PrimitiveValue]>;
     nAddresses = 0;
 
-    private decodeString(ptr: PointerVal): string {
+    private packedArrPtrToBuf(ptr: PointerVal): Buffer {
         const val = this.state.deref(ptr);
 
         assert(
             val instanceof Map && val.has("arr"),
-            `Expected array for string decoding not {0}`,
+            `Expected array struct for packed array decoding, not {0}`,
             val
         );
 
-        const bigIntPtr = val.get("arr") as PointerVal;
+        const arrPtr = val.get("arr") as PointerVal;
+        const arrVal = this.stmtExec.deref(arrPtr);
 
-        const bigIntArr = this.stmtExec.deref(bigIntPtr);
+        assert(
+            arrVal instanceof Array,
+            `Expected array for packed array decoding, not {0}`,
+            arrVal
+        );
 
-        assert(bigIntArr instanceof Array, `Expected array for string decoding not {0}`, bigIntArr);
-        const numArr: number[] = [];
+        return Buffer.from(arrVal.map((v) => Number(v)));
+    }
 
-        for (const bigInt of bigIntArr) {
-            numArr.push(Number(bigInt));
-        }
+    private decodeBytes(ptr: PointerVal): string {
+        return this.packedArrPtrToBuf(ptr).toString("hex");
+    }
 
-        const buf = Buffer.from(numArr);
-
-        return buf.toString("utf-8");
+    private decodeString(ptr: PointerVal): string {
+        return this.packedArrPtrToBuf(ptr).toString("utf-8");
     }
 
     private defineBytes(bytes: Buffer, inMem: string): PointerVal {
@@ -338,6 +348,38 @@ export class SolMaruirInterp {
                     assert(balance !== undefined, `Missing __balance__ in {0}`, contractStruct);
 
                     return [true, [balance]];
+                }
+            ],
+            [
+                "builtin_keccak256_05",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const [[, bytesPtr]] = frame.args;
+
+                    assert(bytesPtr instanceof Array, ``);
+
+                    const bytes = this.decodeBytes(bytesPtr);
+
+                    // console.error(`builtin_keccak256_05: input "${bytes}"`);
+
+                    /**
+                     * Edge cases:
+                     * - Upstream library returns `null` for empty bytes. So, we compensate.
+                     * - Solc 0.4 returns empty hash when no arguments provided.
+                     *
+                     * @see https://github.com/ethereum/web3.js/blob/2.x/packages/web3-utils/src/Utils.js#L497-L511
+                     */
+                    const result =
+                        bytes.length === 0
+                            ? hexStringToBytes(
+                                  "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+                              )
+                            : keccak256(bytes);
+
+                    const hash = "0x" + result.toString("hex");
+
+                    // console.error(`builtin_keccak256_05: result "${hash}"`);
+
+                    return [true, [BigInt(hash)]];
                 }
             ]
         ]);

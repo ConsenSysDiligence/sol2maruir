@@ -11,6 +11,7 @@ const preambleStr = `
         arr: [80_u8, 97_u8, 110_u8, 105_u8, 99_u8, 40_u8, 117_u8, 105_u8, 110_u8, 116_u8, 50_u8, 53_u8, 54_u8, 41_u8],
         len: 14_u256
     }
+
     var _uint256_str_: ArrWithLen<#exception; u8> *#exception = {
         arr: [117_u8, 105_u8, 110_u8, 116_u8, 50_u8, 53_u8, 54_u8],
         len: 7_u256
@@ -22,6 +23,9 @@ const preambleStr = `
 
     struct Message {
         sender: u160;
+        sig: u32;
+        data: ArrWithLen<#calldata; u8> *#calldata;
+        value: u256;
     }
 
     struct ArrWithLen<M; T> {
@@ -155,7 +159,6 @@ const preambleStr = `
             call sol_panic(0x32_u256);
     }
 
-
     fun sol_revert(): never
     locals 
         panicBytes: ArrWithLen<#exception; u8> *#exception,
@@ -288,7 +291,6 @@ const preambleStr = `
         arg3AbiT: ArrWithLen<#exception; u8> *#exception,
         arg3: T3
     ): ArrWithLen<#memory; u8> *#memory
-    
 
     fun builtin_add_overflows<;IntT>(x: IntT, y: IntT): bool
     fun builtin_sub_overflows<;IntT>(x: IntT, y: IntT): bool
@@ -300,7 +302,7 @@ const preambleStr = `
     fun builtin_register_contract<;T>(ptr: T): u160
     fun builtin_is_contract_at<;T>(addr: u160): bool
     fun builtin_get_contract_at<;T>(addr: u160): T
-    
+
     fun builtin_send(addr: u160, amount: u256): bool
     fun builtin_transfer(addr: u160, amount: u256)
     locals succeeded: bool;
@@ -323,6 +325,8 @@ const preambleStr = `
     fun builtin_staticcall04<M>(addr: u160, data: ArrWithLen<M; u8> *M): bool
     fun builtin_callcode<M>(addr: u160, data: ArrWithLen<M; u8> *M): bool
     fun builtin_balance(addr: u160): u256
+
+    fun builtin_keccak256_05(bytes: ArrWithLen<#memory; u8> *#memory): u256
 `;
 
 export const preamble: ir.Definition[] = ir.parseProgram(preambleStr);
