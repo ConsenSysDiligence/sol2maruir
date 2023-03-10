@@ -890,7 +890,8 @@ export class ExpressionCompiler {
 
             assert(
                 calledOn instanceof sol.MemberAccess,
-                `Exepcted member access as callee on send not {0}`,
+                `Exepcted member access as callee on {0} not {1}`,
+                expr.vFunctionName,
                 calledOn
             );
 
@@ -915,19 +916,26 @@ export class ExpressionCompiler {
             expr.vFunctionName === "staticcall" ||
             expr.vFunctionName === "delegatecall"
         ) {
+            /**
+             * @todo This function family uses variadic arguments in Solidity 0.4.
+             * Args are processed with ABI ecnoding routines.
+             *
+             * @see https://docs.soliditylang.org/en/latest/050-breaking-changes.html#semantic-and-syntactic-changes
+             */
             const calledOn = expr.vExpression;
             const callBytes = single(expr.vArguments.map((arg) => this.compile(arg)));
             const callBytesT = this.typeOf(callBytes);
 
             assert(
                 calledOn instanceof sol.MemberAccess,
-                `Exepcted member access as callee on send not {0}`,
+                `Exepcted member access as callee for {0} not {1}`,
+                expr.vFunctionName,
                 calledOn
             );
 
             assert(
                 callBytesT instanceof ir.PointerType,
-                `Expected {0} to be of a pointer type not {1} in call to {}`,
+                `Expected {0} to be of a pointer type not {1} in call ({2})`,
                 callBytes,
                 callBytesT,
                 expr.vFunctionName
@@ -958,9 +966,50 @@ export class ExpressionCompiler {
             return rets.length === 1 ? rets[0] : new IRTuple2(noSrc, rets);
         }
 
+        if (expr.vFunctionName === "callcode") {
+            /**
+             * @todo This function uses variadic arguments in Solidity 0.4.
+             * Args are processed with ABI ecnoding routines.
+             *
+             * @see https://docs.soliditylang.org/en/latest/050-breaking-changes.html#semantic-and-syntactic-changes
+             */
+            const calledOn = expr.vExpression;
+            const callBytes = single(expr.vArguments.map((arg) => this.compile(arg)));
+            const callBytesT = this.typeOf(callBytes);
+
+            assert(
+                calledOn instanceof sol.MemberAccess,
+                `Exepcted member access as callee for {0} not {1}`,
+                expr.vFunctionName,
+                calledOn
+            );
+
+            assert(
+                callBytesT instanceof ir.PointerType,
+                `Expected {0} to be of a pointer type not {1} in call ({2})`,
+                callBytes,
+                callBytesT,
+                expr.vFunctionName
+            );
+
+            const addr = this.compile(calledOn.vExpression);
+            const res = this.cfgBuilder.getTmpId(boolT, exprSrc);
+
+            this.cfgBuilder.call(
+                [res],
+                this.factory.identifier(calleeSrc, `builtin_callcode`, noType),
+                [callBytesT.region],
+                [],
+                [addr, callBytes],
+                exprSrc
+            );
+
+            return res;
+        }
+
         if (expr.vFunctionName === "keccak256") {
             assert(
-                gte(this.cfgBuilder.infer.version, "0.5.0"),
+                gte(this.cfgBuilder.solVersion, "0.5.0"),
                 "NYI function call to keccak256() for Solidity 0.4 in {0}",
                 expr
             );
