@@ -895,7 +895,8 @@ export class ExpressionCompiler {
                 calledOn
             );
 
-            const addr = this.compile(calledOn.vExpression);
+            const sendAddr = this.mustCastTo(this.cfgBuilder.this(noSrc), u160, noSrc);
+            const recvAddr = this.compile(calledOn.vExpression);
             const rets =
                 expr.vFunctionName === "send" ? [this.cfgBuilder.getTmpId(boolT, exprSrc)] : [];
 
@@ -904,7 +905,7 @@ export class ExpressionCompiler {
                 this.factory.identifier(calleeSrc, `builtin_${expr.vFunctionName}`, noType),
                 [],
                 [],
-                [addr, amount],
+                [sendAddr, recvAddr, amount],
                 exprSrc
             );
 
@@ -914,7 +915,8 @@ export class ExpressionCompiler {
         if (
             expr.vFunctionName === "call" ||
             expr.vFunctionName === "staticcall" ||
-            expr.vFunctionName === "delegatecall"
+            expr.vFunctionName === "delegatecall" ||
+            expr.vFunctionName === "callcode"
         ) {
             /**
              * @todo This function family uses variadic arguments in Solidity 0.4.
@@ -946,7 +948,7 @@ export class ExpressionCompiler {
 
             let builtinName: string;
 
-            if (gte(this.cfgBuilder.solVersion, "0.5.0")) {
+            if (gte(this.cfgBuilder.solVersion, "0.5.0") && expr.vFunctionName !== "callcode") {
                 rets.push(this.cfgBuilder.getTmpId(u8ArrMemPtr));
 
                 builtinName = `builtin_${expr.vFunctionName}05`;
@@ -964,47 +966,6 @@ export class ExpressionCompiler {
             );
 
             return rets.length === 1 ? rets[0] : new IRTuple2(noSrc, rets);
-        }
-
-        if (expr.vFunctionName === "callcode") {
-            /**
-             * @todo This function uses variadic arguments in Solidity 0.4.
-             * Args are processed with ABI ecnoding routines.
-             *
-             * @see https://docs.soliditylang.org/en/latest/050-breaking-changes.html#semantic-and-syntactic-changes
-             */
-            const calledOn = expr.vExpression;
-            const callBytes = single(expr.vArguments.map((arg) => this.compile(arg)));
-            const callBytesT = this.typeOf(callBytes);
-
-            assert(
-                calledOn instanceof sol.MemberAccess,
-                `Exepcted member access as callee for {0} not {1}`,
-                expr.vFunctionName,
-                calledOn
-            );
-
-            assert(
-                callBytesT instanceof ir.PointerType,
-                `Expected {0} to be of a pointer type not {1} in call ({2})`,
-                callBytes,
-                callBytesT,
-                expr.vFunctionName
-            );
-
-            const addr = this.compile(calledOn.vExpression);
-            const res = this.cfgBuilder.getTmpId(boolT, exprSrc);
-
-            this.cfgBuilder.call(
-                [res],
-                this.factory.identifier(calleeSrc, `builtin_callcode`, noType),
-                [callBytesT.region],
-                [],
-                [addr, callBytes],
-                exprSrc
-            );
-
-            return res;
         }
 
         if (expr.vFunctionName === "keccak256") {
