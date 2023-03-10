@@ -219,6 +219,7 @@ describe("Interpreter tests", () => {
             fse.writeFileSync(maruirFile, contents, {
                 encoding: "utf8"
             });
+            console.log(`Wrote compiled file to ${maruirFile}`);
             */
 
             const interp = new SolMaruirInterp(defs, true);

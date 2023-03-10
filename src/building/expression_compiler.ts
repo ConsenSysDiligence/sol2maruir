@@ -883,6 +883,84 @@ export class ExpressionCompiler {
             return res;
         }
 
+        if (expr.vFunctionName === "send" || expr.vFunctionName === "transfer") {
+            const calledOn = expr.vExpression;
+            const solAmount = single(expr.vArguments);
+            const amount = this.mustCastTo(this.compile(solAmount), u256, new ASTSource(solAmount));
+
+            assert(
+                calledOn instanceof sol.MemberAccess,
+                `Exepcted member access as callee on send not {0}`,
+                calledOn
+            );
+
+            const addr = this.compile(calledOn.vExpression);
+            const rets =
+                expr.vFunctionName === "send" ? [this.cfgBuilder.getTmpId(boolT, exprSrc)] : [];
+
+            this.cfgBuilder.call(
+                rets,
+                this.factory.identifier(calleeSrc, `builtin_${expr.vFunctionName}`, noType),
+                [],
+                [],
+                [addr, amount],
+                exprSrc
+            );
+
+            return rets.length === 1 ? rets[0] : new IRTuple2(noSrc, []);
+        }
+
+        if (
+            expr.vFunctionName === "call" ||
+            expr.vFunctionName === "staticcall" ||
+            expr.vFunctionName === "delegatecall"
+        ) {
+            const calledOn = expr.vExpression;
+            const callBytes = single(expr.vArguments.map((arg) => this.compile(arg)));
+            const callBytesT = this.typeOf(callBytes);
+
+            assert(
+                calledOn instanceof sol.MemberAccess,
+                `Exepcted member access as callee on send not {0}`,
+                calledOn
+            );
+
+            assert(
+                callBytesT instanceof ir.PointerType,
+                `Expected {0} to be of a pointer type not {1} in call to {}`,
+                callBytes,
+                callBytesT,
+                expr.vFunctionName
+            );
+
+            const addr = this.compile(calledOn.vExpression);
+            const rets: ir.Identifier[] = [this.cfgBuilder.getTmpId(boolT, exprSrc)];
+            let builtinName: string;
+
+            if (gte(this.cfgBuilder.solVersion, "0.5.0")) {
+                rets.push(this.cfgBuilder.getTmpId(u8ArrMemPtr));
+                builtinName = `builtin_${expr.vFunctionName}05`;
+            } else {
+                builtinName = `builtin_${expr.vFunctionName}04`;
+            }
+
+            this.cfgBuilder.call(
+                rets,
+                this.factory.identifier(calleeSrc, builtinName, noType),
+                [callBytesT.region],
+                [],
+                [addr, callBytes],
+                exprSrc
+            );
+
+            // Return () since this doesn't return anything
+            if (rets.length === 1) {
+                return rets[0];
+            } else {
+                return new IRTuple2(noSrc, rets);
+            }
+        }
+
         throw new Error(`NYI compileBuiltinFunctionCall(${expr.vFunctionName})`);
     }
 
