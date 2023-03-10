@@ -310,6 +310,7 @@ const preambleStr = `
     fun builtin_delegatecall04<M>(addr: u160, data: ArrWithLen<M; u8> *M): bool
     fun builtin_staticcall04<M>(addr: u160, data: ArrWithLen<M; u8> *M): bool
     fun builtin_callcode<M>(addr: u160, data: ArrWithLen<M; u8> *M): bool
+    fun builtin_balance(addr: u160): u256
 `;
 
 export const preamble: ir.Definition[] = ir.parseProgram(preambleStr);

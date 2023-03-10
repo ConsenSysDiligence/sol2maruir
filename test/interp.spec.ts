@@ -1,5 +1,6 @@
 import expect from "expect";
 import * as fse from "fs-extra";
+import { Definition } from "maru-ir2";
 import { assert, ASTReader, compileSol } from "solc-typed-ast";
 import { UnitCompiler } from "../src";
 import { SolMaruirInterp } from "../src/interp";
@@ -172,7 +173,8 @@ describe("Interpreter tests", () => {
     const files = [
         //"test/samples/solidity/EncodingTest.config.json",
         //"test/samples/solidity/ABIEncoderV2_Structs.config.json"
-        "test/samples/solidity/public_getters.config.json"
+        //"test/samples/solidity/public_getters.config.json",
+        "test/samples/solidity/AddressLiteralMemberAccess.config.json"
     ];
 
     for (const jsonFile of files) {
@@ -194,7 +196,13 @@ describe("Interpreter tests", () => {
                 compiler.globalUid
             );
 
-            const transpiledDefs = [...compiler.compile(units)];
+            let transpiledDefs: Definition[];
+            try {
+                transpiledDefs = [...compiler.compile(units)];
+            } catch (e) {
+                console.error(`Failed transpiling ${jsonFile}`);
+                throw e;
+            }
             const [methodMap, contractMap] = buildMaps(
                 transpiledDefs,
                 result.compilerVersion as string
@@ -223,7 +231,11 @@ describe("Interpreter tests", () => {
                 throw interp.state.failure;
             }
 
+            if (interp.state.failed) {
+                console.error(`Failed interpreting ${jsonFile}`);
+            }
             expect(interp.state.failed).not.toBeTruthy();
+            console.error(`Success: ${jsonFile}`);
         });
     }
 });

@@ -312,6 +312,33 @@ export class SolMaruirInterp {
                         throw e;
                     }
                 }
+            ],
+            [
+                "builtin_balance",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const addr = frame.args[0][1] as bigint;
+
+                    const typAndPtr = this.contractRegistry.get(addr);
+
+                    if (typAndPtr === undefined) {
+                        return [true, [0n]];
+                    }
+
+                    const contractStruct = s.deref(typAndPtr[1] as PointerVal);
+
+                    assert(
+                        contractStruct instanceof Map,
+                        `Expected a struct not {0} in balance of {1}`,
+                        contractStruct,
+                        addr
+                    );
+
+                    const balance = contractStruct.get("__balance__");
+
+                    assert(balance !== undefined, `Missing __balance__ in {0}`, contractStruct);
+
+                    return [true, [balance]];
+                }
             ]
         ]);
 

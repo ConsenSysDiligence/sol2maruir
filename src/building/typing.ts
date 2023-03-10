@@ -113,6 +113,13 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: M
     return res;
 }
 
+export function isAddressType(t: ir.Type): t is ir.IntType {
+    return (
+        t instanceof ir.IntType &&
+        ["address", "address payable", "payable"].includes(t.md.get("sol_type"))
+    );
+}
+
 /**
  * Returns true IFF all memory descriptors in a given type are concrete
  */

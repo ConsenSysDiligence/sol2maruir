@@ -20,6 +20,7 @@ import {
 import {
     boolT,
     convertToMem,
+    isAddressType,
     noType,
     transpileType,
     u160,
@@ -462,6 +463,11 @@ export class ExpressionCompiler {
                 sol.smallestFittingType(val) as sol.IntType,
                 this.factory
             ) as ir.IntType;
+
+            // Could be an address literal
+            if (expr.value.startsWith("0x") && expr.value.length === 42) {
+                type.md.set("sol_type", "address");
+            }
 
             return this.factory.numberLiteral(
                 src,
@@ -1328,6 +1334,8 @@ export class ExpressionCompiler {
     compileMemberAccess(expr: sol.MemberAccess): ir.Expression {
         const base = this.compile(expr.vExpression);
         const baseT = this.typeOf(base);
+        const src = new ASTSource(expr);
+        const factory = this.cfgBuilder.factory;
 
         if (baseT instanceof ir.PointerType && baseT.toType instanceof ir.UserDefinedType) {
             const def = this.cfgBuilder.globalScope.getTypeDecl(baseT.toType);
@@ -1341,20 +1349,29 @@ export class ExpressionCompiler {
                         expr
                     );
 
-                    return this.cfgBuilder.loadField(base, baseT, "len", new ASTSource(expr));
+                    return this.cfgBuilder.loadField(base, baseT, "len", src);
                 }
 
                 for (const [fieldName] of def.fields) {
                     if (fieldName === expr.memberName) {
-                        return this.cfgBuilder.loadField(
-                            base,
-                            baseT,
-                            fieldName,
-                            new ASTSource(expr)
-                        );
+                        return this.cfgBuilder.loadField(base, baseT, fieldName, src);
                     }
                 }
             }
+        }
+
+        if (isAddressType(baseT) && expr.memberName === "balance") {
+            const res = this.cfgBuilder.getTmpId(u256, src);
+            this.cfgBuilder.call(
+                [res],
+                factory.funIdentifier("builtin_balance"),
+                [],
+                [],
+                [base],
+                src
+            );
+
+            return res;
         }
 
         throw new Error(
@@ -1612,11 +1629,7 @@ export class ExpressionCompiler {
         }
 
         // In 0.4.x you can cast values greater than 20 bytes to address, and they get the lower bits
-        if (
-            fromT instanceof ir.IntType &&
-            toT instanceof ir.IntType &&
-            toT.md.get("sol_type") === "address"
-        ) {
+        if (fromT instanceof ir.IntType && isAddressType(toT)) {
             return this.factory.cast(
                 src,
                 toT,
