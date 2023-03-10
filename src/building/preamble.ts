@@ -270,6 +270,25 @@ const preambleStr = `
         arg3: T3
     ): ArrWithLen<#memory; u8> *#memory
 
+    fun builtin_abi_encodePacked_1<;T1>(
+        arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg1: T1
+    ): ArrWithLen<#memory; u8> *#memory
+    fun builtin_abi_encodePacked_2<;T1, T2>(
+        arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg1: T1,
+        arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg2: T2
+    ): ArrWithLen<#memory; u8> *#memory
+    fun builtin_abi_encodePacked_3<;T1, T2, T3>(
+        arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg1: T1,
+        arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg2: T2,
+        arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg3: T3
+    ): ArrWithLen<#memory; u8> *#memory
+
     fun builtin_abi_encodeWithSignature_1<SigM; T1>(
         sig: ArrWithLen<SigM; u8> *SigM,
         arg1AbiT: ArrWithLen<#exception; u8> *#exception,

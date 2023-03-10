@@ -21,6 +21,7 @@ import {
 } from "maru-ir2";
 import { assert } from "solc-typed-ast";
 import {
+    encodePacked,
     encodeParameters,
     encodeWithSignature,
     hexStringToBytes,
@@ -185,6 +186,46 @@ export class SolMaruirInterp {
         return ptr;
     }
 
+    private builtin_encodePacked(s: State, frame: BuiltinFrame): PointerVal {
+        if (frame.args.length === 0) {
+            return this.defineBytes(Buffer.from(""), "memory");
+        }
+
+        assert(
+            frame.args.length % 2 === 0,
+            "Expected even count of args for builtin_encodePacked, got {0}",
+            frame.args.length
+        );
+
+        const abiTs: string[] = [];
+        const abiVs: any[] = [];
+
+        for (let i = 1; i < frame.args.length; i += 2) {
+            const typePtr = frame.args[i - 1][1];
+            const value = frame.args[i][1];
+
+            assert(typePtr instanceof Array, "Expected pointer, got {0}", typePtr);
+
+            const abiT = this.decodeString(typePtr);
+            const abiV = toWeb3Value(value, abiT, s);
+
+            // console.error(abiT, abiV);
+
+            abiTs.push(abiT);
+            abiVs.push(abiV);
+        }
+
+        const bytes = encodePacked(abiTs, ...abiVs);
+
+        // console.error(bytes.toString("hex"), abiTs, abiVs);
+
+        const ptr = this.defineBytes(bytes, "memory");
+
+        // console.error(ptr);
+
+        return ptr;
+    }
+
     constructor(public readonly defs: Program, rootTrans: boolean) {
         this.resolving = new Resolving(defs);
         this.typing = new Typing(defs, this.resolving);
@@ -286,6 +327,27 @@ export class SolMaruirInterp {
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
                     true,
                     [this.builtin_encode(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_encodePacked_1",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    true,
+                    [this.builtin_encodePacked(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_encodePacked_2",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    true,
+                    [this.builtin_encodePacked(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_encodePacked_3",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    true,
+                    [this.builtin_encodePacked(s, frame)]
                 ]
             ],
             [

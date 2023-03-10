@@ -968,6 +968,23 @@ export class ExpressionCompiler {
             return rets.length === 1 ? rets[0] : new IRTuple2(noSrc, rets);
         }
 
+        if (expr.vFunctionName === "encodePacked") {
+            const [args, argTs] = this.prepEncodeArgs(expr.vArguments);
+            const builtinName = `builtin_abi_encodePacked_${expr.vArguments.length}`;
+            const res = this.cfgBuilder.getTmpId(u8ArrMemPtr);
+
+            this.cfgBuilder.call(
+                [res],
+                this.factory.identifier(calleeSrc, builtinName, noType),
+                [],
+                argTs,
+                args,
+                exprSrc
+            );
+
+            return res;
+        }
+
         if (expr.vFunctionName === "keccak256") {
             assert(
                 gte(this.cfgBuilder.solVersion, "0.5.0"),

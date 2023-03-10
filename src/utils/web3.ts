@@ -20,8 +20,12 @@ export function keccak256(value: any): Buffer {
     return hexStringToBytes(Utils.keccak256(value));
 }
 
-export function encodeParameters(types: any[], ...params: any): Buffer {
+export function encodeParameters(types: any[], ...params: any[]): Buffer {
     return hexStringToBytes(ethAbi.encodeParameters(types, params));
+}
+
+export function encodePacked(types: any[], ...params: any[]): Buffer {
+    return hexStringToBytes(ethAbi.encodePacked(types, params));
 }
 
 export function bigIntToHex(value: bigint): string {
@@ -120,6 +124,10 @@ export function toWeb3Value(arg: any, abiType: string | sol.TypeNode, s: State):
         );
 
         return "0x" + bigIntToHex(arg);
+    }
+
+    if (type instanceof sol.StringType) {
+        console.log(arg);
     }
 
     if (type instanceof sol.ArrayType) {
