@@ -934,7 +934,7 @@ export class ExpressionCompiler {
             );
 
             const addr = this.compile(calledOn.vExpression);
-            const rets: ir.Identifier[] = [this.cfgBuilder.getTmpId(boolT, exprSrc)];
+            const rets = [this.cfgBuilder.getTmpId(boolT, exprSrc)];
 
             let builtinName: string;
 
@@ -955,12 +955,7 @@ export class ExpressionCompiler {
                 exprSrc
             );
 
-            // Return () since this doesn't return anything
-            if (rets.length === 1) {
-                return rets[0];
-            }
-
-            return new IRTuple2(noSrc, rets);
+            return rets.length === 1 ? rets[0] : new IRTuple2(noSrc, rets);
         }
 
         if (expr.vFunctionName === "keccak256") {

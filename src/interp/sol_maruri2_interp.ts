@@ -324,6 +324,49 @@ export class SolMaruirInterp {
                 }
             ],
             [
+                "builtin_send",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const addr = frame.args[0][1] as bigint;
+                    const amount = frame.args[1][1] as bigint;
+
+                    const typAndPtr = this.contractRegistry.get(addr);
+
+                    if (typAndPtr === undefined) {
+                        return [true, [false]];
+                    }
+
+                    const contractStruct = s.deref(typAndPtr[1] as PointerVal);
+
+                    assert(
+                        contractStruct instanceof Map,
+                        `Expected a struct not {0} in builtin_send of {1}`,
+                        contractStruct,
+                        addr
+                    );
+
+                    const balance = contractStruct.get("__balance__");
+
+                    let update: bigint;
+
+                    if (balance === undefined) {
+                        update = amount;
+                    } else {
+                        assert(
+                            typeof balance === "bigint",
+                            `Expected bigint for __balance__ of {0}, got {1}`,
+                            addr,
+                            typeof balance
+                        );
+
+                        update = balance + amount;
+                    }
+
+                    contractStruct.set("__balance__", update);
+
+                    return [true, [true]];
+                }
+            ],
+            [
                 "builtin_balance",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
                     const addr = frame.args[0][1] as bigint;
@@ -338,7 +381,7 @@ export class SolMaruirInterp {
 
                     assert(
                         contractStruct instanceof Map,
-                        `Expected a struct not {0} in balance of {1}`,
+                        `Expected a struct not {0} in builtin_balance of {1}`,
                         contractStruct,
                         addr
                     );
