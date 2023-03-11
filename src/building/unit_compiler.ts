@@ -8,6 +8,7 @@ import { IRFactory } from "./factory";
 import { FunctionCompiler } from "./function_compiler";
 import { GetterCompiler } from "./getter_compiler";
 import { compileGlobalVarInitializer } from "./literal_compiler";
+import { MsgBuilderCompiler } from "./msg_builder_compiler";
 import { preamble } from "./preamble";
 import { getDesugaredGlobalVarName, getIRStructDefName } from "./resolving";
 import { transpileType, u16, u160, u256 } from "./typing";
@@ -81,6 +82,22 @@ export class UnitCompiler {
                 this.globalDefine(
                     this.compileMethodDispatch(contract, methodOrVar, overridingImpls, abiVersion)
                 );
+            }
+
+            for (const method of contract.vFunctions) {
+                if (!isExternallyVisible(method)) {
+                    continue;
+                }
+
+                this.globalDefine(this.compileBuildMsgData(contract, method, abiVersion));
+            }
+
+            for (const sVar of contract.vStateVariables) {
+                if (sVar.visibility !== sol.StateVariableVisibility.Public) {
+                    continue;
+                }
+
+                this.globalDefine(this.compileBuildMsgData(contract, sVar, abiVersion));
             }
         }
 
@@ -306,6 +323,24 @@ export class UnitCompiler {
             contract,
             solMethodOrVar,
             overridingImpls,
+            this.globalScope,
+            this.globalUid,
+            this.solVersion,
+            abiVersion
+        );
+
+        return dispatchCompiler.compile();
+    }
+
+    compileBuildMsgData(
+        contract: sol.ContractDefinition,
+        solMethodOrVar: sol.FunctionDefinition | sol.VariableDeclaration,
+        abiVersion: sol.ABIEncoderVersion
+    ): ir.FunctionDefinition {
+        const dispatchCompiler = new MsgBuilderCompiler(
+            this.factory,
+            contract,
+            solMethodOrVar,
             this.globalScope,
             this.globalUid,
             this.solVersion,

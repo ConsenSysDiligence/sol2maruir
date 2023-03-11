@@ -421,12 +421,12 @@ export class StatementCompiler {
         );
 
         const sig = this.cfgBuilder.infer.signature(decl);
-        const sigStr = this.exprCompiler.getStrLit(sig, noSrc);
+        const sigStr = this.cfgBuilder.getStrLit(sig, noSrc);
         const args: ir.Expression[] = [];
 
         for (const arg of stmt.errorCall.vArguments) {
             const solArgT = this.cfgBuilder.infer.typeOf(arg);
-            args.push(this.exprCompiler.getStrLit(abiTypeToCanonicalName(solArgT), noSrc));
+            args.push(this.cfgBuilder.getStrLit(abiTypeToCanonicalName(solArgT), noSrc));
             args.push(this.exprCompiler.compile(arg));
         }
 

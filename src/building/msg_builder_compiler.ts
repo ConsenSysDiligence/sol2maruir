@@ -1,0 +1,126 @@
+import * as sol from "solc-typed-ast";
+import * as ir from "maru-ir2";
+import { BaseFunctionCompiler } from "./base_function_compiler";
+import { noType, transpileType, u8ArrMemPtr } from "./typing";
+import { noSrc } from "maru-ir2";
+import { getMsgBuilderName } from "./resolving";
+import { IRFactory } from "./factory";
+import { UIDGenerator } from "../utils";
+
+/**
+ * Compile a function that builds the msg.data for a particular public function
+ * or public getter.
+ */
+export class MsgBuilderCompiler extends BaseFunctionCompiler {
+    constructor(
+        factory: IRFactory,
+        private readonly contract: sol.ContractDefinition,
+        private readonly origDef: sol.FunctionDefinition | sol.VariableDeclaration,
+        globalScope: ir.Scope,
+        globalUid: UIDGenerator,
+        solVersion: string,
+        abiVersion: sol.ABIEncoderVersion
+    ) {
+        super(factory, globalUid, globalScope, solVersion, abiVersion);
+    }
+
+    /**
+     * This looks similar to ExpressionCompiler.prepEncodeArgs, but there are differences so we can't
+     * just reuse that.
+     * @param solArgs
+     * @returns
+     */
+    private prepEncodeArgs(irArgs: ir.Expression[], solTypes: sol.TypeNode[]): ir.Expression[] {
+        const args: ir.Expression[] = [];
+
+        sol.assert(irArgs.length === solTypes.length, ``);
+
+        for (let i = 0; i < irArgs.length; i++) {
+            const solType = solTypes[i];
+            const irArg = irArgs[i];
+
+            let abiSafeSolType: sol.TypeNode;
+
+            if (solType instanceof sol.IntLiteralType) {
+                const fitT = solType.smallestFittingType();
+
+                sol.assert(
+                    fitT !== undefined,
+                    "Unable to detect smalles fitting type for {0}",
+                    solType
+                );
+
+                abiSafeSolType = fitT;
+            } else {
+                abiSafeSolType = solType;
+            }
+
+            const abiType = sol.generalizeType(
+                this.cfgBuilder.infer.toABIEncodedType(abiSafeSolType, this.abiVersion)
+            )[0];
+
+            const abiTypeName = this.cfgBuilder.getStrLit(abiType.pp(), noSrc);
+
+            args.push(abiTypeName, irArg);
+        }
+
+        return args;
+    }
+
+    /**
+     * Compile the implicit partial constructor. Just zero-es out the state variables
+     */
+    compile(): ir.FunctionDefinition {
+        const factory = this.cfgBuilder.factory;
+        const solArgTs: sol.TypeNode[] =
+            this.origDef instanceof sol.FunctionDefinition
+                ? this.origDef.vParameters.vParameters.map((param) =>
+                      this.cfgBuilder.infer.variableDeclarationToTypeNode(param)
+                  )
+                : this.cfgBuilder.infer.getterArgsAndReturn(this.origDef)[0];
+        const signature: string = this.cfgBuilder.infer.signature(this.origDef);
+
+        // Add arguments
+        solArgTs.forEach((argT, i) =>
+            this.cfgBuilder.addIRArg(
+                `ARG_${i}`,
+                transpileType(argT, this.cfgBuilder.factory),
+                noSrc
+            )
+        );
+        const irArgTs = this.cfgBuilder.args.map((argDecl) => argDecl.type);
+
+        // Add returns
+        const resDecl = this.cfgBuilder.addIRRet("RET", u8ArrMemPtr, noSrc);
+        const res = factory.identifier(noSrc, resDecl.name, resDecl.type);
+
+        // @todo re-write this to use abi.encodeWithSelector, or just abi.encode
+        // to avoid adding string literals for signatures.
+
+        // Prep abi.encodeWithSignature arguments
+        const sigArg = this.cfgBuilder.getStrLit(signature, noSrc);
+        const callArgs = this.prepEncodeArgs(
+            this.cfgBuilder.args.map((argDecl) =>
+                factory.identifier(noSrc, argDecl.name, argDecl.type)
+            ),
+            solArgTs
+        );
+
+        // Call abi.encodeWithSignature
+        this.cfgBuilder.call(
+            [res],
+            factory.identifier(noSrc, `builtin_abi_encodeWithSignature_${solArgTs.length}`, noType),
+            [factory.memConstant(noSrc, "exception")],
+            irArgTs,
+            [sigArg, ...callArgs],
+            noSrc
+        );
+
+        // Return
+        this.cfgBuilder.return([res], noSrc);
+
+        const name = getMsgBuilderName(this.contract, this.origDef, this.cfgBuilder.infer);
+
+        return this.finishCompile(noSrc, name);
+    }
+}

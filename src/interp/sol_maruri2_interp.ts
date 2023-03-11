@@ -123,6 +123,34 @@ export class SolMaruirInterp {
         return !inRange;
     }
 
+    private builtin_encodeWithSignature(s: State, frame: BuiltinFrame): PointerVal {
+        assert(
+            frame.args.length === 2 * frame.typeArgs.length + 1,
+            `Expected one type arg and 3 args to builtin_abi_encodeWithSignature_${frame.typeArgs.length}`
+        );
+
+        const sigPtr = frame.args[0][1];
+
+        const argVals: PrimitiveValue[] = [];
+        const abiTypes: string[] = [];
+
+        for (let i = 0; i < frame.typeArgs.length; i++) {
+            const typePtr = frame.args[i * 2][1];
+            assert(typePtr instanceof Array, ``);
+
+            argVals.push(frame.args[i * 2 + 1][1]);
+        }
+
+        assert(sigPtr instanceof Array, ``);
+        const signature = decodeString(s, sigPtr);
+
+        // console.error(`Signature: ${signature} abi type: ${abiType} val: ${val}`);
+        const result = encodeWithSignature(signature, abiTypes, ...argVals);
+        // console.error(result.toString("hex"));
+
+        return this.defineBytes(result, "memory");
+    }
+
     private builtin_encode(s: State, frame: BuiltinFrame): PointerVal {
         assert(
             frame.args.length % 2 === 0,
@@ -258,25 +286,21 @@ export class SolMaruirInterp {
                 }
             ],
             [
+                "builtin_abi_encodeWithSignature_0",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    return [true, [this.builtin_encodeWithSignature(s, frame)]];
+                }
+            ],
+            [
                 "builtin_abi_encodeWithSignature_1",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
-                    assert(
-                        frame.typeArgs.length === 1 && frame.args.length === 3,
-                        `Expected one type arg and 3 args to builtin_abi_encodeWithSignature_1`
-                    );
-
-                    const [[, sigPtr], [, typePtr], [, val]] = frame.args;
-
-                    assert(sigPtr instanceof Array && typePtr instanceof Array, ``);
-
-                    const signature = decodeString(s, sigPtr);
-                    const abiType = decodeString(s, typePtr);
-
-                    // console.error(`Signature: ${signature} abi type: ${abiType} val: ${val}`);
-                    const result = encodeWithSignature(signature, [abiType], val);
-                    // console.error(result.toString("hex"));
-
-                    return [true, [this.defineBytes(result, "memory")]];
+                    return [true, [this.builtin_encodeWithSignature(s, frame)]];
+                }
+            ],
+            [
+                "builtin_abi_encodeWithSignature_2",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    return [true, [this.builtin_encodeWithSignature(s, frame)]];
                 }
             ],
             [

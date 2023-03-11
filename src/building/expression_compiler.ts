@@ -2,8 +2,8 @@ import * as ir from "maru-ir2";
 import { BaseSrc, noSrc } from "maru-ir2";
 import { gte } from "semver";
 import * as sol from "solc-typed-ast";
-import { assert, ContractKind, generalizeType, pp } from "solc-typed-ast";
-import { IRTuple2 } from "../ir";
+import { assert, ContractDefinition, ContractKind, generalizeType, pp } from "solc-typed-ast";
+import { IRTuple2, IRTupleType2 } from "../ir";
 import { ASTSource } from "../ir/source";
 import { single } from "../utils";
 import { CFGBuilder } from "./cfg_builder";
@@ -13,18 +13,22 @@ import {
     FunctionScope,
     getDesugaredConstructorName,
     getDesugaredFunName,
-    getDispatchName,
+    getMethodDispatchName,
     getIRContractName,
-    getIRStructDefName
+    getIRStructDefName,
+    getMsgBuilderName
 } from "./resolving";
 import {
     boolT,
     convertToMem,
     isAddressType,
+    msgPtrT,
+    msgT,
     noType,
     transpileType,
     u160,
     u256,
+    u32,
     u8,
     u8ArrExcPtr,
     u8ArrMemPtr
@@ -313,12 +317,6 @@ export class ExpressionCompiler {
 
     /**
      * Compile a solidity assignment. This needs to handle:
-     * TODO:
-     *  - breaking tuple assignments into primitive assignments
-     *  - converting assignments to array/structs/map into heap operations
-     * DONE:
-     *  - implicit casts from lhs to rhs
-     *  - desugaring assignments of the shape +=, -=...
      */
     compileAssignment(expr: sol.Assignment): ir.Expression {
         const src = new ASTSource(expr);
@@ -398,32 +396,6 @@ export class ExpressionCompiler {
         return resT;
     }
 
-    getStrLit(str: string, src: ir.BaseSrc): ir.Identifier {
-        const val: bigint[] = [...Buffer.from(str, "utf-8")].map((x) => BigInt(x));
-
-        const name = this.cfgBuilder.globalUid.get(`_str_lit_`);
-
-        this.cfgBuilder.globalScope.define(
-            this.factory.globalVariable(
-                noSrc,
-                name,
-                u8ArrExcPtr,
-                this.factory.structLiteral(noSrc, [
-                    ["len", this.factory.numberLiteral(noSrc, BigInt(val.length), 10, u256)],
-                    [
-                        "arr",
-                        this.factory.arrayLiteral(
-                            noSrc,
-                            val.map((v) => this.factory.numberLiteral(noSrc, v, 10, u8))
-                        )
-                    ]
-                ])
-            )
-        );
-
-        return this.factory.identifier(src, name, u8ArrExcPtr);
-    }
-
     getBytesLit(bytes: string, src: ir.BaseSrc): ir.Identifier {
         const val: bigint[] = [...Buffer.from(bytes, "hex")].map((x) => BigInt(x));
 
@@ -478,7 +450,7 @@ export class ExpressionCompiler {
         }
 
         if (expr.kind === sol.LiteralKind.String) {
-            return this.getStrLit(expr.value, src);
+            return this.cfgBuilder.getStrLit(expr.value, src);
         }
 
         if (expr.kind === sol.LiteralKind.HexString) {
@@ -803,7 +775,7 @@ export class ExpressionCompiler {
                 this.cfgBuilder.infer.toABIEncodedType(abiSafeSolType, this.abiEncodeVersion)
             )[0];
 
-            const abiTypeName = this.getStrLit(abiType.pp(), noSrc);
+            const abiTypeName = this.cfgBuilder.getStrLit(abiType.pp(), noSrc);
 
             args.push(abiTypeName, irArg);
             argTs.push(irArgT);
@@ -844,14 +816,20 @@ export class ExpressionCompiler {
 
         if (expr.vFunctionName === "require") {
             const args = expr.vArguments.map((arg) => this.compile(arg));
-            const argTs: ir.Type[] = [];
+            const memArgs: ir.MemDesc[] = [];
 
             let name: string;
 
             if (args.length === 2) {
                 name = "sol_require_msg";
 
-                argTs.push(this.typeOf(args[1]));
+                const strT = this.typeOf(args[1]);
+                assert(
+                    strT instanceof ir.PointerType,
+                    `Second arg of require must be a string pointer`
+                );
+
+                memArgs.push(strT.region);
             } else {
                 name = "sol_require";
             }
@@ -859,8 +837,8 @@ export class ExpressionCompiler {
             this.cfgBuilder.call(
                 [],
                 this.factory.identifier(calleeSrc, name, noType),
+                memArgs,
                 [],
-                argTs,
                 args,
                 exprSrc
             );
@@ -1141,19 +1119,21 @@ export class ExpressionCompiler {
     /**
      * Helper to decode a NON-builtin solidity call. This computes and returns:
      * 1. The "this" argument. Depending on the context its either a u160 or a struct pointer
-     * 2. Any gas modifiers
-     * 3. Any value modifiers
-     * 4. Any salt modifiers
-     * 5. Whether this is an external call
-     * 6. The name of the compiled function
+     * 2. The solidity function/public getter declaration that corresponds to the call
+     * 3. Any gas modifiers
+     * 4. Any value modifiers
+     * 5. Any salt modifiers
+     * 6. Whether this is an external call
+     * 7. The name of the compiled function
      * 8. The Solidity formal argument types
-     * 7. The Solidity return types
+     * 9. The Solidity return types
      * @param expr
      */
     private decodeCall(
         expr: sol.FunctionCall
     ): [
         ir.Expression,
+        sol.FunctionDefinition | sol.VariableDeclaration,
         sol.Expression | undefined,
         sol.Expression | undefined,
         sol.Expression | undefined,
@@ -1169,6 +1149,7 @@ export class ExpressionCompiler {
         const funT = this.cfgBuilder.infer.typeOf(callee);
         let retTs: sol.TypeNode[] = [];
         let argTs: sol.TypeNode[] = [];
+        let calleeDecl: sol.FunctionDefinition | sol.VariableDeclaration;
 
         if (funT instanceof sol.FunctionType) {
             retTs = funT.returns;
@@ -1221,6 +1202,7 @@ export class ExpressionCompiler {
                 solDef
             );
 
+            calleeDecl = solDef;
             irFun = getDesugaredFunName(solDef, this.solScope, this.cfgBuilder.infer);
         } else if (callee instanceof sol.MemberAccess) {
             const base = callee.vExpression;
@@ -1236,23 +1218,26 @@ export class ExpressionCompiler {
                 const def = expr.vReferencedDeclaration;
 
                 if (def instanceof sol.FunctionDefinition) {
-                    irFun = getDispatchName(baseT.definition, def, this.cfgBuilder.infer);
+                    irFun = getMethodDispatchName(baseT.definition, def, this.cfgBuilder.infer);
 
                     const baseIRExpr = this.compile(base);
 
                     thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));
                 } else if (def instanceof sol.VariableDeclaration) {
-                    irFun = getDispatchName(
-                        this.solScope as sol.ContractDefinition,
-                        def,
-                        this.cfgBuilder.infer
+                    sol.assert(
+                        def.stateVariable && def.vScope instanceof ContractDefinition,
+                        `Expected a state var in decodeCall`
                     );
+
+                    irFun = getMethodDispatchName(def.vScope, def, this.cfgBuilder.infer);
                     const baseIRExpr = this.compile(base);
 
                     thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));
                 } else {
                     assert(false, `Unexpected declaration ${sol.pp(def)} for ${sol.pp(expr)}`);
                 }
+
+                calleeDecl = def;
             } else if (
                 baseT instanceof sol.TypeNameType &&
                 baseT.type instanceof sol.UserDefinedType &&
@@ -1283,6 +1268,7 @@ export class ExpressionCompiler {
 
         return [
             thisExpr,
+            calleeDecl,
             gasModifier,
             valueModifier,
             saltModifier,
@@ -1303,21 +1289,76 @@ export class ExpressionCompiler {
         }
 
         const src = new ASTSource(expr);
-        const [irCallee, , , , , irFun, argTs, retTs] = this.decodeCall(expr);
+        const [irCallee, solCallee, , , , isExternal, irFun, argTs, retTs] = this.decodeCall(expr);
+
+        const irRetTs = retTs.map((retT) => transpileType(retT, this.factory));
+        const lhss = irRetTs.map((retT) => this.cfgBuilder.getTmpId(retT, src));
+        const callee = this.factory.identifier(src, irFun, noType);
 
         const args: ir.Expression[] = [];
 
         for (let i = 0; i < expr.vArguments.length; i++) {
             const irArg = this.compile(expr.vArguments[i]);
             const formalIRT = transpileType(argTs[i], this.factory);
+            console.error(
+                `Fun ${expr.vFunctionName} ${i}-th arg sol type ${argTs[
+                    i
+                ].pp()} transpiled to ${formalIRT.pp()}`
+            );
             args.push(this.mustCastTo(irArg, formalIRT, irArg.src));
         }
 
-        args.splice(0, 0, irCallee, this.cfgBuilder.blockPtr(noSrc), this.cfgBuilder.msgPtr(noSrc));
+        let msgPtrArg: ir.Identifier;
 
-        const irRetTs = retTs.map((retT) => transpileType(retT, this.factory));
-        const lhss = irRetTs.map((retT) => this.cfgBuilder.getTmpId(retT, src));
-        const callee = this.factory.identifier(src, irFun, noType);
+        if (isExternal) {
+            // TODO @dimo Consider moving block and msg pointers to calldata or another region?
+            msgPtrArg = this.cfgBuilder.getTmpId(msgPtrT, noSrc);
+            this.cfgBuilder.allocStruct(
+                msgPtrArg,
+                msgT,
+                this.factory.memConstant(noSrc, "memory"),
+                noSrc
+            );
+
+            const msgData = this.cfgBuilder.getTmpId(u8ArrMemPtr, noSrc);
+            this.cfgBuilder.call(
+                [msgData],
+                this.factory.funIdentifier(
+                    getMsgBuilderName(
+                        solCallee.vScope as sol.ContractDefinition,
+                        solCallee,
+                        this.cfgBuilder.infer
+                    )
+                ),
+                [],
+                [],
+                [...args],
+                noSrc
+            );
+
+            const thisAddr = this.mustCastTo(this.cfgBuilder.this(noSrc), u160, noSrc);
+            const sigHash = this.factory.numberLiteral(
+                noSrc,
+                BigInt("0x" + this.cfgBuilder.infer.signatureHash(solCallee)),
+                16,
+                u32
+            );
+
+            this.cfgBuilder.storeField(msgPtrArg, "sender", thisAddr, noSrc);
+            this.cfgBuilder.storeField(msgPtrArg, "sig", sigHash, noSrc);
+            this.cfgBuilder.storeField(msgPtrArg, "data", msgData, noSrc);
+            // TODO implement value
+            this.cfgBuilder.storeField(
+                msgPtrArg,
+                "value",
+                this.factory.numberLiteral(noSrc, 0n, 10, u256),
+                noSrc
+            );
+        } else {
+            msgPtrArg = this.cfgBuilder.msgPtr(noSrc);
+        }
+
+        args.splice(0, 0, irCallee, this.cfgBuilder.blockPtr(noSrc), msgPtrArg);
 
         this.cfgBuilder.call(lhss, callee, [], [], args, src);
 
@@ -1774,6 +1815,32 @@ export class ExpressionCompiler {
                     fromT
                 )
             );
+        }
+
+        if (
+            fromT instanceof IRTupleType2 &&
+            toT instanceof IRTupleType2 &&
+            expr instanceof IRTuple2 &&
+            expr.elements.length === fromT.elementTypes.length &&
+            fromT.elementTypes.length === toT.elementTypes.length
+        ) {
+            const castedEls: Array<ir.Expression | null> = [];
+
+            for (let i = 0; i < fromT.elementTypes.length; i++) {
+                const toElT = toT.elementTypes[i];
+                const elExpr = expr.elements[i];
+
+                const castedElExpr =
+                    toElT === null || elExpr === null ? elExpr : this.castTo(elExpr, toElT, src);
+
+                if (castedElExpr === undefined) {
+                    return undefined;
+                }
+
+                castedEls.push(castedElExpr);
+            }
+
+            return new IRTuple2(src, castedEls);
         }
 
         return undefined;

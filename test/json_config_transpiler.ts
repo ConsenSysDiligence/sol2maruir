@@ -412,7 +412,10 @@ export class JSONConfigTranspiler {
                     )
                 );
 
-                if (step.expectedReturns === undefined) {
+                const expectFail =
+                    step.expectedReturns === undefined && step.nameReturns === undefined;
+
+                if (expectFail) {
                     entry.statements.push(this.factory.assert(ir.noSrc, aborted));
                 } else {
                     entry.statements.push(
@@ -421,7 +424,22 @@ export class JSONConfigTranspiler {
                             this.factory.unaryOperation(noSrc, "!", aborted, boolT)
                         )
                     );
+                }
 
+                if (step.nameReturns !== undefined) {
+                    (step.nameReturns as string[]).forEach((name, i) => {
+                        this.builder.addIRLocal(name, fun.returns[i], ir.noSrc);
+                        entry.statements.push(
+                            this.factory.assignment(
+                                noSrc,
+                                this.factory.identifier(noSrc, name, fun.returns[i]),
+                                lhss[i]
+                            )
+                        );
+                    });
+                }
+
+                if (step.expectedReturns !== undefined) {
                     for (let i = 0; i < step.expectedReturns.length; i++) {
                         const jsRet = step.expectedReturns[i];
                         const maruirRet = this.compileJSArg(jsRet);

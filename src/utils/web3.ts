@@ -195,6 +195,7 @@ export function toWeb3Value(arg: any, abiType: string | sol.TypeNode, s: ir.Stat
              */
             const v = vals[i];
 
+            assert(t !== null, `Unexpected null tuple element in toWeb3Value`);
             res.push(toWeb3Value(v, t, s));
         }
 

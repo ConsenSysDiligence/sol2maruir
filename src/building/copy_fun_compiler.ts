@@ -168,11 +168,12 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
                 const header = this.cfgBuilder.mkBB();
                 const body = this.cfgBuilder.mkBB();
                 const exit = this.cfgBuilder.mkBB();
+                const ctr = this.cfgBuilder.getTmpId(u256, noSrc);
+                this.cfgBuilder.assign(ctr, factory.numberLiteral(noSrc, 0n, 10, u256), noSrc);
 
                 this.cfgBuilder.jump(header, noSrc);
 
                 this.cfgBuilder.curBB = header;
-                const ctr = this.cfgBuilder.getTmpId(u256, noSrc);
                 this.cfgBuilder.branch(
                     factory.binaryOperation(noSrc, ctr, "<", len, boolT),
                     body,

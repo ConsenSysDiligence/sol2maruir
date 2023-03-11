@@ -24,7 +24,7 @@ const preambleStr = `
     struct Message {
         sender: u160;
         sig: u32;
-        data: ArrWithLen<#calldata; u8> *#calldata;
+        data: ArrWithLen<#memory; u8> *#memory;
         value: u256;
     }
 
@@ -289,6 +289,9 @@ const preambleStr = `
         arg3: T3
     ): ArrWithLen<#memory; u8> *#memory
 
+    fun builtin_abi_encodeWithSignature_0<SigM>(
+        sig: ArrWithLen<SigM; u8> *SigM
+    ): ArrWithLen<#memory; u8> *#memory
     fun builtin_abi_encodeWithSignature_1<SigM; T1>(
         sig: ArrWithLen<SigM; u8> *SigM,
         arg1AbiT: ArrWithLen<#exception; u8> *#exception,

@@ -4,7 +4,7 @@ import { BasicBlock } from "maru-ir2/dist/ir/cfg";
 import { assert, InferType, pp } from "solc-typed-ast";
 import { UIDGenerator } from "../utils";
 import { BaseSrc, concretizeType, makeSubst, noSrc } from "maru-ir2";
-import { transpileType, u256 } from "./typing";
+import { transpileType, u256, u8, u8ArrExcPtr } from "./typing";
 import { ASTSource } from "../ir/source";
 import { IRFactory } from "./factory";
 
@@ -535,7 +535,7 @@ export class CFGBuilder {
         this.entry = zeroInitBB;
         this.curBB = zeroInitBB;
 
-        for (const v of [...this.locals, ...this.returns]) {
+        for (const v of [...this._locals, ...this.returns]) {
             this.assign(
                 this.factory.identifier(noSrc, v.name, v.type),
                 this.zeroValue(v.type),
@@ -566,5 +566,31 @@ export class CFGBuilder {
         }
 
         return res;
+    }
+
+    getStrLit(str: string, src: ir.BaseSrc): ir.Identifier {
+        const val: bigint[] = [...Buffer.from(str, "utf-8")].map((x) => BigInt(x));
+
+        const name = this.globalUid.get(`_str_lit_`);
+
+        this.globalScope.define(
+            this.factory.globalVariable(
+                noSrc,
+                name,
+                u8ArrExcPtr,
+                this.factory.structLiteral(noSrc, [
+                    ["len", this.factory.numberLiteral(noSrc, BigInt(val.length), 10, u256)],
+                    [
+                        "arr",
+                        this.factory.arrayLiteral(
+                            noSrc,
+                            val.map((v) => this.factory.numberLiteral(noSrc, v, 10, u8))
+                        )
+                    ]
+                ])
+            )
+        );
+
+        return this.factory.identifier(src, name, u8ArrExcPtr);
     }
 }

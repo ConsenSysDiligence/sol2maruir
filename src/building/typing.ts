@@ -10,7 +10,8 @@ import { getIRStructDefName } from "./resolving";
 // For now this is not a problem, but we should fix this eventually.
 export const boolT = new ir.BoolType(noSrc);
 export const u8 = new ir.IntType(noSrc, 8, false);
-export const u16 = new ir.IntType(noSrc, 8, false);
+export const u32 = new ir.IntType(noSrc, 32, false);
+export const u16 = new ir.IntType(noSrc, 16, false);
 export const u160 = new ir.IntType(noSrc, 160, false);
 export const u256 = new ir.IntType(noSrc, 256, false);
 export const u8ArrExc = new ir.UserDefinedType(

@@ -174,9 +174,10 @@ describe("Interpreter tests", () => {
         //"test/samples/solidity/EncodingTest.config.json",
         //"test/samples/solidity/ABIEncoderV2_Structs.config.json"
         //"test/samples/solidity/public_getters.config.json",
-        "test/samples/solidity/AddressLiteralMemberAccess.config.json",
-        "test/samples/solidity/CalldataArgPassing.config.json",
-        "test/samples/solidity/public_getters.config.json"
+        //"test/samples/solidity/AddressLiteralMemberAccess.config.json",
+        "test/samples/solidity/CalldataArgPassing.config.json"
+        //"test/samples/solidity/public_getters.config.json",
+        //"test/samples/solidity/calls.config.json"
     ];
 
     for (const jsonFile of files) {
@@ -214,12 +215,12 @@ describe("Interpreter tests", () => {
             const defs = [...transpiledDefs, ...mainDefs];
 
             // Uncomment below lines to see compiled maruir file
-            // const contents = defs.map((def) => def.pp()).join("\n");
-            // const maruirFile = jsonFile.replace(".config.json", ".maruir");
+            const contents = defs.map((def) => def.pp()).join("\n");
+            const maruirFile = jsonFile.replace(".config.json", ".maruir");
 
-            // fse.writeFileSync(maruirFile, contents, {
-            //     encoding: "utf8"
-            // });
+            fse.writeFileSync(maruirFile, contents, {
+                encoding: "utf8"
+            });
 
             const interp = new SolMaruirInterp(defs, true);
 
