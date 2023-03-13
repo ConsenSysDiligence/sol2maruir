@@ -21,6 +21,9 @@ import {
 } from "maru-ir2";
 import { assert } from "solc-typed-ast";
 import {
+    decodeBytes,
+    decodeString,
+    encodePacked,
     encodeParameters,
     encodeWithSignature,
     hexStringToBytes,
@@ -37,35 +40,6 @@ export class SolMaruirInterp {
     stmtExec: StatementExecutor;
     contractRegistry: Map<bigint, [Type, PrimitiveValue]>;
     nAddresses = 0;
-
-    private packedArrPtrToBuf(ptr: PointerVal): Buffer {
-        const val = this.state.deref(ptr);
-
-        assert(
-            val instanceof Map && val.has("arr"),
-            `Expected array struct for packed array decoding, not {0}`,
-            val
-        );
-
-        const arrPtr = val.get("arr") as PointerVal;
-        const arrVal = this.stmtExec.deref(arrPtr);
-
-        assert(
-            arrVal instanceof Array,
-            `Expected array for packed array decoding, not {0}`,
-            arrVal
-        );
-
-        return Buffer.from(arrVal.map((v) => Number(v)));
-    }
-
-    private decodeBytes(ptr: PointerVal): string {
-        return this.packedArrPtrToBuf(ptr).toString("hex");
-    }
-
-    private decodeString(ptr: PointerVal): string {
-        return this.packedArrPtrToBuf(ptr).toString("utf-8");
-    }
 
     private defineBytes(bytes: Buffer, inMem: string): PointerVal {
         const bigIntArr: bigint[] = Array.from(bytes).map(BigInt);
@@ -165,7 +139,7 @@ export class SolMaruirInterp {
 
             assert(typePtr instanceof Array, "Expected pointer, got {0}", typePtr);
 
-            const abiT = this.decodeString(typePtr);
+            const abiT = decodeString(s, typePtr);
             const abiV = toWeb3Value(value, abiT, s);
 
             // console.error(abiT, abiV);
@@ -177,6 +151,44 @@ export class SolMaruirInterp {
         const bytes = encodeParameters(abiTs, ...abiVs);
 
         // console.error(bytes.toString("hex"), abiTs, abiVs);
+
+        const ptr = this.defineBytes(bytes, "memory");
+
+        // console.error(ptr);
+
+        return ptr;
+    }
+
+    private builtin_encodePacked(s: State, frame: BuiltinFrame): PointerVal {
+        if (frame.args.length === 0) {
+            return this.defineBytes(Buffer.from(""), "memory");
+        }
+
+        assert(
+            frame.args.length % 2 === 0,
+            "Expected even count of args for builtin_encodePacked, got {0}",
+            frame.args.length
+        );
+
+        const abiArgs: Array<{ type: string; value: any }> = [];
+
+        for (let i = 1; i < frame.args.length; i += 2) {
+            const typePtr = frame.args[i - 1][1];
+            const value = frame.args[i][1];
+
+            assert(typePtr instanceof Array, "Expected pointer, got {0}", typePtr);
+
+            const abiT = decodeString(s, typePtr);
+            const abiV = toWeb3Value(value, abiT, s);
+
+            // console.error(abiT, abiV);
+
+            abiArgs.push({ type: abiT, value: abiV });
+        }
+
+        const bytes = encodePacked(...abiArgs);
+
+        // console.error(bytes.toString("hex"), abiArgs);
 
         const ptr = this.defineBytes(bytes, "memory");
 
@@ -257,8 +269,8 @@ export class SolMaruirInterp {
 
                     assert(sigPtr instanceof Array && typePtr instanceof Array, ``);
 
-                    const signature = this.decodeString(sigPtr);
-                    const abiType = this.decodeString(typePtr);
+                    const signature = decodeString(s, sigPtr);
+                    const abiType = decodeString(s, typePtr);
 
                     // console.error(`Signature: ${signature} abi type: ${abiType} val: ${val}`);
                     const result = encodeWithSignature(signature, [abiType], val);
@@ -286,6 +298,27 @@ export class SolMaruirInterp {
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
                     true,
                     [this.builtin_encode(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_encodePacked_1",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    true,
+                    [this.builtin_encodePacked(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_encodePacked_2",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    true,
+                    [this.builtin_encodePacked(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_encodePacked_3",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    true,
+                    [this.builtin_encodePacked(s, frame)]
                 ]
             ],
             [
@@ -418,7 +451,7 @@ export class SolMaruirInterp {
 
                     assert(bytesPtr instanceof Array, ``);
 
-                    const bytes = this.decodeBytes(bytesPtr);
+                    const bytes = decodeBytes(s, bytesPtr);
 
                     // console.error(`builtin_keccak256_05: input "${bytes}"`);
 

@@ -793,6 +793,8 @@ export class ExpressionCompiler {
                 );
 
                 abiSafeSolType = fitT;
+            } else if (solType instanceof sol.StringLiteralType) {
+                abiSafeSolType = new sol.StringType();
             } else {
                 abiSafeSolType = solType;
             }
@@ -966,6 +968,23 @@ export class ExpressionCompiler {
             );
 
             return rets.length === 1 ? rets[0] : new IRTuple2(noSrc, rets);
+        }
+
+        if (expr.vFunctionName === "encodePacked") {
+            const [args, argTs] = this.prepEncodeArgs(expr.vArguments);
+            const builtinName = `builtin_abi_encodePacked_${expr.vArguments.length}`;
+            const res = this.cfgBuilder.getTmpId(u8ArrMemPtr);
+
+            this.cfgBuilder.call(
+                [res],
+                this.factory.identifier(calleeSrc, builtinName, noType),
+                [],
+                argTs,
+                args,
+                exprSrc
+            );
+
+            return res;
         }
 
         if (expr.vFunctionName === "keccak256") {
