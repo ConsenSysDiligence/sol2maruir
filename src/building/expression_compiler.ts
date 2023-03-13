@@ -793,6 +793,8 @@ export class ExpressionCompiler {
                 );
 
                 abiSafeSolType = fitT;
+            } else if (solType instanceof sol.StringLiteralType) {
+                abiSafeSolType = new sol.StringType();
             } else {
                 abiSafeSolType = solType;
             }

@@ -175,7 +175,8 @@ describe("Interpreter tests", () => {
         //"test/samples/solidity/ABIEncoderV2_Structs.config.json"
         //"test/samples/solidity/public_getters.config.json",
         "test/samples/solidity/AddressLiteralMemberAccess.config.json",
-        "test/samples/solidity/CalldataArgPassing.config.json"
+        "test/samples/solidity/CalldataArgPassing.config.json",
+        "test/samples/solidity/public_getters.config.json"
     ];
 
     for (const jsonFile of files) {

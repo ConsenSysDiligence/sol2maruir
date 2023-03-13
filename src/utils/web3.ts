@@ -1,4 +1,4 @@
-import { State } from "maru-ir2";
+import * as ir from "maru-ir2";
 import * as sol from "solc-typed-ast";
 import { assert, InferType, LatestCompilerVersion } from "solc-typed-ast";
 
@@ -24,8 +24,8 @@ export function encodeParameters(types: any[], ...params: any[]): Buffer {
     return hexStringToBytes(ethAbi.encodeParameters(types, params));
 }
 
-export function encodePacked(types: any[], ...params: any[]): Buffer {
-    return hexStringToBytes(ethAbi.encodePacked(types, params));
+export function encodePacked(...args: Array<{ type: string; value: any }>): Buffer {
+    return hexStringToBytes(Utils.encodePacked(...args));
 }
 
 export function bigIntToHex(value: bigint): string {
@@ -84,9 +84,34 @@ function abiTypeStringToTypeNode(t: string): sol.TypeNode {
 
     const elementaryT = infer.elementaryTypeNameStringToTypeNode(t);
 
-    assert(elementaryT !== undefined, "Expected elementary type, got {0}", t);
+    sol.assert(elementaryT !== undefined, "Expected elementary type, got {0}", t);
 
     return elementaryT;
+}
+
+export function packedArrPtrToBuf(s: ir.State, ptr: ir.PointerVal): Buffer {
+    const val = s.deref(ptr);
+
+    assert(
+        val instanceof Map && val.has("arr"),
+        `Expected array struct for packed array decoding, not {0}`,
+        val
+    );
+
+    const arrPtr = val.get("arr") as ir.PointerVal;
+    const arrVal = s.deref(arrPtr);
+
+    assert(arrVal instanceof Array, `Expected array for packed array decoding, not {0}`, arrVal);
+
+    return Buffer.from(arrVal.map((v) => Number(v)));
+}
+
+export function decodeBytes(s: ir.State, ptr: ir.PointerVal): string {
+    return packedArrPtrToBuf(s, ptr).toString("hex");
+}
+
+export function decodeString(s: ir.State, ptr: ir.PointerVal): string {
+    return packedArrPtrToBuf(s, ptr).toString("utf-8");
 }
 
 /**
@@ -96,7 +121,7 @@ function abiTypeStringToTypeNode(t: string): sol.TypeNode {
  * @see https://github.com/web3/web3.js/blob/5807398c7647a9c31a61bc8a114722779c8d1848/packages/web3-eth-abi/src/index.js#L100
  * @see https://github.com/ethers-io/ethers.js/blob/0bf53d7804109f5c0322d8c9a0c10d73abc84136/src.ts/abi/abi-coder.ts#L126
  */
-export function toWeb3Value(arg: any, abiType: string | sol.TypeNode, s: State): any {
+export function toWeb3Value(arg: any, abiType: string | sol.TypeNode, s: ir.State): any {
     const type = abiType instanceof sol.TypeNode ? abiType : abiTypeStringToTypeNode(abiType);
 
     if (type instanceof sol.BoolType) {
@@ -127,7 +152,7 @@ export function toWeb3Value(arg: any, abiType: string | sol.TypeNode, s: State):
     }
 
     if (type instanceof sol.StringType) {
-        console.log(arg);
+        return decodeString(s, arg);
     }
 
     if (type instanceof sol.ArrayType) {
