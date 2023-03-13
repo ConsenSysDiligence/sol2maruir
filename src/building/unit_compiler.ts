@@ -10,7 +10,7 @@ import { GetterCompiler } from "./getter_compiler";
 import { compileGlobalVarInitializer } from "./literal_compiler";
 import { preamble } from "./preamble";
 import { getDesugaredGlobalVarName, getIRStructDefName } from "./resolving";
-import { transpileType, u16, u160 } from "./typing";
+import { transpileType, u16, u160, u256 } from "./typing";
 
 type InheritMap = Map<sol.ContractDefinition, sol.ContractDefinition[]>;
 
@@ -318,9 +318,12 @@ export class UnitCompiler {
     getContractStruct(contract: sol.ContractDefinition): ir.StructDefinition {
         const name = `${contract.name}_${contract.id}`;
 
+        /// @todo Make sure these don't clash with other contract fields
+        /// @todo Maybe move the EVM states in their own sub-struct?
         const fields: Array<[string, ir.Type]> = [
             ["__address__", u160],
-            ["__rtti__", u16]
+            ["__rtti__", u16],
+            ["__balance__", u256]
         ];
 
         for (const base of contract.vLinearizedBaseContracts) {

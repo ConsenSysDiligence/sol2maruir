@@ -20,6 +20,7 @@ import {
 import {
     boolT,
     convertToMem,
+    isAddressType,
     noType,
     transpileType,
     u160,
@@ -463,6 +464,11 @@ export class ExpressionCompiler {
                 this.factory
             ) as ir.IntType;
 
+            // Could be an address literal
+            if (expr.value.startsWith("0x") && expr.value.length === 42) {
+                type.md.set("sol_type", "address");
+            }
+
             return this.factory.numberLiteral(
                 src,
                 BigInt(expr.value),
@@ -877,9 +883,94 @@ export class ExpressionCompiler {
             return res;
         }
 
+        if (expr.vFunctionName === "send" || expr.vFunctionName === "transfer") {
+            const calledOn = expr.vExpression;
+            const solAmount = single(expr.vArguments);
+            const amount = this.mustCastTo(this.compile(solAmount), u256, new ASTSource(solAmount));
+
+            assert(
+                calledOn instanceof sol.MemberAccess,
+                `Exepcted member access as callee on {0} not {1}`,
+                expr.vFunctionName,
+                calledOn
+            );
+
+            const sendAddr = this.mustCastTo(this.cfgBuilder.this(noSrc), u160, noSrc);
+            const recvAddr = this.compile(calledOn.vExpression);
+            const rets =
+                expr.vFunctionName === "send" ? [this.cfgBuilder.getTmpId(boolT, exprSrc)] : [];
+
+            this.cfgBuilder.call(
+                rets,
+                this.factory.identifier(calleeSrc, `builtin_${expr.vFunctionName}`, noType),
+                [],
+                [],
+                [sendAddr, recvAddr, amount],
+                exprSrc
+            );
+
+            return rets.length === 1 ? rets[0] : new IRTuple2(noSrc, []);
+        }
+
+        if (
+            expr.vFunctionName === "call" ||
+            expr.vFunctionName === "staticcall" ||
+            expr.vFunctionName === "delegatecall" ||
+            expr.vFunctionName === "callcode"
+        ) {
+            /**
+             * @todo This function family uses variadic arguments in Solidity 0.4.
+             * Args are processed with ABI ecnoding routines.
+             *
+             * @see https://docs.soliditylang.org/en/latest/050-breaking-changes.html#semantic-and-syntactic-changes
+             */
+            const calledOn = expr.vExpression;
+            const callBytes = single(expr.vArguments.map((arg) => this.compile(arg)));
+            const callBytesT = this.typeOf(callBytes);
+
+            assert(
+                calledOn instanceof sol.MemberAccess,
+                `Exepcted member access as callee for {0} not {1}`,
+                expr.vFunctionName,
+                calledOn
+            );
+
+            assert(
+                callBytesT instanceof ir.PointerType,
+                `Expected {0} to be of a pointer type not {1} in call ({2})`,
+                callBytes,
+                callBytesT,
+                expr.vFunctionName
+            );
+
+            const addr = this.compile(calledOn.vExpression);
+            const rets = [this.cfgBuilder.getTmpId(boolT, exprSrc)];
+
+            let builtinName: string;
+
+            if (gte(this.cfgBuilder.solVersion, "0.5.0") && expr.vFunctionName !== "callcode") {
+                rets.push(this.cfgBuilder.getTmpId(u8ArrMemPtr));
+
+                builtinName = `builtin_${expr.vFunctionName}05`;
+            } else {
+                builtinName = `builtin_${expr.vFunctionName}04`;
+            }
+
+            this.cfgBuilder.call(
+                rets,
+                this.factory.identifier(calleeSrc, builtinName, noType),
+                [callBytesT.region],
+                [],
+                [addr, callBytes],
+                exprSrc
+            );
+
+            return rets.length === 1 ? rets[0] : new IRTuple2(noSrc, rets);
+        }
+
         if (expr.vFunctionName === "keccak256") {
             assert(
-                gte(this.cfgBuilder.infer.version, "0.5.0"),
+                gte(this.cfgBuilder.solVersion, "0.5.0"),
                 "NYI function call to keccak256() for Solidity 0.4 in {0}",
                 expr
             );
@@ -1352,6 +1443,8 @@ export class ExpressionCompiler {
     compileMemberAccess(expr: sol.MemberAccess): ir.Expression {
         const base = this.compile(expr.vExpression);
         const baseT = this.typeOf(base);
+        const src = new ASTSource(expr);
+        const factory = this.cfgBuilder.factory;
 
         if (baseT instanceof ir.PointerType && baseT.toType instanceof ir.UserDefinedType) {
             const def = this.cfgBuilder.globalScope.getTypeDecl(baseT.toType);
@@ -1365,20 +1458,29 @@ export class ExpressionCompiler {
                         expr
                     );
 
-                    return this.cfgBuilder.loadField(base, baseT, "len", new ASTSource(expr));
+                    return this.cfgBuilder.loadField(base, baseT, "len", src);
                 }
 
                 for (const [fieldName] of def.fields) {
                     if (fieldName === expr.memberName) {
-                        return this.cfgBuilder.loadField(
-                            base,
-                            baseT,
-                            fieldName,
-                            new ASTSource(expr)
-                        );
+                        return this.cfgBuilder.loadField(base, baseT, fieldName, src);
                     }
                 }
             }
+        }
+
+        if (isAddressType(baseT) && expr.memberName === "balance") {
+            const res = this.cfgBuilder.getTmpId(u256, src);
+            this.cfgBuilder.call(
+                [res],
+                factory.funIdentifier("builtin_balance"),
+                [],
+                [],
+                [base],
+                src
+            );
+
+            return res;
         }
 
         throw new Error(
@@ -1633,6 +1735,26 @@ export class ExpressionCompiler {
                     return arr.values[0];
                 }
             }
+        }
+
+        // In 0.4.x you can cast values greater than 20 bytes to address, and they get the lower bits
+        if (fromT instanceof ir.IntType && isAddressType(toT)) {
+            return this.factory.cast(
+                src,
+                toT,
+                this.factory.binaryOperation(
+                    src,
+                    expr,
+                    "&",
+                    this.factory.numberLiteral(
+                        src,
+                        BigInt("0xffffffffffffffffffffffffffffffffffffffff"),
+                        16,
+                        fromT
+                    ),
+                    fromT
+                )
+            );
         }
 
         return undefined;

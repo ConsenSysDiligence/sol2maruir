@@ -39,62 +39,44 @@ export const msgT = new ir.UserDefinedType(noSrc, "Message", [], []);
 export const msgPtrT = new ir.PointerType(noSrc, msgT, new ir.MemConstant(noSrc, "memory"));
 
 export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: MemDesc): ir.Type {
+    let res: ir.Type | undefined;
+
     if (type instanceof sol.IntLiteralType) {
         assert(type.literal !== undefined, `Missing literal in type {0}`, type);
         const smallestT = sol.smallestFittingType(type.literal);
         assert(smallestT !== undefined, `Can't fit literal {0} in a type`, type.literal);
 
-        return transpileType(smallestT, factory, ptrLoc);
-    }
-
-    if (type instanceof sol.IntType) {
-        return factory.intType(ir.noSrc, type.nBits === undefined ? 256 : type.nBits, type.signed);
-    }
-
-    if (type instanceof sol.BoolType) {
-        return factory.boolType(ir.noSrc);
-    }
-
-    if (type instanceof sol.AddressType) {
-        return factory.intType(ir.noSrc, 160, false);
-    }
-
-    if (type instanceof sol.FixedBytesType) {
-        return factory.intType(ir.noSrc, type.size * 8, false);
-    }
-
-    if (type instanceof sol.MappingType) {
+        res = transpileType(smallestT, factory, ptrLoc);
+    } else if (type instanceof sol.IntType) {
+        res = factory.intType(ir.noSrc, type.nBits === undefined ? 256 : type.nBits, type.signed);
+    } else if (type instanceof sol.BoolType) {
+        res = factory.boolType(ir.noSrc);
+    } else if (type instanceof sol.AddressType) {
+        res = factory.intType(ir.noSrc, 160, false);
+    } else if (type instanceof sol.FixedBytesType) {
+        res = factory.intType(ir.noSrc, type.size * 8, false);
+    } else if (type instanceof sol.MappingType) {
         throw new Error(`NYI Mappings!`);
-    }
-
-    if (type instanceof sol.UserDefinedType) {
+    } else if (type instanceof sol.UserDefinedType) {
         const def = type.definition;
 
         if (def instanceof sol.EnumDefinition) {
             assert(def.vMembers.length < 256, `Enum {0} too big`, type.name);
 
-            return factory.intType(ir.noSrc, 8, false);
-        }
-
-        if (def instanceof sol.StructDefinition) {
+            res = factory.intType(ir.noSrc, 8, false);
+        } else if (def instanceof sol.StructDefinition) {
             assert(ptrLoc !== undefined, `Expected ptrLoc for sol struct`);
 
-            return factory.userDefinedType(ir.noSrc, getIRStructDefName(def), [ptrLoc], []);
+            res = factory.userDefinedType(ir.noSrc, getIRStructDefName(def), [ptrLoc], []);
+        } else if (def instanceof ContractDefinition) {
+            res = factory.intType(ir.noSrc, 160, false);
         }
-
-        if (def instanceof ContractDefinition) {
-            return factory.intType(ir.noSrc, 160, false);
-        }
-    }
-
-    if (type instanceof sol.PointerType) {
+    } else if (type instanceof sol.PointerType) {
         const loc = ptrLoc ? ptrLoc : factory.memConstant(ir.noSrc, type.location);
 
         if (type.to instanceof sol.StringType || type.to instanceof sol.BytesType) {
-            return factory.pointerType(ir.noSrc, transpileType(type.to, factory, loc), loc);
-        }
-
-        if (type.to instanceof sol.ArrayType) {
+            res = factory.pointerType(ir.noSrc, transpileType(type.to, factory, loc), loc);
+        } else if (type.to instanceof sol.ArrayType) {
             const arrT = factory.userDefinedType(
                 noSrc,
                 "ArrWithLen",
@@ -106,23 +88,17 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: M
                 arrT.md.set("size", type.to.size);
             }
 
-            return factory.pointerType(ir.noSrc, arrT, loc);
+            res = factory.pointerType(ir.noSrc, arrT, loc);
+        } else if (type.to instanceof sol.UserDefinedType) {
+            res = factory.pointerType(ir.noSrc, transpileType(type.to, factory, loc), loc);
         }
-
-        if (type.to instanceof sol.UserDefinedType) {
-            return factory.pointerType(ir.noSrc, transpileType(type.to, factory, loc), loc);
-        }
-    }
-
-    if (type instanceof sol.TupleType) {
-        return factory.tupleType(
+    } else if (type instanceof sol.TupleType) {
+        res = factory.tupleType(
             ir.noSrc,
             type.elements.map((solT) => (solT ? transpileType(solT, factory) : null))
         );
-    }
-
-    if (type instanceof sol.StringType || type instanceof sol.BytesType) {
-        return factory.userDefinedType(
+    } else if (type instanceof sol.StringType || type instanceof sol.BytesType) {
+        res = factory.userDefinedType(
             ir.noSrc,
             "ArrWithLen",
             [ptrLoc ? ptrLoc : factory.memConstant(ir.noSrc, "memory")],
@@ -130,7 +106,18 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: M
         );
     }
 
-    assert(false, "Unable to transpile type {0} ({1})", type, type.constructor.name);
+    assert(res !== undefined, "Unable to transpile type {0} ({1})", type, type.constructor.name);
+
+    res.md.set("sol_type", type.pp());
+
+    return res;
+}
+
+export function isAddressType(t: ir.Type): t is ir.IntType {
+    return (
+        t instanceof ir.IntType &&
+        ["address", "address payable", "payable"].includes(t.md.get("sol_type"))
+    );
 }
 
 /**

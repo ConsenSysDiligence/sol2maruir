@@ -8,5 +8,12 @@ contract AddressBytesCast04x {
         bytes21 c = bytes21(b);
         assert(b == address(0xf));
         assert(c == 0xf);
+
+        a = 1461501637330902918203684832716283019655932542991;
+        b = address(a);
+        c = bytes21(b);
+        assert(b == address(0xf));
+        assert(c == 0xf);
+
     }
 }

@@ -303,15 +303,28 @@ const preambleStr = `
     fun builtin_is_contract_at<;T>(addr: u160): bool
     fun builtin_get_contract_at<;T>(addr: u160): T
 
-    fun builtin_send(addr: u160, amount: u256): bool
-    fun builtin_transfer(addr: u160, amount: u256)
-    fun builtin_call05<M>(addr: u160, data: ArrWithLen<M; u8> *M, val: u256): (bool, ArrWithLen<#memory; u8> *#memory)
+    fun builtin_send(sender: u160, receiver: u160, amount: u256): bool
+    fun builtin_transfer(sender: u160, receiver: u160, amount: u256)
+    locals succeeded: bool;
+    {
+        entry:
+            succeeded := call builtin_send(sender, receiver, amount);
+            branch succeeded exit fail;
+
+        exit:
+            return;
+        fail:
+            call sol_revert();
+
+    }
+    fun builtin_call05<M>(addr: u160, data: ArrWithLen<M; u8> *M): (bool, ArrWithLen<#memory; u8> *#memory)
     fun builtin_delegatecall05<M>(addr: u160, data: ArrWithLen<M; u8> *M): (bool, ArrWithLen<#memory; u8> *#memory)
     fun builtin_staticcall05<M>(addr: u160, data: ArrWithLen<M; u8> *M): (bool, ArrWithLen<#memory; u8> *#memory)
-    fun builtin_call04<M>(addr: u160, data: ArrWithLen<M; u8> *M, val: u256): bool
+    fun builtin_call04<M>(addr: u160, data: ArrWithLen<M; u8> *M): bool
     fun builtin_delegatecall04<M>(addr: u160, data: ArrWithLen<M; u8> *M): bool
     fun builtin_staticcall04<M>(addr: u160, data: ArrWithLen<M; u8> *M): bool
-    fun builtin_callcode<M>(addr: u160, data: ArrWithLen<M; u8> *M): bool
+    fun builtin_callcode04<M>(addr: u160, data: ArrWithLen<M; u8> *M): bool
+    fun builtin_balance(addr: u160): u256
 
     fun builtin_keccak256_05(bytes: ArrWithLen<#memory; u8> *#memory): u256
 `;

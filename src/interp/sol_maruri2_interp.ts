@@ -324,6 +324,94 @@ export class SolMaruirInterp {
                 }
             ],
             [
+                "builtin_send",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const sendAddr = frame.args[0][1] as bigint;
+                    const recvAddr = frame.args[1][1] as bigint;
+                    const amount = frame.args[2][1] as bigint;
+
+                    const sendTypAndPtr = this.contractRegistry.get(sendAddr);
+                    const recvTypAndPtr = this.contractRegistry.get(recvAddr);
+
+                    if (recvTypAndPtr === undefined || sendTypAndPtr === undefined) {
+                        return [true, [false]];
+                    }
+
+                    const sendStruct = s.deref(sendTypAndPtr[1] as PointerVal);
+                    const recvStruct = s.deref(recvTypAndPtr[1] as PointerVal);
+
+                    assert(
+                        recvStruct instanceof Map && sendStruct instanceof Map,
+                        `Expected structs not {0} and {1} in builtin_send of {2}`,
+                        recvStruct,
+                        sendStruct,
+                        recvAddr
+                    );
+
+                    const sendBalance = sendStruct.get("__balance__");
+                    const recvBalance = recvStruct.get("__balance__");
+
+                    let update: bigint;
+
+                    assert(
+                        typeof sendBalance === "bigint",
+                        `Missing balance of sender {0}`,
+                        sendAddr
+                    );
+
+                    // Not enough funds
+                    if (sendBalance < amount) {
+                        return [true, [false]];
+                    }
+
+                    sendStruct.set("__balance__", sendBalance - amount);
+
+                    if (recvBalance === undefined) {
+                        update = amount;
+                    } else {
+                        assert(
+                            typeof recvBalance === "bigint",
+                            `Expected bigint for __balance__ of {0}, got {1}`,
+                            recvAddr,
+                            typeof recvBalance
+                        );
+
+                        update = recvBalance + amount;
+                    }
+
+                    recvStruct.set("__balance__", update);
+
+                    return [true, [true]];
+                }
+            ],
+            [
+                "builtin_balance",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const addr = frame.args[0][1] as bigint;
+
+                    const typAndPtr = this.contractRegistry.get(addr);
+
+                    if (typAndPtr === undefined) {
+                        return [true, [0n]];
+                    }
+
+                    const contractStruct = s.deref(typAndPtr[1] as PointerVal);
+
+                    assert(
+                        contractStruct instanceof Map,
+                        `Expected a struct not {0} in builtin_balance of {1}`,
+                        contractStruct,
+                        addr
+                    );
+
+                    const balance = contractStruct.get("__balance__");
+
+                    assert(balance !== undefined, `Missing __balance__ in {0}`, contractStruct);
+
+                    return [true, [balance]];
+                }
+            ],
+            [
                 "builtin_keccak256_05",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
                     const [[, bytesPtr]] = frame.args;
