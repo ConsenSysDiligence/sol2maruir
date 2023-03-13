@@ -135,16 +135,22 @@ export class SolMaruirInterp {
         const abiTypes: string[] = [];
 
         for (let i = 0; i < frame.typeArgs.length; i++) {
-            const typePtr = frame.args[i * 2][1];
+            const typePtr = frame.args[i * 2 + 1][1];
+            const value = frame.args[i * 2 + 2][1];
+
             assert(typePtr instanceof Array, ``);
 
-            argVals.push(frame.args[i * 2 + 1][1]);
+            const abiT = decodeString(s, typePtr);
+            const web3V = toWeb3Value(value, abiT, s);
+
+            abiTypes.push(abiT);
+            argVals.push(web3V);
         }
 
         assert(sigPtr instanceof Array, ``);
         const signature = decodeString(s, sigPtr);
 
-        // console.error(`Signature: ${signature} abi type: ${abiType} val: ${val}`);
+        // console.error(`Signature: ${signature} abi types: ${pp(abiTypes)} arg: ${pp(argVals)}`);
         const result = encodeWithSignature(signature, abiTypes, ...argVals);
         // console.error(result.toString("hex"));
 

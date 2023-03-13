@@ -162,10 +162,8 @@ contract Calls {
         uint y = 2;
         uint sum = x +y;
         
-        /*
         emit Operand(x+1);
         emit Sum(x);
-        */
     }
     
     uint[3] a1;
