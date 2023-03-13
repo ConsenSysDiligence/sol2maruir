@@ -3,7 +3,7 @@ import * as sol from "solc-typed-ast";
 import { ASTSource } from "../ir/source";
 import { UIDGenerator } from "../utils";
 import { ConstructorCompiler } from "./constructor_compiler";
-import { DispatchCompiler } from "./dispatch_compiler";
+import { MethodDispatchCompiler } from "./method_dispatch_compiler";
 import { IRFactory } from "./factory";
 import { FunctionCompiler } from "./function_compiler";
 import { GetterCompiler } from "./getter_compiler";
@@ -318,7 +318,7 @@ export class UnitCompiler {
         overridingImpls: OverridenImplsList,
         abiVersion: sol.ABIEncoderVersion
     ): ir.FunctionDefinition {
-        const dispatchCompiler = new DispatchCompiler(
+        const dispatchCompiler = new MethodDispatchCompiler(
             this.factory,
             contract,
             solMethodOrVar,

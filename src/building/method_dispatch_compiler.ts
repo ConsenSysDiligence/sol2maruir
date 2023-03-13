@@ -7,7 +7,7 @@ import { getMethodDispatchName } from "./resolving";
 import { IRFactory } from "./factory";
 import { UIDGenerator } from "../utils";
 
-export class DispatchCompiler extends BaseFunctionCompiler {
+export class MethodDispatchCompiler extends BaseFunctionCompiler {
     constructor(
         factory: IRFactory,
         private readonly contract: sol.ContractDefinition,
