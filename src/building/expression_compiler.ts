@@ -1060,6 +1060,26 @@ export class ExpressionCompiler {
             return res;
         }
 
+        if (expr.vFunctionName === "encodeWithSignature") {
+            const sigPtr = this.compile(expr.vArguments[0]);
+            const [args, argTs] = this.prepEncodeArgs(expr.vArguments.slice(1));
+            const builtinName = `builtin_abi_encodeWithSignature_${expr.vArguments.length}`;
+            const res = this.cfgBuilder.getTmpId(u8ArrMemPtr);
+
+            const sigPtrLoc = this.factory.locationOf(sigPtr);
+
+            this.cfgBuilder.call(
+                [res],
+                this.factory.identifier(calleeSrc, builtinName, noType),
+                [sigPtrLoc],
+                argTs,
+                [sigPtr, ...args],
+                exprSrc
+            );
+
+            return res;
+        }
+
         if (expr.vFunctionName === "keccak256") {
             assert(
                 gte(this.cfgBuilder.solVersion, "0.5.0"),
