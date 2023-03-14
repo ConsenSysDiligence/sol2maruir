@@ -19,13 +19,16 @@ import {
     Type,
     Typing
 } from "maru-ir2";
+import * as ir from "maru-ir2";
 import { assert } from "solc-typed-ast";
 import {
     decodeBytes,
+    decodeParameters,
     decodeString,
     encodePacked,
     encodeParameters,
     encodeWithSignature,
+    fromWeb3Value,
     hexStringToBytes,
     keccak256,
     toWeb3Value
@@ -155,6 +158,53 @@ export class SolMaruirInterp {
         // console.error(result.toString("hex"));
 
         return this.defineBytes(result, "memory");
+    }
+
+    private getLastSolidityFun(s: ir.State): ir.FunctionDefinition {
+        for (let i = s.stack.length; i >= 0; i--) {
+            const frame = s.stack[i];
+
+            if (frame instanceof ir.Frame) {
+                return frame.fun;
+            }
+        }
+
+        throw new Error(`No Solidity function in stack`);
+    }
+
+    private builtin_decode(s: State, frame: BuiltinFrame): PrimitiveValue[] {
+        assert(
+            frame.args.length == frame.typeArgs.length + 1,
+            "Bad number of args {0}",
+            frame.args.length
+        );
+
+        const dataPtr = frame.args[0][1];
+        assert(dataPtr instanceof Array, "Expected pointer, got {0}", dataPtr);
+
+        const data = decodeBytes(s, dataPtr);
+
+        const abiTypeNames: string[] = [];
+
+        for (let i = 1; i < frame.args.length; i += 2) {
+            const typePtr = frame.args[i][1];
+            assert(typePtr instanceof Array, "Expected pointer, got {0}", typePtr);
+
+            const abiT = decodeString(s, typePtr);
+            abiTypeNames.push(abiT);
+        }
+
+        const web3Vals = decodeParameters(abiTypeNames, data) as any[];
+
+        const res: PrimitiveValue[] = [];
+
+        const lastFun = this.getLastSolidityFun(s);
+        const scope = this.resolving.getScope(lastFun);
+        for (let i = 0; i < abiTypeNames.length; i++) {
+            res.push(fromWeb3Value(web3Vals[i], abiTypeNames[i], frame.typeArgs[i], s, scope));
+        }
+
+        return res;
     }
 
     private builtin_encode(s: State, frame: BuiltinFrame): PointerVal {
@@ -328,6 +378,27 @@ export class SolMaruirInterp {
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
                     true,
                     [this.builtin_encode(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_decode_1",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    true,
+                    this.builtin_decode(s, frame)
+                ]
+            ],
+            [
+                "builtin_abi_decode_2",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    true,
+                    this.builtin_decode(s, frame)
+                ]
+            ],
+            [
+                "builtin_abi_decode_3",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    true,
+                    this.builtin_decode(s, frame)
                 ]
             ],
             [

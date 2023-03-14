@@ -4,7 +4,7 @@ import { BasicBlock } from "maru-ir2/dist/ir/cfg";
 import { assert, InferType, pp } from "solc-typed-ast";
 import { UIDGenerator } from "../utils";
 import { BaseSrc, concretizeType, makeSubst, noSrc } from "maru-ir2";
-import { transpileType, u256, u8, u8ArrExcPtr } from "./typing";
+import { boolT, transpileType, u256, u8, u8ArrExcPtr } from "./typing";
 import { ASTSource } from "../ir/source";
 import { IRFactory } from "./factory";
 
@@ -592,5 +592,66 @@ export class CFGBuilder {
         );
 
         return this.factory.identifier(src, name, u8ArrExcPtr);
+    }
+
+    /**
+     * Given a start and end expressions, make a BasicBlock structure that implements a for loop and return:
+     * 1. The loop variable
+     * 2. The header BB
+     * 3. The body BB
+     * 4. The exit BB
+     *
+     * Upon returning curBB is set to body.
+     */
+    startForLoop(
+        start: ir.Expression,
+        end: ir.Expression,
+        src: ASTSource
+    ): [ir.Identifier, ir.BasicBlock, ir.BasicBlock, ir.BasicBlock] {
+        const headerBB = this.mkBB(this.localUid.get("header"));
+        const bodyBB = this.mkBB(this.localUid.get("body"));
+        const exitBB = this.mkBB(this.localUid.get("exit"));
+        const startT = this.factory.typeOf(start);
+
+        const ctr = this.getTmpId(startT, src);
+        this.assign(ctr, start, src);
+
+        this.jump(headerBB, src);
+
+        this.curBB = headerBB;
+        this.branch(this.factory.binaryOperation(src, ctr, "<", end, boolT), bodyBB, exitBB, src);
+
+        this.curBB = bodyBB;
+
+        return [ctr, headerBB, bodyBB, exitBB];
+    }
+
+    /**
+     * Finish a for loop we are working on. Namely:
+     * 1. Inc loop var at end of body
+     * 2. Jump from body back to header
+     * 3. Set curBB to exitBB
+     */
+    finishForLoop(
+        ctr: ir.Identifier,
+        start: ir.Type,
+        headerBB: ir.BasicBlock,
+        exitBB: ir.BasicBlock,
+        src: ASTSource
+    ): void {
+        const startT = this.factory.typeOf(start);
+        this.assign(
+            ctr,
+            this.factory.binaryOperation(
+                src,
+                ctr,
+                "+",
+                this.factory.numberLiteral(src, 1n, 10, startT),
+                startT
+            ),
+            src
+        );
+        this.jump(headerBB, src);
+        this.curBB = exitBB;
     }
 }

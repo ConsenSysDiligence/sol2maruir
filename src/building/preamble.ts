@@ -314,6 +314,24 @@ const preambleStr = `
         arg3: T3
     ): ArrWithLen<#memory; u8> *#memory
 
+    fun builtin_abi_decode_1<DataM; T1>(
+        data: ArrWithLen<DataM; u8> *DataM,
+        arg1AbiT: ArrWithLen<#exception; u8> *#exception
+    ): T1
+
+    fun builtin_abi_decode_2<DataM; T1, T2>(
+        data: ArrWithLen<DataM; u8> *DataM,
+        arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg2AbiT: ArrWithLen<#exception; u8> *#exception
+    ): (T1, T2)
+
+    fun builtin_abi_decode_3<DataM; T1, T2, T3>(
+        data: ArrWithLen<DataM; u8> *DataM,
+        arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg3AbiT: ArrWithLen<#exception; u8> *#exception
+    ): (T1, T2, T3)
+
     fun builtin_add_overflows<;IntT>(x: IntT, y: IntT): bool
     fun builtin_sub_overflows<;IntT>(x: IntT, y: IntT): bool
     fun builtin_mul_overflows<;IntT>(x: IntT, y: IntT): bool

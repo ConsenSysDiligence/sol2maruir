@@ -736,6 +736,63 @@ export class ExpressionCompiler {
     }
 
     /**
+     * Given a solidity type name or type tuple (second argument to decode)
+     * return a list of ir-types corresponding to each solidity type, and a list
+     * of string constants that give a Web3-compatible name to decode.
+     */
+    private prepDecodeArgs(solTypesExpr: sol.Expression): [ir.Expression[], ir.Type[]] {
+        const solTypes = this.cfgBuilder.infer.typeOf(solTypesExpr);
+
+        let solArgTs: sol.TypeNode[];
+
+        if (solTypes instanceof sol.TypeNameType) {
+            solArgTs = [solTypes.type];
+        } else if (solTypes instanceof sol.TupleType) {
+            solArgTs = solTypes.elements as sol.TypeNode[];
+        } else {
+            throw new Error(`NYI decode arg ${sol.pp(solTypesExpr)} of type ${solTypes.pp()}`);
+        }
+
+        solArgTs = solArgTs.map((argT) => sol.specializeType(argT, sol.DataLocation.Memory));
+
+        const args: ir.Expression[] = [];
+        const argTs: ir.Type[] = [];
+
+        for (const solType of solArgTs) {
+            const irArgT = transpileType(solType, this.factory);
+
+            let abiSafeSolType: sol.TypeNode;
+
+            if (solType instanceof sol.IntLiteralType) {
+                const fitT = solType.smallestFittingType();
+
+                assert(
+                    fitT !== undefined,
+                    "Unable to detect smalles fitting type for {0}",
+                    solType
+                );
+
+                abiSafeSolType = fitT;
+            } else if (solType instanceof sol.StringLiteralType) {
+                abiSafeSolType = new sol.StringType();
+            } else {
+                abiSafeSolType = solType;
+            }
+
+            const abiType = generalizeType(
+                this.cfgBuilder.infer.toABIEncodedType(abiSafeSolType, this.abiEncodeVersion)
+            )[0];
+
+            const abiTypeName = this.cfgBuilder.getStrLit(abiType.pp(), noSrc);
+
+            args.push(abiTypeName);
+            argTs.push(irArgT);
+        }
+
+        return [args, argTs];
+    }
+
+    /**
      * @todo Please, be careful with encoder here. Things may get bad quickly.
      *
      * @see https://github.com/ConsenSys/solc-typed-ast/blob/f3236d354c811f3bfcf4dd6370b02255911db3ee/src/types/infer.ts#L2290-L2346
@@ -857,6 +914,44 @@ export class ExpressionCompiler {
                 [],
                 argTs,
                 args,
+                exprSrc
+            );
+
+            return res;
+        }
+
+        if (expr.vFunctionName === "decode") {
+            sol.assert(expr.vArguments.length === 2, `Decode expects 2 arguments`);
+
+            const solData = expr.vArguments[0];
+            const solTypes = expr.vArguments[1];
+
+            assert(
+                solTypes instanceof sol.TupleExpression || solTypes instanceof sol.TypeName,
+                `Second argument to decode must be type or tuple not {0}`,
+                solTypes
+            );
+
+            const irData = this.compile(solData);
+            const irDataT = this.typeOf(irData);
+
+            assert(
+                irDataT instanceof ir.PointerType,
+                `First argument to decode must be a bytes pointer not {0}`,
+                irDataT
+            );
+
+            const [args, argTs] = this.prepDecodeArgs(solTypes);
+            const builtinName = `builtin_abi_decode_${argTs.length}`;
+            const retT = argTs.length === 1 ? argTs[0] : this.factory.tupleType(noSrc, argTs);
+            const res = this.cfgBuilder.getTmpId(retT);
+
+            this.cfgBuilder.call(
+                [res],
+                this.factory.identifier(calleeSrc, builtinName, noType),
+                [irDataT.region],
+                argTs,
+                [irData, ...args],
                 exprSrc
             );
 
@@ -1011,14 +1106,33 @@ export class ExpressionCompiler {
 
             const irSize = this.compile(expr.vArguments[0]);
             const size = this.mustCastTo(irSize, u256, irSize.src);
+            const elT = newIrT.toType.typeArgs[0];
             this.cfgBuilder.call(
                 [resId],
                 this.factory.identifier(noSrc, "new_array", noType),
                 [this.factory.memConstant(noSrc, "memory")],
-                [newIrT.toType.typeArgs[0]],
+                [elT],
                 [size],
                 src
             );
+
+            if (irSize instanceof ir.NumberLiteral) {
+                // Fixed size allocation
+                for (let i = 0n; i < irSize.value; i++) {
+                    this.solArrWrite(
+                        resId,
+                        this.factory.numberLiteral(src, i, 10, u256),
+                        this.cfgBuilder.zeroValue(elT, src),
+                        src
+                    );
+                }
+            } else {
+                // Dynamic size allocation
+                const start = this.factory.numberLiteral(src, 0n, 10, u256);
+                const [ctr, header, , exit] = this.cfgBuilder.startForLoop(start, irSize, src);
+                this.solArrWrite(resId, ctr, this.cfgBuilder.zeroValue(elT, src), src);
+                this.cfgBuilder.finishForLoop(ctr, start, header, exit, src);
+            }
         } else if (
             newE.vTypeName instanceof sol.UserDefinedTypeName &&
             newE.vTypeName.vReferencedDeclaration instanceof sol.ContractDefinition
