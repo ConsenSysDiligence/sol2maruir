@@ -201,12 +201,15 @@ describe("Interpreter tests", () => {
             );
 
             let transpiledDefs: Definition[];
+
             try {
                 transpiledDefs = [...compiler.compile(units)];
             } catch (e) {
                 console.error(`Failed transpiling ${jsonFile}`);
+
                 throw e;
             }
+
             const [methodMap, contractMap] = buildMaps(
                 transpiledDefs,
                 result.compilerVersion as string
@@ -216,12 +219,12 @@ describe("Interpreter tests", () => {
             const defs = [...transpiledDefs, ...mainDefs];
 
             // Uncomment below lines to see compiled maruir file
-            const contents = defs.map((def) => def.pp()).join("\n");
-            const maruirFile = jsonFile.replace(".config.json", ".maruir");
+            // const contents = defs.map((def) => def.pp()).join("\n");
+            // const maruirFile = jsonFile.replace(".config.json", ".maruir");
 
-            fse.writeFileSync(maruirFile, contents, {
-                encoding: "utf8"
-            });
+            // fse.writeFileSync(maruirFile, contents, {
+            //     encoding: "utf8"
+            // });
 
             const interp = new SolMaruirInterp(defs, true);
 
@@ -236,7 +239,9 @@ describe("Interpreter tests", () => {
             if (interp.state.failed) {
                 console.error(`Failed interpreting ${jsonFile}`);
             }
+
             expect(interp.state.failed).not.toBeTruthy();
+
             console.error(`Success: ${jsonFile}`);
         });
     }

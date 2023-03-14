@@ -396,11 +396,8 @@ export class StatementCompiler {
                 const src = new ASTSource(decl);
                 const lhs = this.cfgBuilder.getVarId(decl, src);
                 const lhsT = this.cfgBuilder.getVarType(decl);
-                this.cfgBuilder.assign(
-                    lhs,
-                    this.exprCompiler.castTo(rhs, lhsT, rhs.src) as ir.Expression,
-                    src
-                );
+
+                this.cfgBuilder.assign(lhs, this.exprCompiler.mustCastTo(rhs, lhsT, rhs.src), src);
             }
         }
     }
