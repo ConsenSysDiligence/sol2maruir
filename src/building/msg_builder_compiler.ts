@@ -19,7 +19,8 @@ export class MsgBuilderCompiler extends BaseFunctionCompiler {
         globalScope: ir.Scope,
         globalUid: UIDGenerator,
         solVersion: string,
-        abiVersion: sol.ABIEncoderVersion
+        abiVersion: sol.ABIEncoderVersion,
+        private readonly buildArgs: boolean // If true build fun for args, otherwise for returns
     ) {
         super(factory, globalUid, globalScope, solVersion, abiVersion);
     }
@@ -72,12 +73,28 @@ export class MsgBuilderCompiler extends BaseFunctionCompiler {
      */
     compile(): ir.FunctionDefinition {
         const factory = this.cfgBuilder.factory;
-        const solArgTs: sol.TypeNode[] =
-            this.origDef instanceof sol.FunctionDefinition
-                ? this.origDef.vParameters.vParameters.map((param) =>
-                      this.cfgBuilder.infer.variableDeclarationToTypeNode(param)
-                  )
-                : this.cfgBuilder.infer.getterArgsAndReturn(this.origDef)[0];
+        let solArgTs: sol.TypeNode[];
+
+        if (this.buildArgs) {
+            solArgTs =
+                this.origDef instanceof sol.FunctionDefinition
+                    ? this.origDef.vParameters.vParameters.map((param) =>
+                          this.cfgBuilder.infer.variableDeclarationToTypeNode(param)
+                      )
+                    : this.cfgBuilder.infer.getterArgsAndReturn(this.origDef)[0];
+        } else {
+            if (this.origDef instanceof sol.FunctionDefinition) {
+                solArgTs = this.origDef.vReturnParameters.vParameters.map((param) =>
+                    this.cfgBuilder.infer.variableDeclarationToTypeNode(param)
+                );
+            } else {
+                const getterRetT = this.cfgBuilder.infer.getterArgsAndReturn(this.origDef)[1];
+                solArgTs =
+                    getterRetT instanceof sol.TupleType
+                        ? (getterRetT.elements as sol.TypeNode[])
+                        : [getterRetT];
+            }
+        }
         const signature: string = this.cfgBuilder.infer.signature(this.origDef);
 
         // Add arguments
@@ -119,7 +136,12 @@ export class MsgBuilderCompiler extends BaseFunctionCompiler {
         // Return
         this.cfgBuilder.return([res], noSrc);
 
-        const name = getMsgBuilderName(this.contract, this.origDef, this.cfgBuilder.infer);
+        const name = getMsgBuilderName(
+            this.contract,
+            this.origDef,
+            this.cfgBuilder.infer,
+            this.buildArgs
+        );
 
         return this.finishCompile(noSrc, name);
     }

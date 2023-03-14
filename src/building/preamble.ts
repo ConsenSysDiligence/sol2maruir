@@ -313,6 +313,17 @@ const preambleStr = `
         arg3AbiT: ArrWithLen<#exception; u8> *#exception,
         arg3: T3
     ): ArrWithLen<#memory; u8> *#memory
+    fun builtin_abi_encodeWithSignature_4<SigM; T1, T2, T3, T4>(
+        sig: ArrWithLen<SigM; u8> *SigM,
+        arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg1: T1,
+        arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg2: T2,
+        arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg3: T3,
+        arg4AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg4: T4
+    ): ArrWithLen<#memory; u8> *#memory
 
     fun builtin_abi_decode_1<DataM; T1>(
         data: ArrWithLen<DataM; u8> *DataM,
@@ -326,6 +337,24 @@ const preambleStr = `
     ): (T1, T2)
 
     fun builtin_abi_decode_3<DataM; T1, T2, T3>(
+        data: ArrWithLen<DataM; u8> *DataM,
+        arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg3AbiT: ArrWithLen<#exception; u8> *#exception
+    ): (T1, T2, T3)
+
+    fun builtin_abi_decodeWithHash_1<DataM; T1>(
+        data: ArrWithLen<DataM; u8> *DataM,
+        arg1AbiT: ArrWithLen<#exception; u8> *#exception
+    ): T1
+
+    fun builtin_abi_decodeWithHash_2<DataM; T1, T2>(
+        data: ArrWithLen<DataM; u8> *DataM,
+        arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+        arg2AbiT: ArrWithLen<#exception; u8> *#exception
+    ): (T1, T2)
+
+    fun builtin_abi_decodeWithHash_3<DataM; T1, T2, T3>(
         data: ArrWithLen<DataM; u8> *DataM,
         arg1AbiT: ArrWithLen<#exception; u8> *#exception,
         arg2AbiT: ArrWithLen<#exception; u8> *#exception,

@@ -1441,7 +1441,8 @@ export class ExpressionCompiler {
                     getMsgBuilderName(
                         solCallee.vScope as sol.ContractDefinition,
                         solCallee,
-                        this.cfgBuilder.infer
+                        this.cfgBuilder.infer,
+                        true
                     )
                 ),
                 [],

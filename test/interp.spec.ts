@@ -171,14 +171,14 @@ const files = [
 
 describe("Interpreter tests", () => {
     const files = [
+        "test/samples/solidity/calls.config.json",
         "test/samples/solidity/EncodingTest.config.json",
         "test/samples/solidity/ABIEncoderV2_Structs.config.json",
         "test/samples/solidity/public_getters.config.json",
         "test/samples/solidity/AddressLiteralMemberAccess.config.json",
         "test/samples/solidity/CalldataArgPassing.config.json",
         "test/samples/solidity/dispatch.config.json",
-        "test/samples/solidity/public_getters.config.json",
-        "test/samples/solidity/calls.config.json"
+        "test/samples/solidity/public_getters.config.json"
     ];
 
     for (const jsonFile of files) {

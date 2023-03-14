@@ -1,7 +1,12 @@
 import * as ir from "maru-ir2";
 import * as sol from "solc-typed-ast";
 import { ASTSource } from "../ir/source";
-import { UIDGenerator } from "../utils";
+import {
+    getContractCallables,
+    isExternallyCallable,
+    isExternallyVisible,
+    UIDGenerator
+} from "../utils";
 import { ConstructorCompiler } from "./constructor_compiler";
 import { MethodDispatchCompiler } from "./method_dispatch_compiler";
 import { IRFactory } from "./factory";
@@ -12,6 +17,8 @@ import { MsgBuilderCompiler } from "./msg_builder_compiler";
 import { preamble } from "./preamble";
 import { getDesugaredGlobalVarName, getIRStructDefName } from "./resolving";
 import { transpileType, u16, u160, u256 } from "./typing";
+import { MsgDecoderCompiler } from "./msg_decoder_compiler";
+import { ContractDispatchCompiler } from "./contract_dispatch_compiler";
 
 type InheritMap = Map<sol.ContractDefinition, sol.ContractDefinition[]>;
 
@@ -20,14 +27,6 @@ type OverridenImplsList = Array<
 >;
 type OverridenImplsMap = Map<sol.FunctionDefinition | sol.VariableDeclaration, OverridenImplsList>;
 type OverrideMap = Map<sol.ContractDefinition, OverridenImplsMap>;
-
-function isExternallyVisible(fun: sol.FunctionDefinition): boolean {
-    return [
-        sol.FunctionVisibility.Default,
-        sol.FunctionVisibility.Public,
-        sol.FunctionVisibility.External
-    ].includes(fun.visibility);
-}
 
 export class UnitCompiler {
     private readonly globalScope: ir.Scope;
@@ -78,26 +77,42 @@ export class UnitCompiler {
         for (const [contract, methodOverrideMap] of overrideMap) {
             const abiVersion = this.detectAbiEncoderVersion(contract.vScope);
 
+            this.globalDefine(this.compileContractDispatch(contract, abiVersion));
+
             for (const [methodOrVar, overridingImpls] of methodOverrideMap) {
                 this.globalDefine(
                     this.compileMethodDispatch(contract, methodOrVar, overridingImpls, abiVersion)
                 );
             }
+        }
 
-            for (const method of contract.vFunctions) {
-                if (!isExternallyVisible(method)) {
+        const infer = new sol.InferType(this.solVersion);
+        for (const [contract] of overrideMap) {
+            let emitDecodeMsgData: boolean;
+            const abiVersion = this.detectAbiEncoderVersion(contract.vScope);
+
+            for (const callable of getContractCallables(contract, infer)) {
+                if (!isExternallyCallable(callable)) {
                     continue;
                 }
 
-                this.globalDefine(this.compileBuildMsgData(contract, method, abiVersion));
-            }
+                if (callable instanceof sol.FunctionDefinition) {
+                    if (callable.kind !== sol.FunctionKind.Function) {
+                        continue;
+                    }
 
-            for (const sVar of contract.vStateVariables) {
-                if (sVar.visibility !== sol.StateVariableVisibility.Public) {
-                    continue;
+                    emitDecodeMsgData = callable.vParameters.vParameters.length > 0;
+                } else {
+                    const [args] = infer.getterArgsAndReturn(callable);
+                    emitDecodeMsgData = args.length > 0;
                 }
 
-                this.globalDefine(this.compileBuildMsgData(contract, sVar, abiVersion));
+                this.globalDefine(this.compileBuildMsgData(contract, callable, abiVersion));
+                this.globalDefine(this.compileBuildReturnData(contract, callable, abiVersion));
+
+                if (emitDecodeMsgData) {
+                    this.globalDefine(this.compileDecodeMsgData(contract, callable, abiVersion));
+                }
             }
         }
 
@@ -312,6 +327,24 @@ export class UnitCompiler {
         }
     }
 
+    compileContractDispatch(
+        contract: sol.ContractDefinition,
+        abiVersion: sol.ABIEncoderVersion
+    ): ir.FunctionDefinition {
+        const irContract = this.getContractStruct(contract);
+        const dispatchCompiler = new ContractDispatchCompiler(
+            this.factory,
+            contract,
+            this.globalScope,
+            this.globalUid,
+            this.solVersion,
+            abiVersion,
+            irContract
+        );
+
+        return dispatchCompiler.compile();
+    }
+
     compileMethodDispatch(
         contract: sol.ContractDefinition,
         solMethodOrVar: sol.FunctionDefinition | sol.VariableDeclaration,
@@ -338,6 +371,44 @@ export class UnitCompiler {
         abiVersion: sol.ABIEncoderVersion
     ): ir.FunctionDefinition {
         const dispatchCompiler = new MsgBuilderCompiler(
+            this.factory,
+            contract,
+            solMethodOrVar,
+            this.globalScope,
+            this.globalUid,
+            this.solVersion,
+            abiVersion,
+            true
+        );
+
+        return dispatchCompiler.compile();
+    }
+
+    compileBuildReturnData(
+        contract: sol.ContractDefinition,
+        solMethodOrVar: sol.FunctionDefinition | sol.VariableDeclaration,
+        abiVersion: sol.ABIEncoderVersion
+    ): ir.FunctionDefinition {
+        const dispatchCompiler = new MsgBuilderCompiler(
+            this.factory,
+            contract,
+            solMethodOrVar,
+            this.globalScope,
+            this.globalUid,
+            this.solVersion,
+            abiVersion,
+            false
+        );
+
+        return dispatchCompiler.compile();
+    }
+
+    compileDecodeMsgData(
+        contract: sol.ContractDefinition,
+        solMethodOrVar: sol.FunctionDefinition | sol.VariableDeclaration,
+        abiVersion: sol.ABIEncoderVersion
+    ): ir.FunctionDefinition {
+        const dispatchCompiler = new MsgDecoderCompiler(
             this.factory,
             contract,
             solMethodOrVar,

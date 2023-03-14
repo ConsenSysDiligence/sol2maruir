@@ -360,6 +360,18 @@ export class SolMaruirInterp {
                 }
             ],
             [
+                "builtin_abi_encodeWithSignature_3",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    return [true, [this.builtin_encodeWithSignature(s, frame)]];
+                }
+            ],
+            [
+                "builtin_abi_encodeWithSignature_4",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    return [true, [this.builtin_encodeWithSignature(s, frame)]];
+                }
+            ],
+            [
                 "builtin_abi_encode_1",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
                     true,
