@@ -1,0 +1,39 @@
+{
+    "name": "Check abi decoding fails correctly",
+    "file": "./test/samples/solidity/abi_decode_fails.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Test",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Test",
+            "mdc": "Test",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Test",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Test",
+            "mdc": "Test",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Test",
+                    "name": "this"
+                }
+            ]
+        }
+    ]
+}

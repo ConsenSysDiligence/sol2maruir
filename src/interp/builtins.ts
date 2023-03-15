@@ -473,7 +473,7 @@ export function builtin_decode(
     resolving: Resolving,
     s: ir.State,
     frame: ir.BuiltinFrame
-): ir.PrimitiveValue[] {
+): ir.PrimitiveValue[] | undefined {
     assert(
         frame.args.length == frame.typeArgs.length + 1,
         "Bad number of args {0}",
@@ -498,7 +498,14 @@ export function builtin_decode(
         abiTypeNames.push(abiT);
     }
 
-    const web3Vals = decodeParameters(abiTypeNames, data) as any[];
+    let web3Vals: any[];
+
+    try {
+        web3Vals = decodeParameters(abiTypeNames, data) as any[];
+    } catch (e) {
+        console.error(`Error decoding ${data} to (${abiTypeNames.join(", ")})`);
+        return undefined;
+    }
 
     const lastFun = getLastSolidityFun(s);
 

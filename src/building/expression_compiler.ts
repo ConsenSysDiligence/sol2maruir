@@ -152,19 +152,22 @@ export class ExpressionCompiler {
             return this.assignTo(lhs.vOriginalComponents[0], rhs, assignSrc);
         }
 
+        if (lhs === null) {
+            const irLHS = this.cfgBuilder.getTmpId(this.typeOf(rhs), assignSrc);
+            this.cfgBuilder.assign(irLHS, rhs, assignSrc);
+            return irLHS;
+        }
+
+        const lhsT = transpileType(this.cfgBuilder.infer.typeOf(lhs), this.factory);
+
+        let castedRHS = this.mustCastTo(rhs, lhsT, rhs.src);
+
         if (lhs instanceof sol.Identifier) {
             const def = lhs.vReferencedDeclaration;
 
             assert(def !== undefined, `No def for {0}`, lhs);
 
             if (def instanceof sol.VariableDeclaration) {
-                const lhsT = transpileType(
-                    this.cfgBuilder.infer.variableDeclarationToTypeNode(def),
-                    this.factory
-                );
-
-                const castedRHS = this.mustCastTo(rhs, lhsT, rhs.src);
-
                 if (def.stateVariable) {
                     this.cfgBuilder.storeField(
                         this.cfgBuilder.this(noSrc),
@@ -187,15 +190,18 @@ export class ExpressionCompiler {
             const base = this.compile(lhs.vExpression);
             const baseIrT = this.typeOf(base);
 
+            // Assignments from storage to storage require a copy. In other
+            // cases the copy is done implicitly by mustCastTo. Note that we
+            // purposefully check rhs below and not castedRHS
             if (this.isStoragePtrExpr(rhs) && this.isStoragePtrExpr(base)) {
-                rhs = this.copy(rhs);
+                castedRHS = this.copy(castedRHS);
             }
 
             if (baseIrT instanceof ir.PointerType && baseIrT.toType instanceof ir.UserDefinedType) {
                 const def = this.cfgBuilder.globalScope.getTypeDecl(baseIrT.toType);
 
                 if (def instanceof ir.StructDefinition) {
-                    this.cfgBuilder.storeField(base, lhs.memberName, rhs, assignSrc);
+                    this.cfgBuilder.storeField(base, lhs.memberName, castedRHS, assignSrc);
 
                     return rhs;
                 }
@@ -256,13 +262,11 @@ export class ExpressionCompiler {
             return this.factory.tuple(assignSrc, resExprs, resT);
         }
 
-        if (lhs === null) {
-            const irLHS = this.cfgBuilder.getTmpId(this.typeOf(rhs), assignSrc);
-            this.cfgBuilder.assign(irLHS, rhs, assignSrc);
-            return irLHS;
-        }
-
-        throw new Error(`NYI Assigning to solidity expression ${pp(lhs)}`);
+        throw new Error(
+            `NYI Assigning to solidity expression ${pp(lhs)} from ${pp(rhs)} of type ${pp(
+                this.factory.typeOf(rhs)
+            )}`
+        );
     }
 
     solArrRead(arrPtr: ir.Expression, idx: ir.Expression, src: BaseSrc): ir.Identifier {
@@ -748,7 +752,18 @@ export class ExpressionCompiler {
         if (solTypes instanceof sol.TypeNameType) {
             solArgTs = [solTypes.type];
         } else if (solTypes instanceof sol.TupleType) {
-            solArgTs = solTypes.elements as sol.TypeNode[];
+            const tupleElTs = solTypes.elements as sol.TypeNode[];
+            solArgTs = [];
+
+            for (const tupleElT of tupleElTs) {
+                assert(
+                    tupleElT instanceof sol.TypeNameType,
+                    `Expected type in tuple not {0}`,
+                    tupleElT
+                );
+
+                solArgTs.push(tupleElT.type);
+            }
         } else {
             throw new Error(`NYI decode arg ${sol.pp(solTypesExpr)} of type ${solTypes.pp()}`);
         }
@@ -943,11 +958,10 @@ export class ExpressionCompiler {
 
             const [args, argTs] = this.prepDecodeArgs(solTypes);
             const builtinName = `builtin_abi_decode_${argTs.length}`;
-            const retT = argTs.length === 1 ? argTs[0] : this.factory.tupleType(noSrc, argTs);
-            const res = this.cfgBuilder.getTmpId(retT);
+            const rets = argTs.map((argT) => this.cfgBuilder.getTmpId(argT));
 
             this.cfgBuilder.call(
-                [res],
+                rets,
                 this.factory.identifier(calleeSrc, builtinName, noType),
                 [irDataT.region],
                 argTs,
@@ -955,7 +969,9 @@ export class ExpressionCompiler {
                 exprSrc
             );
 
-            return res;
+            return rets.length === 1
+                ? rets[0]
+                : this.factory.tuple(exprSrc, rets, this.factory.tupleType(noSrc, argTs));
         }
 
         if (expr.vFunctionName === "send" || expr.vFunctionName === "transfer") {

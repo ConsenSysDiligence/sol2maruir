@@ -123,28 +123,28 @@ export class SolMaruirInterp {
             [
                 "builtin_abi_encodeWithSignature_0",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    true,
+                    false,
                     [builtin_encodeWithSignature(s, frame)]
                 ]
             ],
             [
                 "builtin_abi_encodeWithSignature_1",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    true,
+                    false,
                     [builtin_encodeWithSignature(s, frame)]
                 ]
             ],
             [
                 "builtin_abi_encodeWithSignature_2",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    true,
+                    false,
                     [builtin_encodeWithSignature(s, frame)]
                 ]
             ],
             [
                 "builtin_abi_encodeWithSignature_3",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    true,
+                    false,
                     [builtin_encodeWithSignature(s, frame)]
                 ]
             ],
@@ -158,63 +158,66 @@ export class SolMaruirInterp {
             [
                 "builtin_abi_encode_1",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    true,
+                    false,
                     [builtin_encode(s, frame)]
                 ]
             ],
             [
                 "builtin_abi_encode_2",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    true,
+                    false,
                     [builtin_encode(s, frame)]
                 ]
             ],
             [
                 "builtin_abi_encode_3",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    true,
+                    false,
                     [builtin_encode(s, frame)]
                 ]
             ],
             [
                 "builtin_abi_decode_1",
-                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    true,
-                    builtin_decode(this.resolving, s, frame)
-                ]
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const res = builtin_decode(this.resolving, s, frame);
+
+                    return res === undefined ? [true, []] : [false, res];
+                }
             ],
             [
                 "builtin_abi_decode_2",
-                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    true,
-                    builtin_decode(this.resolving, s, frame)
-                ]
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const res = builtin_decode(this.resolving, s, frame);
+
+                    return res === undefined ? [true, []] : [false, res];
+                }
             ],
             [
                 "builtin_abi_decode_3",
-                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    true,
-                    builtin_decode(this.resolving, s, frame)
-                ]
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const res = builtin_decode(this.resolving, s, frame);
+
+                    return res === undefined ? [true, []] : [false, res];
+                }
             ],
             [
                 "builtin_abi_encodePacked_1",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    true,
+                    false,
                     [builtin_encodePacked(s, frame)]
                 ]
             ],
             [
                 "builtin_abi_encodePacked_2",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    true,
+                    false,
                     [builtin_encodePacked(s, frame)]
                 ]
             ],
             [
                 "builtin_abi_encodePacked_3",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    true,
+                    false,
                     [builtin_encodePacked(s, frame)]
                 ]
             ],
@@ -244,7 +247,7 @@ export class SolMaruirInterp {
 
                     try {
                         return [
-                            true,
+                            false,
                             [builtin_get_contract_at(this.contractRegistry, s, addr, typ)]
                         ];
                     } catch (e) {
@@ -259,21 +262,21 @@ export class SolMaruirInterp {
             [
                 "builtin_send",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    true,
+                    false,
                     [builtin_send(this.contractRegistry, s, frame)]
                 ]
             ],
             [
                 "builtin_balance",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    true,
+                    false,
                     [builtin_balance(this.contractRegistry, s, frame)]
                 ]
             ],
             [
                 "builtin_keccak256_05",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    true,
+                    false,
                     [builtin_keccak256_05(s, frame)]
                 ]
             ]
