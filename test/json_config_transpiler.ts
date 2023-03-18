@@ -4,6 +4,7 @@ import { assert, ContractDefinition, FunctionDefinition, InferType, pp } from "s
 import { CFGBuilder, UIDGenerator } from "../src";
 import { IRFactory } from "../src/building/factory";
 import {
+    balancesMapPtrT,
     blockPtrT,
     blockT,
     boolT,
@@ -328,17 +329,6 @@ export class JSONConfigTranspiler {
 
                 const followups: ir.Statement[] = [];
 
-                if (step.balance) {
-                    followups.push(
-                        this.factory.storeField(
-                            ir.noSrc,
-                            this.factory.identifier(noSrc, lastObjName as string, thisT),
-                            "__balance__",
-                            this.compileJSArg(step.balance)
-                        )
-                    );
-                }
-
                 if (step.address) {
                     followups.push(
                         this.factory.storeField(
@@ -346,6 +336,24 @@ export class JSONConfigTranspiler {
                             this.factory.identifier(noSrc, lastObjName as string, thisT),
                             "__address__",
                             this.compileJSArg(step.address)
+                        )
+                    );
+                }
+
+                if (step.balance) {
+                    const addr = this.builder.getTmpId(u160, ir.noSrc);
+                    followups.push(
+                        this.factory.loadField(
+                            ir.noSrc,
+                            addr,
+                            this.factory.identifier(noSrc, lastObjName as string, thisT),
+                            "__address__"
+                        ),
+                        this.factory.storeIndex(
+                            ir.noSrc,
+                            this.factory.identifier(noSrc, "_balances_", balancesMapPtrT),
+                            addr,
+                            this.compileJSArg(step.balance)
                         )
                     );
                 }

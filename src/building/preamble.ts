@@ -18,6 +18,8 @@ var _uint256_str_: ArrWithLen<#exception; u8> *#exception = {
     len: 7_u256
 }
 
+var _balances_ : map(u160, u256) *#storage = { }
+
 struct Block {
     number: u256;
 }

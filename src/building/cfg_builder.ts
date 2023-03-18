@@ -4,7 +4,7 @@ import { BasicBlock } from "maru-ir2/dist/ir/cfg";
 import { assert, InferType, pp } from "solc-typed-ast";
 import { UIDGenerator } from "../utils";
 import { BaseSrc, concretizeType, makeSubst, noSrc } from "maru-ir2";
-import { boolT, transpileType, u256, u32, u8, u8ArrExcPtr } from "./typing";
+import { balancesMapPtrT, boolT, transpileType, u256, u32, u8, u8ArrExcPtr } from "./typing";
 import { ASTSource } from "../ir/source";
 import { IRFactory } from "./factory";
 
@@ -592,6 +592,16 @@ export class CFGBuilder {
         );
 
         return this.factory.identifier(src, name, u8ArrExcPtr);
+    }
+
+    getBalance(addr: ir.Expression, src: ir.BaseSrc): ir.Identifier {
+        const balances = this.factory.identifier(noSrc, "_balances_", balancesMapPtrT);
+        return this.loadIndex(balances, balancesMapPtrT, addr, src);
+    }
+
+    setBalance(addr: ir.Expression, newBalance: ir.Expression, src: ir.BaseSrc): void {
+        const balances = this.factory.identifier(noSrc, "_balances_", balancesMapPtrT);
+        this.storeIndex(balances, addr, newBalance, src);
     }
 
     /**

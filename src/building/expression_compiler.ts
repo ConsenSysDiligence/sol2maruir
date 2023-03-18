@@ -1683,7 +1683,6 @@ export class ExpressionCompiler {
         const base = this.compile(expr.vExpression);
         const baseT = this.typeOf(base);
         const src = new ASTSource(expr);
-        const factory = this.cfgBuilder.factory;
 
         if (baseT instanceof ir.PointerType && baseT.toType instanceof ir.UserDefinedType) {
             const def = this.cfgBuilder.globalScope.getTypeDecl(baseT.toType);
@@ -1725,18 +1724,7 @@ export class ExpressionCompiler {
                     addrExpr = this.mustCastTo(base, u160, src);
                 }
 
-                const res = this.cfgBuilder.getTmpId(u256, src);
-
-                this.cfgBuilder.call(
-                    [res],
-                    factory.funIdentifier("builtin_balance"),
-                    [],
-                    [],
-                    [addrExpr],
-                    src
-                );
-
-                return res;
+                return this.cfgBuilder.getBalance(addrExpr, src);
             }
         }
 

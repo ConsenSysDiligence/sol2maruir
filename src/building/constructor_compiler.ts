@@ -229,9 +229,8 @@ export class ConstructorCompiler {
         );
 
         // Set __balance__
-        builder.storeField(
-            builder.this(noSrc),
-            "__balance__",
+        builder.setBalance(
+            this.factory.identifier(noSrc, addrTmp.name, u160),
             this.factory.numberLiteral(noSrc, 0n, 10, u256),
             noSrc
         );

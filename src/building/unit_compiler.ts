@@ -16,7 +16,7 @@ import { compileGlobalVarInitializer } from "./literal_compiler";
 import { MsgBuilderCompiler } from "./msg_builder_compiler";
 import { preamble } from "./preamble";
 import { getDesugaredGlobalVarName, getIRStructDefName } from "./resolving";
-import { transpileType, u16, u160, u256 } from "./typing";
+import { transpileType, u16, u160 } from "./typing";
 import { MsgDecoderCompiler } from "./msg_decoder_compiler";
 import { ContractDispatchCompiler } from "./contract_dispatch_compiler";
 import { RootDispatchCompiler } from "./root_dispatch_compiler";
@@ -443,8 +443,7 @@ export class UnitCompiler {
         /// @todo Maybe move the EVM states in their own sub-struct?
         const fields: Array<[string, ir.Type]> = [
             ["__address__", u160],
-            ["__rtti__", u16],
-            ["__balance__", u256]
+            ["__rtti__", u16]
         ];
 
         for (const base of contract.vLinearizedBaseContracts) {

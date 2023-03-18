@@ -38,6 +38,12 @@ export const blockT = new ir.UserDefinedType(noSrc, "Block", [], []);
 export const blockPtrT = new ir.PointerType(noSrc, blockT, new ir.MemConstant(noSrc, "memory"));
 export const msgT = new ir.UserDefinedType(noSrc, "Message", [], []);
 export const msgPtrT = new ir.PointerType(noSrc, msgT, new ir.MemConstant(noSrc, "memory"));
+export const balancesMapT = new ir.MapType(noSrc, u160, u256);
+export const balancesMapPtrT = new ir.PointerType(
+    noSrc,
+    balancesMapT,
+    new ir.MemConstant(noSrc, "storage")
+);
 
 export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: MemDesc): ir.Type {
     let res: ir.Type | undefined;
