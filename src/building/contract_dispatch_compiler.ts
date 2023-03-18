@@ -256,7 +256,6 @@ export class ContractDispatchCompiler extends BaseFunctionCompiler {
 
         const dataLen = this.cfgBuilder.loadField(dataPtr, dataT, "len", noSrc);
         const dataArrPtr = this.cfgBuilder.loadField(dataPtr, dataT, "arr", noSrc);
-        const dataArrPtrT = factory.typeOf(dataArrPtr);
 
         // 1. If msg.data.length == 0 && receive is defined - call to receive
         if (recv !== undefined) {
@@ -320,33 +319,7 @@ export class ContractDispatchCompiler extends BaseFunctionCompiler {
         // 3. Check if the selector msg.data[0:4] matches any method or public
         // getter - and if so try calling it.
         // 3.1 Extract selector from msg.data
-        const irSig = this.cfgBuilder.getTmpId(u32, noSrc);
-        for (let i = 0n; i < 4n; i++) {
-            const byte = this.cfgBuilder.loadIndex(
-                dataArrPtr,
-                dataArrPtrT,
-                factory.numberLiteral(noSrc, i, 10, u256),
-                noSrc
-            );
-
-            this.cfgBuilder.assign(
-                irSig,
-                factory.binaryOperation(
-                    noSrc,
-                    irSig,
-                    "|",
-                    factory.binaryOperation(
-                        noSrc,
-                        factory.cast(noSrc, u32, byte),
-                        "<<",
-                        factory.numberLiteral(noSrc, i * 8n, 10, u32),
-                        u32
-                    ),
-                    u32
-                ),
-                noSrc
-            );
-        }
+        const irSig = this.cfgBuilder.getSelectorFromData(dataArrPtr);
 
         // 3.2 For each callable method/getter in the contract, check if it matches the selector
         for (const callable of getContractCallables(this.contract, this.cfgBuilder.infer)) {

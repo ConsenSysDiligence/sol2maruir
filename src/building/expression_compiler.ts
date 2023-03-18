@@ -1006,7 +1006,6 @@ export class ExpressionCompiler {
         if (
             expr.vFunctionName === "call" ||
             expr.vFunctionName === "staticcall" ||
-            expr.vFunctionName === "delegatecall" ||
             expr.vFunctionName === "callcode"
         ) {
             /**
@@ -1042,17 +1041,46 @@ export class ExpressionCompiler {
             if (gte(this.cfgBuilder.solVersion, "0.5.0") && expr.vFunctionName !== "callcode") {
                 rets.push(this.cfgBuilder.getTmpId(u8ArrMemPtr));
 
-                builtinName = `builtin_${expr.vFunctionName}05`;
+                builtinName = `sol_${expr.vFunctionName}05`;
             } else {
-                builtinName = `builtin_${expr.vFunctionName}04`;
+                builtinName = `sol_${expr.vFunctionName}04`;
             }
+
+            // Make new msg struct to pass
+            const msgPtrArg = this.cfgBuilder.getTmpId(msgPtrT, noSrc);
+            this.cfgBuilder.allocStruct(
+                msgPtrArg,
+                msgT,
+                this.factory.memConstant(noSrc, "memory"),
+                noSrc
+            );
+
+            const thisAddr = this.mustCastTo(this.cfgBuilder.this(noSrc), u160, noSrc);
+            const selector = this.cfgBuilder.getSelectorFromData(msgPtrArg);
+
+            this.cfgBuilder.storeField(msgPtrArg, "sender", thisAddr, noSrc);
+            this.cfgBuilder.storeField(msgPtrArg, "sig", selector, noSrc);
+            this.cfgBuilder.storeField(
+                msgPtrArg,
+                "data",
+                this.mustCastTo(callBytes, u8ArrMemPtr, noSrc),
+                noSrc
+            );
+
+            // @todo implement value
+            this.cfgBuilder.storeField(
+                msgPtrArg,
+                "value",
+                this.factory.numberLiteral(noSrc, 0n, 10, u256),
+                noSrc
+            );
 
             this.cfgBuilder.call(
                 rets,
                 this.factory.identifier(calleeSrc, builtinName, noType),
                 [callBytesT.region],
                 [],
-                [addr, callBytes],
+                [addr, this.cfgBuilder.blockPtr(exprSrc), msgPtrArg, callBytes],
                 exprSrc
             );
 
@@ -1498,7 +1526,7 @@ export class ExpressionCompiler {
             this.cfgBuilder.storeField(msgPtrArg, "sender", thisAddr, noSrc);
             this.cfgBuilder.storeField(msgPtrArg, "sig", sigHash, noSrc);
             this.cfgBuilder.storeField(msgPtrArg, "data", msgData, noSrc);
-            // TODO implement value
+            // @todo implement value
             this.cfgBuilder.storeField(
                 msgPtrArg,
                 "value",

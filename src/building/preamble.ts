@@ -388,13 +388,61 @@ locals succeeded: bool;
         call sol_revert();
 }
 
-fun builtin_call05<M>(addr: u160, data: ArrWithLen<M; u8> *M): (bool, ArrWithLen<#memory; u8> *#memory)
-fun builtin_delegatecall05<M>(addr: u160, data: ArrWithLen<M; u8> *M): (bool, ArrWithLen<#memory; u8> *#memory)
-fun builtin_staticcall05<M>(addr: u160, data: ArrWithLen<M; u8> *M): (bool, ArrWithLen<#memory; u8> *#memory)
-fun builtin_call04<M>(addr: u160, data: ArrWithLen<M; u8> *M): bool
-fun builtin_delegatecall04<M>(addr: u160, data: ArrWithLen<M; u8> *M): bool
-fun builtin_staticcall04<M>(addr: u160, data: ArrWithLen<M; u8> *M): bool
-fun builtin_callcode04<M>(addr: u160, data: ArrWithLen<M; u8> *M): bool
+fun sol_call05<M>(addr: u160, block: Block *#memory, msg: Message *#memory, data: ArrWithLen<M; u8> *M): (bool, ArrWithLen<#memory; u8> *#memory)
+locals res: ArrWithLen<#memory; u8> *#memory,
+       success: bool;
+{
+    entry:
+        res, success := trans_call contract_dispatch<M>(addr, block, msg, data);
+        branch success return_bb fail_bb;
+
+    return_bb:
+        return (success, res);
+
+    fail_bb:
+        res := call copy_u8arr<#exception, #memory>(_exception_bytes_);
+        jump return_bb;
+
+}
+
+fun sol_call04<M>(addr: u160, block: Block *#memory, msg: Message *#memory, data: ArrWithLen<M; u8> *M): bool
+locals res: ArrWithLen<#memory; u8> *#memory,
+       success: bool;
+{
+    entry:
+        res, success := trans_call contract_dispatch<M>(addr, block, msg, data);
+        return success;
+}
+
+fun sol_staticcall05<M>(addr: u160, block: Block *#memory, msg: Message *#memory, data: ArrWithLen<M; u8> *M): (bool, ArrWithLen<#memory; u8> *#memory)
+locals res: ArrWithLen<#memory; u8> *#memory,
+       success: bool;
+{
+    entry:
+        res, success := trans_call contract_dispatch<M>(addr, block, msg, data);
+        branch success return_bb fail_bb;
+
+    return_bb:
+        return (success, res);
+
+    fail_bb:
+        res := call copy_u8arr<#exception, #memory>(_exception_bytes_);
+        jump return_bb;
+
+}
+
+fun sol_staticcall04<M>(addr: u160, block: Block *#memory, msg: Message *#memory, data: ArrWithLen<M; u8> *M): bool
+locals res: ArrWithLen<#memory; u8> *#memory,
+       success: bool;
+{
+    entry:
+        res, success := trans_call contract_dispatch<M>(addr, block, msg, data);
+        return success;
+}
+
+fun builtin_delegatecall05<M>(addr: u160, block: Block *#memory, msg: Message *#memory, data: ArrWithLen<M; u8> *M): (bool, ArrWithLen<#memory; u8> *#memory)
+fun builtin_delegatecall04<M>(addr: u160, block: Block *#memory, msg: Message *#memory, data: ArrWithLen<M; u8> *M): bool
+fun builtin_callcode04<M>(addr: u160, block: Block *#memory, msg: Message *#memory, data: ArrWithLen<M; u8> *M): bool
 fun builtin_balance(addr: u160): u256
 
 fun builtin_keccak256_05(bytes: ArrWithLen<#memory; u8> *#memory): u256

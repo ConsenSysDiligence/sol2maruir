@@ -1,5 +1,5 @@
 import * as ir from "maru-ir2";
-import { eq, getTypeRange, noSrc, Resolving } from "maru-ir2";
+import { eq, getTypeRange, noSrc, Resolving, StructValue } from "maru-ir2";
 import * as sol from "solc-typed-ast";
 import { assert } from "solc-typed-ast";
 import {
@@ -51,7 +51,7 @@ export function packedArrPtrToBuf(s: ir.State, ptr: ir.PointerVal): Buffer {
     const val = s.deref(ptr);
 
     assert(
-        val instanceof Map && val.has("arr"),
+        val instanceof StructValue && val.has("arr"),
         `Expected array struct for packed array decoding, not {0}`,
         val
     );
@@ -79,10 +79,10 @@ export function defineArrStruct(
 ): ir.PointerVal {
     const arrPtr = s.define(values, inMem);
 
-    const struct = new Map<string, ir.PrimitiveValue>([
-        ["arr", arrPtr],
-        ["len", BigInt(values.length)]
-    ]);
+    const struct = new StructValue({
+        arr: arrPtr,
+        len: BigInt(values.length)
+    });
 
     return s.define(struct, inMem);
 }
@@ -146,7 +146,11 @@ export function toWeb3Value(val: any, abiType: string | sol.TypeNode, s: ir.Stat
     if (type instanceof sol.ArrayType) {
         const struct = s.deref(val);
 
-        assert(struct instanceof Map, "Expected struct pointer for array type, got {0}", val);
+        assert(
+            struct instanceof StructValue && struct.has("arr"),
+            "Expected struct pointer for array type, got {0}",
+            val
+        );
 
         const arrPtr = struct.get("arr");
 
@@ -168,9 +172,13 @@ export function toWeb3Value(val: any, abiType: string | sol.TypeNode, s: ir.Stat
     if (type instanceof sol.TupleType) {
         const struct = s.deref(val);
 
+        if (struct instanceof Array || struct instanceof Map) {
+            assert(false, `Expected a struct not {0}`, struct);
+        }
+
         // console.error(struct);
 
-        const vals = [...struct.values()];
+        const vals = [...Object.entries(struct).map((p) => p[1])];
         const res = [];
 
         for (let i = 0; i < type.elements.length; i++) {
@@ -268,10 +276,10 @@ export function fromWeb3Value(
 
         const irValsPtr = state.define(irVals, "memory");
 
-        const arrWithLenM = new Map<string, ir.PrimitiveValue>([
-            ["arr", irValsPtr],
-            ["len", BigInt(irVals.length)]
-        ]);
+        const arrWithLenM = new StructValue({
+            arr: irValsPtr,
+            len: BigInt(irVals.length)
+        });
 
         return state.define(arrWithLenM, "memory");
     }
@@ -646,7 +654,7 @@ export function builtin_send(
     const recvStruct = s.deref(recvTypAndPtr[1] as ir.PointerVal);
 
     assert(
-        recvStruct instanceof Map && sendStruct instanceof Map,
+        recvStruct instanceof StructValue && sendStruct instanceof StructValue,
         `Expected structs not {0} and {1} in builtin_send of {2}`,
         recvStruct,
         sendStruct,
@@ -701,7 +709,7 @@ export function builtin_balance(
     const contractStruct = s.deref(typAndPtr[1] as ir.PointerVal);
 
     assert(
-        contractStruct instanceof Map,
+        contractStruct instanceof StructValue,
         `Expected a struct not {0} in builtin_balance of {1}`,
         contractStruct,
         addr

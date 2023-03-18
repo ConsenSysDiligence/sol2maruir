@@ -19,6 +19,7 @@ import { getDesugaredGlobalVarName, getIRStructDefName } from "./resolving";
 import { transpileType, u16, u160, u256 } from "./typing";
 import { MsgDecoderCompiler } from "./msg_decoder_compiler";
 import { ContractDispatchCompiler } from "./contract_dispatch_compiler";
+import { RootDispatchCompiler } from "./root_dispatch_compiler";
 
 type InheritMap = Map<sol.ContractDefinition, sol.ContractDefinition[]>;
 
@@ -115,6 +116,8 @@ export class UnitCompiler {
                 }
             }
         }
+
+        this.globalDefine(this.compileRootDispatch(units));
 
         return this.globalScope.definitions();
     }
@@ -416,6 +419,18 @@ export class UnitCompiler {
             this.globalUid,
             this.solVersion,
             abiVersion
+        );
+
+        return dispatchCompiler.compile();
+    }
+
+    compileRootDispatch(units: sol.SourceUnit[]): ir.FunctionDefinition {
+        const dispatchCompiler = new RootDispatchCompiler(
+            this.factory,
+            units,
+            this.globalScope,
+            this.globalUid,
+            this.solVersion
         );
 
         return dispatchCompiler.compile();

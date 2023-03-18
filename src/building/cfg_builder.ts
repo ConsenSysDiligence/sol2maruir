@@ -4,7 +4,7 @@ import { BasicBlock } from "maru-ir2/dist/ir/cfg";
 import { assert, InferType, pp } from "solc-typed-ast";
 import { UIDGenerator } from "../utils";
 import { BaseSrc, concretizeType, makeSubst, noSrc } from "maru-ir2";
-import { boolT, transpileType, u256, u8, u8ArrExcPtr } from "./typing";
+import { boolT, transpileType, u256, u32, u8, u8ArrExcPtr } from "./typing";
 import { ASTSource } from "../ir/source";
 import { IRFactory } from "./factory";
 
@@ -653,5 +653,40 @@ export class CFGBuilder {
         );
         this.jump(headerBB, src);
         this.curBB = exitBB;
+    }
+
+    getSelectorFromData(dataArrPtr: ir.Expression): ir.Identifier {
+        const factory = this.factory;
+        const dataArrPtrT = factory.typeOf(dataArrPtr);
+
+        const irSig = this.getTmpId(u32, noSrc);
+        for (let i = 0n; i < 4n; i++) {
+            const byte = this.loadIndex(
+                dataArrPtr,
+                dataArrPtrT,
+                factory.numberLiteral(noSrc, i, 10, u256),
+                noSrc
+            );
+
+            this.assign(
+                irSig,
+                factory.binaryOperation(
+                    noSrc,
+                    irSig,
+                    "|",
+                    factory.binaryOperation(
+                        noSrc,
+                        factory.cast(noSrc, u32, byte),
+                        "<<",
+                        factory.numberLiteral(noSrc, i * 8n, 10, u32),
+                        u32
+                    ),
+                    u32
+                ),
+                noSrc
+            );
+        }
+
+        return irSig;
     }
 }
