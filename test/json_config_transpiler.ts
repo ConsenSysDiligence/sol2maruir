@@ -283,6 +283,8 @@ export class JSONConfigTranspiler {
         let lastObjName: string | undefined;
         let lastContractName: string | undefined;
 
+        const constuctionFollowups: Map<string, ir.Statement[]> = new Map();
+
         entry.statements.push(
             this.factory.allocStruct(
                 ir.noSrc,
@@ -321,7 +323,34 @@ export class JSONConfigTranspiler {
                     this.factory.userDefinedType(noSrc, def?.name, [], []),
                     this.factory.memConstant(noSrc, "storage")
                 );
+
                 this.builder.addIRLocal(lastObjName as string, thisT, ir.noSrc);
+
+                const followups: ir.Statement[] = [];
+
+                if (step.balance) {
+                    followups.push(
+                        this.factory.storeField(
+                            ir.noSrc,
+                            this.factory.identifier(noSrc, lastObjName as string, thisT),
+                            "__balance__",
+                            this.compileJSArg(step.balance)
+                        )
+                    );
+                }
+
+                if (step.address) {
+                    followups.push(
+                        this.factory.storeField(
+                            ir.noSrc,
+                            this.factory.identifier(noSrc, lastObjName as string, thisT),
+                            "__address__",
+                            this.compileJSArg(step.address)
+                        )
+                    );
+                }
+
+                constuctionFollowups.set(lastObjName as string, followups);
             } else if (step.act === "call") {
                 const fun = methodMap.get(step.definingContract)?.get(step.method);
 
@@ -382,6 +411,15 @@ export class JSONConfigTranspiler {
                             ]
                         )
                     );
+
+                    const followups = constuctionFollowups.get(lastObjName);
+
+                    if (followups) {
+                        entry.statements.push(...followups);
+
+                        constuctionFollowups.delete(lastObjName);
+                    }
+
                     lastObjName = undefined;
                     lastContractName = undefined;
                 }
@@ -396,9 +434,8 @@ export class JSONConfigTranspiler {
                             this.builder.typeOfLocal(lastObjName as string)
                         )
                     );
+
                     args.splice(0, 1);
-                    lastObjName = undefined;
-                    lastContractName = undefined;
                 }
 
                 entry.statements.push(
@@ -476,6 +513,19 @@ export class JSONConfigTranspiler {
                             );
                         }
                     }
+                }
+
+                if (step.method === "constructor") {
+                    const followups = constuctionFollowups.get(lastObjName as string);
+
+                    if (followups) {
+                        entry.statements.push(...followups);
+
+                        constuctionFollowups.delete(lastObjName as string);
+                    }
+
+                    lastObjName = undefined;
+                    lastContractName = undefined;
                 }
             } else if (step.act === "validateBySnapshot") {
                 /// skip

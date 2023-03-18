@@ -7,7 +7,7 @@ import { grabInheritanceArgs, UIDGenerator } from "../utils";
 import { getDesugaredConstructorName, getDesugaredPartialConstructorName } from "./resolving";
 import { ExpressionCompiler } from "./expression_compiler";
 import { ASTSource } from "../ir/source";
-import { blockPtrT, msgPtrT, noType, transpileType, u16, u160 } from "./typing";
+import { blockPtrT, msgPtrT, noType, transpileType, u16, u160, u256 } from "./typing";
 import { ImplicitConstructorCompiler } from "./implicit_constructor_compiler";
 import { IRFactory } from "./factory";
 
@@ -26,7 +26,7 @@ export class ConstructorCompiler {
         private readonly irContract: ir.StructDefinition
     ) {}
 
-    public compilePartialConstructors(): ir.FunctionDefinition[] {
+    compilePartialConstructors(): ir.FunctionDefinition[] {
         const res: ir.FunctionDefinition[] = [];
 
         for (const base of this.contract.vLinearizedBaseContracts) {
@@ -47,6 +47,7 @@ export class ConstructorCompiler {
                 }
 
                 res.push(funCompiler.compile());
+
                 continue;
             }
 
@@ -68,7 +69,7 @@ export class ConstructorCompiler {
         return res;
     }
 
-    public compileConstructor(): ir.FunctionDefinition {
+    compileConstructor(): ir.FunctionDefinition {
         const funScope = new ir.Scope(this.globalScope);
 
         const builder = new CFGBuilder(
@@ -109,6 +110,7 @@ export class ConstructorCompiler {
         // List of referenced contract definitions. Can be used to call constructors in base classes
         const constructorCalls: Array<[sol.ContractDefinition, sol.Expression[]]> = [];
         const argMap = new Map<sol.ContractDefinition, sol.Expression[]>();
+
         grabInheritanceArgs(this.contract, argMap);
 
         const scopeBases = this.contract.vLinearizedBaseContracts;
@@ -165,6 +167,7 @@ export class ConstructorCompiler {
                 const rawArg = rawArgs[argIdx];
                 const irArg = exprCompiler.compile(rawArg);
                 const castedIrArg = exprCompiler.mustCastTo(irArg, irFormalTs[argIdx], irArg.src);
+
                 constrArgs.push(castedIrArg);
             }
 
@@ -209,6 +212,7 @@ export class ConstructorCompiler {
             [builder.this(noSrc)],
             noSrc
         );
+
         builder.storeField(
             builder.this(noSrc),
             "__address__",
@@ -221,6 +225,14 @@ export class ConstructorCompiler {
             builder.this(noSrc),
             "__rtti__",
             this.factory.numberLiteral(noSrc, BigInt(this.contract.id), 10, u16),
+            noSrc
+        );
+
+        // Set __balance__
+        builder.storeField(
+            builder.this(noSrc),
+            "__balance__",
+            this.factory.numberLiteral(noSrc, 0n, 10, u256),
             noSrc
         );
 

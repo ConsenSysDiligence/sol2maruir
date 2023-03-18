@@ -1,6 +1,6 @@
 import * as ir from "maru-ir2";
 import { BaseSrc, noSrc } from "maru-ir2";
-import { gte } from "semver";
+import { gte, lt } from "semver";
 import * as sol from "solc-typed-ast";
 import { assert, ContractDefinition, ContractKind, generalizeType, pp } from "solc-typed-ast";
 import { IRTuple2, IRTupleType2 } from "../ir";
@@ -1708,18 +1708,36 @@ export class ExpressionCompiler {
             }
         }
 
-        if (isAddressType(baseT) && expr.memberName === "balance") {
-            const res = this.cfgBuilder.getTmpId(u256, src);
-            this.cfgBuilder.call(
-                [res],
-                factory.funIdentifier("builtin_balance"),
-                [],
-                [],
-                [base],
-                src
-            );
+        if (expr.vReferencedDeclaration === undefined) {
+            if (expr.memberName === "balance") {
+                let addrExpr: ir.Expression;
 
-            return res;
+                if (isAddressType(baseT)) {
+                    addrExpr = base;
+                } else {
+                    assert(
+                        lt(this.cfgBuilder.solVersion, "0.5.0"),
+                        "Unexpected non-address base {0} of type {1} after Solidity 0.5.0 for builtin_balance()",
+                        base,
+                        baseT
+                    );
+
+                    addrExpr = this.mustCastTo(base, u160, src);
+                }
+
+                const res = this.cfgBuilder.getTmpId(u256, src);
+
+                this.cfgBuilder.call(
+                    [res],
+                    factory.funIdentifier("builtin_balance"),
+                    [],
+                    [],
+                    [addrExpr],
+                    src
+                );
+
+                return res;
+            }
         }
 
         throw new Error(
