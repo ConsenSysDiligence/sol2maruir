@@ -4,7 +4,17 @@ import { BasicBlock } from "maru-ir2/dist/ir/cfg";
 import { assert, InferType, pp } from "solc-typed-ast";
 import { UIDGenerator } from "../utils";
 import { BaseSrc, concretizeType, makeSubst, noSrc } from "maru-ir2";
-import { balancesMapPtrT, boolT, transpileType, u256, u32, u8, u8ArrExcPtr } from "./typing";
+import {
+    balancesMapPtrT,
+    boolT,
+    msgPtrT,
+    msgT,
+    transpileType,
+    u256,
+    u32,
+    u8,
+    u8ArrExcPtr
+} from "./typing";
 import { ASTSource } from "../ir/source";
 import { IRFactory } from "./factory";
 
@@ -327,13 +337,15 @@ export class CFGBuilder {
         src: ir.BaseSrc
     ): ir.Identifier {
         assert(
-            type instanceof ir.PointerType && type.toType instanceof ir.ArrayType,
+            type instanceof ir.PointerType &&
+                (type.toType instanceof ir.ArrayType || type.toType instanceof ir.MapType),
             `Expected a pointer type not {0}`,
             type
         );
 
-        const elT = type.toType.baseType;
-        const lhs = this.getTmpId(elT, src);
+        const resT =
+            type.toType instanceof ir.ArrayType ? type.toType.baseType : type.toType.valueType;
+        const lhs = this.getTmpId(resT, src);
         this.curBB.statements.push(this.factory.loadIndex(src, lhs, base, idx));
 
         return lhs;
@@ -665,15 +677,20 @@ export class CFGBuilder {
         this.curBB = exitBB;
     }
 
-    getSelectorFromData(dataArrPtr: ir.Expression): ir.Identifier {
+    /**
+     * Get the selector from a bytes array. Expects the type of dataArrPtr to be `ArrWithLen<M; u8>`
+     */
+    getSelectorFromData(bytesPtr: ir.Expression): ir.Identifier {
         const factory = this.factory;
-        const dataArrPtrT = factory.typeOf(dataArrPtr);
+        const bytesPtrT = factory.typeOf(bytesPtr);
+        const bytesArrPtr = this.loadField(bytesPtr, bytesPtrT, "arr", noSrc);
+        const bytesArrPtrT = factory.typeOf(bytesArrPtr);
 
         const irSig = this.getTmpId(u32, noSrc);
         for (let i = 0n; i < 4n; i++) {
             const byte = this.loadIndex(
-                dataArrPtr,
-                dataArrPtrT,
+                bytesArrPtr,
+                bytesArrPtrT,
                 factory.numberLiteral(noSrc, i, 10, u256),
                 noSrc
             );
@@ -698,5 +715,23 @@ export class CFGBuilder {
         }
 
         return irSig;
+    }
+
+    makeMsgPtr(
+        sender: ir.Expression,
+        value: ir.Expression,
+        data: ir.Expression,
+        sig: ir.Expression,
+        src: BaseSrc = noSrc
+    ): ir.Identifier {
+        const fac = this.factory;
+        const res = this.getTmpId(msgPtrT, src);
+        this.allocStruct(res, msgT, fac.memConstant(src, "memory"), src);
+        this.storeField(res, "sender", sender, src);
+        this.storeField(res, "value", value, src);
+        this.storeField(res, "data", data, src);
+        this.storeField(res, "sig", sig, src);
+
+        return res;
     }
 }

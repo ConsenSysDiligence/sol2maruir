@@ -84,7 +84,8 @@ export function defineArrStruct(
         len: BigInt(values.length)
     });
 
-    return s.define(struct, inMem);
+    const res = s.define(struct, inMem);
+    return res;
 }
 
 export function defineString(s: ir.State, str: string, inMem: string): ir.PointerVal {

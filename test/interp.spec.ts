@@ -180,8 +180,10 @@ describe("Interpreter tests", () => {
         "test/samples/solidity/CalldataArgPassing.config.json",
         "test/samples/solidity/dispatch.config.json",
         "test/samples/solidity/public_getters.config.json"
-        */
         "test/samples/solidity/abi_decode_fails.config.json"
+        */
+        //"test/samples/solidity/value.config.json"
+        "test/samples/solidity/lowlevel_calls_04.config.json"
     ];
 
     for (const jsonFile of files) {

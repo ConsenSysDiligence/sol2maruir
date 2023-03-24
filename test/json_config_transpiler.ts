@@ -310,6 +310,12 @@ export class JSONConfigTranspiler {
                 this.factory.identifier(ir.noSrc, "msg", msgPtrT),
                 "sender",
                 this.factory.numberLiteral(ir.noSrc, 2n, 10, u160)
+            ),
+            this.factory.storeField(
+                ir.noSrc,
+                this.factory.identifier(ir.noSrc, "msg", msgPtrT),
+                "value",
+                this.factory.numberLiteral(ir.noSrc, 100n, 10, u256)
             )
         );
 

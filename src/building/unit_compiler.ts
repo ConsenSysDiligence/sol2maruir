@@ -16,7 +16,7 @@ import { compileGlobalVarInitializer } from "./literal_compiler";
 import { MsgBuilderCompiler } from "./msg_builder_compiler";
 import { preamble } from "./preamble";
 import { getDesugaredGlobalVarName, getIRStructDefName } from "./resolving";
-import { transpileType, u16, u160 } from "./typing";
+import { transpileType, u16, u160Addr } from "./typing";
 import { MsgDecoderCompiler } from "./msg_decoder_compiler";
 import { ContractDispatchCompiler } from "./contract_dispatch_compiler";
 import { RootDispatchCompiler } from "./root_dispatch_compiler";
@@ -428,6 +428,7 @@ export class UnitCompiler {
         const dispatchCompiler = new RootDispatchCompiler(
             this.factory,
             units,
+            this,
             this.globalScope,
             this.globalUid,
             this.solVersion
@@ -437,12 +438,16 @@ export class UnitCompiler {
     }
 
     getContractStruct(contract: sol.ContractDefinition): ir.StructDefinition {
+        if (this.emittedStructMap.has(contract)) {
+            return this.emittedStructMap.get(contract) as ir.StructDefinition;
+        }
+
         const name = `${contract.name}_${contract.id}`;
 
         /// @todo Make sure these don't clash with other contract fields
         /// @todo Maybe move the EVM states in their own sub-struct?
         const fields: Array<[string, ir.Type]> = [
-            ["__address__", u160],
+            ["__address__", u160Addr],
             ["__rtti__", u16]
         ];
 

@@ -390,12 +390,12 @@ locals succeeded: bool;
         call sol_revert();
 }
 
-fun sol_call05<M>(addr: u160, block: Block *#memory, msg: Message *#memory, data: ArrWithLen<M; u8> *M): (bool, ArrWithLen<#memory; u8> *#memory)
-locals res: ArrWithLen<#memory; u8> *#memory,
-       success: bool;
+fun sol_call05(addr: u160, block: Block *#memory, msg: Message *#memory): (bool, ArrWithLen<#memory; u8> *#memory)
+locals  res: ArrWithLen<#memory; u8> *#memory,
+        success: bool;
 {
     entry:
-        res, success := trans_call contract_dispatch<M>(addr, block, msg, data);
+        res, success := trans_call contract_dispatch(addr, block, msg);
         branch success return_bb fail_bb;
 
     return_bb:
@@ -407,21 +407,21 @@ locals res: ArrWithLen<#memory; u8> *#memory,
 
 }
 
-fun sol_call04<M>(addr: u160, block: Block *#memory, msg: Message *#memory, data: ArrWithLen<M; u8> *M): bool
+fun sol_call04(addr: u160, block: Block *#memory, msg: Message *#memory): bool
 locals res: ArrWithLen<#memory; u8> *#memory,
        success: bool;
 {
     entry:
-        res, success := trans_call contract_dispatch<M>(addr, block, msg, data);
+        res, success := trans_call contract_dispatch(addr, block, msg);
         return success;
 }
 
-fun sol_staticcall05<M>(addr: u160, block: Block *#memory, msg: Message *#memory, data: ArrWithLen<M; u8> *M): (bool, ArrWithLen<#memory; u8> *#memory)
+fun sol_staticcall05<M>(addr: u160, block: Block *#memory, msg: Message *#memory): (bool, ArrWithLen<#memory; u8> *#memory)
 locals res: ArrWithLen<#memory; u8> *#memory,
        success: bool;
 {
     entry:
-        res, success := trans_call contract_dispatch<M>(addr, block, msg, data);
+        res, success := trans_call contract_dispatch(addr, block, msg);
         branch success return_bb fail_bb;
 
     return_bb:
@@ -433,12 +433,12 @@ locals res: ArrWithLen<#memory; u8> *#memory,
 
 }
 
-fun sol_staticcall04<M>(addr: u160, block: Block *#memory, msg: Message *#memory, data: ArrWithLen<M; u8> *M): bool
+fun sol_staticcall04<M>(addr: u160, block: Block *#memory, msg: Message *#memory): bool
 locals res: ArrWithLen<#memory; u8> *#memory,
        success: bool;
 {
     entry:
-        res, success := trans_call contract_dispatch<M>(addr, block, msg, data);
+        res, success := trans_call contract_dispatch(addr, block, msg);
         return success;
 }
 

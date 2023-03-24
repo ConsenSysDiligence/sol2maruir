@@ -1,7 +1,7 @@
 import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
 import { BaseFunctionCompiler } from "./base_function_compiler";
-import { blockPtrT, msgPtrT, transpileType, u160, u256, u32, u8ArrMemPtr } from "./typing";
+import { blockPtrT, msgPtrT, transpileType, u256, u32, u8ArrMemPtr } from "./typing";
 import { BasicBlock, boolT, noSrc } from "maru-ir2";
 import {
     getContractDispatchName,
@@ -217,52 +217,68 @@ export class ContractDispatchCompiler extends BaseFunctionCompiler {
      */
     compile(): ir.FunctionDefinition {
         // Add this argument
-        const factory = this.cfgBuilder.factory;
-
-        this.cfgBuilder.addThis(u160);
-        this.cfgBuilder.addIRArg("block", blockPtrT, noSrc);
-        this.cfgBuilder.addIRArg("msg", msgPtrT, noSrc);
-        const resDecl = this.cfgBuilder.addIRRet("res", u8ArrMemPtr, noSrc);
-
-        const res = factory.identifier(noSrc, resDecl.name, resDecl.type);
-
-        const [recv, fallback] = this.getRecvFallback();
-        let nextBB: BasicBlock;
+        const builder = this.cfgBuilder;
+        const factory = builder.factory;
 
         const thisPtrT = factory.pointerType(
             noSrc,
             factory.userDefinedType(noSrc, this.irContract.name, [], []),
             factory.memConstant(noSrc, "storage")
         );
-        const thisPtrDecl = this.cfgBuilder.addIRLocal("thisPtr", thisPtrT, noSrc);
-        const thisPtr = factory.identifier(noSrc, thisPtrDecl.name, thisPtrDecl.type);
+        builder.addThis(thisPtrT);
+        builder.addIRArg("block", blockPtrT, noSrc);
+        builder.addIRArg("msg", msgPtrT, noSrc);
+        const resDecl = builder.addIRRet("res", u8ArrMemPtr, noSrc);
 
-        this.cfgBuilder.call(
-            [thisPtr],
-            factory.funIdentifier("builtin_get_contract_at"),
-            [],
-            [thisPtrT],
-            [this.cfgBuilder.this(noSrc)],
-            noSrc
-        );
+        const res = factory.identifier(noSrc, resDecl.name, resDecl.type);
 
-        const dataPtr = this.cfgBuilder.loadField(
-            this.cfgBuilder.msgPtr(noSrc),
-            msgPtrT,
-            "data",
-            noSrc
-        );
+        const [recv, fallback] = this.getRecvFallback();
+        let nextBB: BasicBlock;
+
+        const dataPtr = builder.loadField(builder.msgPtr(noSrc), msgPtrT, "data", noSrc);
         const dataT = factory.typeOf(dataPtr);
 
-        const dataLen = this.cfgBuilder.loadField(dataPtr, dataT, "len", noSrc);
-        const dataArrPtr = this.cfgBuilder.loadField(dataPtr, dataT, "arr", noSrc);
+        const dataLen = builder.loadField(dataPtr, dataT, "len", noSrc);
+
+        // 0. Update the balances. If sender has insufficient balance abort.
+        const value = builder.loadField(builder.msgPtr(noSrc), msgPtrT, "value", noSrc);
+        const sender = builder.loadField(builder.msgPtr(noSrc), msgPtrT, "sender", noSrc);
+        const senderBalance = builder.getBalance(sender, noSrc);
+        const thisPtr = builder.this(noSrc);
+        const thisAddr = builder.loadField(thisPtr, thisPtrT, "__address__", noSrc);
+        const thisBalance = builder.getBalance(thisAddr, noSrc);
+
+        const insufficientBalanceBB = builder.mkBB();
+        const okBalanceBB = builder.mkBB();
+
+        builder.branch(
+            factory.binaryOperation(noSrc, senderBalance, "<", value, boolT),
+            insufficientBalanceBB,
+            okBalanceBB,
+            noSrc
+        );
+
+        builder.curBB = insufficientBalanceBB;
+        builder.abort(noSrc);
+
+        builder.curBB = okBalanceBB;
+        builder.setBalance(
+            sender,
+            factory.binaryOperation(noSrc, senderBalance, "-", value, u256),
+            noSrc
+        );
+        builder.setBalance(
+            thisAddr,
+            factory.binaryOperation(noSrc, thisBalance, "+", value, u256),
+            noSrc
+        );
 
         // 1. If msg.data.length == 0 && receive is defined - call to receive
         if (recv !== undefined) {
-            nextBB = this.cfgBuilder.mkBB();
-            const callRecv = this.cfgBuilder.mkBB("call_recv");
+            nextBB = builder.mkBB();
+            const callRecv = builder.mkBB("call_recv");
 
-            this.cfgBuilder.branch(
+            builder.branch(
                 factory.binaryOperation(
                     noSrc,
                     dataLen,
@@ -275,30 +291,26 @@ export class ContractDispatchCompiler extends BaseFunctionCompiler {
                 noSrc
             );
 
-            this.cfgBuilder.curBB = callRecv;
+            builder.curBB = callRecv;
 
-            const funName = getDesugaredFunName(recv, this.contract, this.cfgBuilder.infer);
+            const funName = getDesugaredFunName(recv, this.contract, builder.infer);
 
-            this.cfgBuilder.call(
+            builder.call(
                 [],
                 factory.funIdentifier(funName),
                 [],
                 [],
-                [
-                    this.cfgBuilder.this(noSrc),
-                    this.cfgBuilder.blockPtr(noSrc),
-                    this.cfgBuilder.msgPtr(noSrc)
-                ],
+                [builder.this(noSrc), builder.blockPtr(noSrc), builder.msgPtr(noSrc)],
                 noSrc
             );
 
-            this.cfgBuilder.curBB = nextBB;
+            builder.curBB = nextBB;
         }
 
-        const lessThan4BB = this.cfgBuilder.mkBB("less_than4_bytes");
-        nextBB = this.cfgBuilder.mkBB();
+        const lessThan4BB = builder.mkBB("less_than4_bytes");
+        nextBB = builder.mkBB();
 
-        this.cfgBuilder.branch(
+        builder.branch(
             factory.binaryOperation(
                 noSrc,
                 dataLen,
@@ -312,17 +324,17 @@ export class ContractDispatchCompiler extends BaseFunctionCompiler {
         );
 
         // 2. If msg.data.length < 4 && fallback is defined - call fallback. Otherwise abort
-        this.cfgBuilder.curBB = lessThan4BB;
+        builder.curBB = lessThan4BB;
         this.callFallbackOrAbort(fallback, dataPtr);
-        this.cfgBuilder.curBB = nextBB;
+        builder.curBB = nextBB;
 
         // 3. Check if the selector msg.data[0:4] matches any method or public
         // getter - and if so try calling it.
         // 3.1 Extract selector from msg.data
-        const irSig = this.cfgBuilder.getSelectorFromData(dataArrPtr);
+        const irSig = builder.getSelectorFromData(dataPtr);
 
         // 3.2 For each callable method/getter in the contract, check if it matches the selector
-        for (const callable of getContractCallables(this.contract, this.cfgBuilder.infer)) {
+        for (const callable of getContractCallables(this.contract, builder.infer)) {
             if (!isExternallyCallable(callable)) {
                 continue;
             }
@@ -334,7 +346,7 @@ export class ContractDispatchCompiler extends BaseFunctionCompiler {
                 continue;
             }
 
-            this.tryAndCall(irSig, dataPtr, res, thisPtr, callable);
+            this.tryAndCall(irSig, dataPtr, res, builder.this(noSrc), callable);
         }
 
         // 4. If no match - call fallback if defined. Otherwise abort

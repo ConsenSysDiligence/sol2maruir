@@ -1,7 +1,7 @@
 import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
 import { BaseFunctionCompiler } from "./base_function_compiler";
-import { blockPtrT, msgPtrT, noType, transpileType, u160 } from "./typing";
+import { blockPtrT, msgPtrT, noType, transpileType, u160Addr } from "./typing";
 import { noSrc } from "maru-ir2";
 import { getMethodDispatchName } from "./resolving";
 import { IRFactory } from "./factory";
@@ -30,7 +30,7 @@ export class MethodDispatchCompiler extends BaseFunctionCompiler {
         const factory = this.cfgBuilder.factory;
 
         // Add this argument
-        this.cfgBuilder.addThis(u160);
+        this.cfgBuilder.addThis(u160Addr);
 
         this.cfgBuilder.addIRArg("block", blockPtrT, noSrc);
         this.cfgBuilder.addIRArg("msg", msgPtrT, noSrc);
