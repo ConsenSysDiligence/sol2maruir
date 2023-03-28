@@ -655,29 +655,27 @@ export class ExpressionCompiler {
         if (expr.operator === "++" || expr.operator === "--") {
             assert(subT instanceof ir.IntType, `Unexpected type {0} of {1}`, subT, subExp);
 
-            let res: ir.Expression;
-
-            if (expr.prefix) {
-                res = this.compile(expr.vSubExpression);
-            } else {
-                res = this.cfgBuilder.getTmpId(subT, src);
-
-                this.cfgBuilder.assign(res as ir.Identifier, subExp, src);
-            }
-
-            this.assignTo(
-                expr.vSubExpression,
-                this.makeBinaryOperation(
-                    subExp,
-                    expr.operator === "++" ? "+" : "-",
-                    this.factory.numberLiteral(noSrc, 1n, 10, subT),
-                    this.isArithmeticChecked(expr),
-                    src
-                ),
+            const newVal = this.makeBinaryOperation(
+                subExp,
+                expr.operator === "++" ? "+" : "-",
+                this.factory.numberLiteral(noSrc, 1n, 10, subT),
+                this.isArithmeticChecked(expr),
                 src
             );
 
-            return res;
+            if (expr.prefix) {
+                this.assignTo(expr.vSubExpression, newVal, src);
+
+                return this.compile(expr.vSubExpression);
+            }
+
+            const oldVal = this.cfgBuilder.getTmpId(subT, src);
+
+            this.cfgBuilder.assign(oldVal, subExp, src);
+
+            this.assignTo(expr.vSubExpression, newVal, src);
+
+            return oldVal;
         }
 
         throw new Error(`NYI unary operator ${expr.operator}`);
