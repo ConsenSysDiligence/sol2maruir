@@ -1,5 +1,5 @@
 import * as ir from "maru-ir2";
-import { eq, getTypeRange, noSrc, pp, Resolving, StructValue } from "maru-ir2";
+import { eq, getTypeRange, noSrc, Resolving, StructValue } from "maru-ir2";
 import * as sol from "solc-typed-ast";
 import { assert } from "solc-typed-ast";
 import {
