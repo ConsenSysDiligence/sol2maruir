@@ -231,7 +231,8 @@ export class JSONConfigTranspiler {
         }
 
         if (arg.kind === "string") {
-            return this.getNewConstStr(arg.value, arg.location);
+            return this.builder.getStrLit(arg.value, noSrc);
+            /// this.getNewConstStr(arg.value, arg.location);
         }
 
         if (arg.kind === "array") {

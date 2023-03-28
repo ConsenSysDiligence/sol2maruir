@@ -2,7 +2,14 @@ import * as ir from "maru-ir2";
 import { BaseSrc, noSrc } from "maru-ir2";
 import { gte, lt } from "semver";
 import * as sol from "solc-typed-ast";
-import { assert, ContractDefinition, ContractKind, generalizeType, pp } from "solc-typed-ast";
+import {
+    assert,
+    ContractDefinition,
+    ContractKind,
+    generalizeType,
+    pp,
+    TypeNode
+} from "solc-typed-ast";
 import { IRTuple2, IRTupleType2 } from "../ir";
 import { ASTSource } from "../ir/source";
 import { single } from "../utils";
@@ -740,6 +747,28 @@ export class ExpressionCompiler {
         );
     }
 
+    public getAbiTypeStringConst(solType: TypeNode): ir.Identifier {
+        let abiSafeSolType: sol.TypeNode;
+
+        if (solType instanceof sol.IntLiteralType) {
+            const fitT = solType.smallestFittingType();
+
+            assert(fitT !== undefined, "Unable to detect smalles fitting type for {0}", solType);
+
+            abiSafeSolType = fitT;
+        } else if (solType instanceof sol.StringLiteralType) {
+            abiSafeSolType = new sol.StringType();
+        } else {
+            abiSafeSolType = solType;
+        }
+
+        const abiType = generalizeType(
+            this.cfgBuilder.infer.toABIEncodedType(abiSafeSolType, this.abiEncodeVersion)
+        )[0];
+
+        return this.cfgBuilder.getStrLit(abiType.pp(), noSrc);
+    }
+
     /**
      * Given a solidity type name or type tuple (second argument to decode)
      * return a list of ir-types corresponding to each solidity type, and a list
@@ -776,32 +805,7 @@ export class ExpressionCompiler {
 
         for (const solType of solArgTs) {
             const irArgT = transpileType(solType, this.factory);
-
-            let abiSafeSolType: sol.TypeNode;
-
-            if (solType instanceof sol.IntLiteralType) {
-                const fitT = solType.smallestFittingType();
-
-                assert(
-                    fitT !== undefined,
-                    "Unable to detect smalles fitting type for {0}",
-                    solType
-                );
-
-                abiSafeSolType = fitT;
-            } else if (solType instanceof sol.StringLiteralType) {
-                abiSafeSolType = new sol.StringType();
-            } else {
-                abiSafeSolType = solType;
-            }
-
-            const abiType = generalizeType(
-                this.cfgBuilder.infer.toABIEncodedType(abiSafeSolType, this.abiEncodeVersion)
-            )[0];
-
-            const abiTypeName = this.cfgBuilder.getStrLit(abiType.pp(), noSrc);
-
-            args.push(abiTypeName);
+            args.push(this.getAbiTypeStringConst(solType));
             argTs.push(irArgT);
         }
 
@@ -1345,6 +1349,7 @@ export class ExpressionCompiler {
         sol.Expression | undefined,
         sol.Expression | undefined,
         boolean,
+        boolean,
         string,
         sol.TypeNode[],
         sol.TypeNode[]
@@ -1377,6 +1382,9 @@ export class ExpressionCompiler {
         let thisExpr: ir.Expression;
         let isExternal: boolean;
         let irFun: string;
+
+        const isTransaction =
+            expr.parent instanceof sol.TryStatement && expr === expr.parent.vExternalCall;
 
         // There are several cases:
         if (callee instanceof sol.Identifier) {
@@ -1480,6 +1488,7 @@ export class ExpressionCompiler {
             valueModifier,
             saltModifier,
             isExternal,
+            isTransaction,
             irFun,
             argTs,
             retTs
@@ -1499,9 +1508,10 @@ export class ExpressionCompiler {
         }
 
         const src = new ASTSource(expr);
-        const [irCallee, solCallee, , valueMod, , isExternal, irFun, argTs, retTs] =
+        const [irCallee, solCallee, , valueMod, , isExternal, isTransaction, irFun, argTs, retTs] =
             this.decodeCall(expr);
 
+        assert(!isTransaction || isExternal, `All transactions must be external`);
         const irRetTs = retTs.map((retT) => transpileType(retT, factory));
         const lhss = irRetTs.map((retT) => builder.getTmpId(retT, src));
         const callee = factory.identifier(src, irFun, noType);
@@ -1561,7 +1571,12 @@ export class ExpressionCompiler {
 
         args.splice(0, 0, irCallee, builder.blockPtr(noSrc), msgPtrArg);
 
-        builder.call(lhss, callee, [], [], args, src);
+        if (isTransaction) {
+            lhss.push(builder.getTmpId(boolT, src));
+            builder.transCall(lhss, callee, [], [], args, src);
+        } else {
+            builder.call(lhss, callee, [], [], args, src);
+        }
 
         if (lhss.length === 0) {
             return noType;
@@ -1914,6 +1929,17 @@ export class ExpressionCompiler {
             ) {
                 return this.cfgBuilder.loadField(expr, fromT, "__address__", src);
             }
+        }
+
+        /**
+         * Integer types can be implicitly casted to enums
+         */
+        if (
+            fromT instanceof ir.IntType &&
+            toT instanceof ir.IntType &&
+            toT.md.get("sol_type").startsWith("enum ")
+        ) {
+            return this.factory.cast(src, toT, expr);
         }
 
         /**

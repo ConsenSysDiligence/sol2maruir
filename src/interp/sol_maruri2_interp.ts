@@ -179,7 +179,7 @@ export class SolMaruirInterp {
             [
                 "builtin_abi_decode_1",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
-                    const res = builtin_decode(this.resolving, s, frame);
+                    const res = builtin_decode(this.resolving, s, frame, 0);
 
                     return res === undefined ? [true, []] : [false, res];
                 }
@@ -187,7 +187,7 @@ export class SolMaruirInterp {
             [
                 "builtin_abi_decode_2",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
-                    const res = builtin_decode(this.resolving, s, frame);
+                    const res = builtin_decode(this.resolving, s, frame, 0);
 
                     return res === undefined ? [true, []] : [false, res];
                 }
@@ -195,7 +195,31 @@ export class SolMaruirInterp {
             [
                 "builtin_abi_decode_3",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
-                    const res = builtin_decode(this.resolving, s, frame);
+                    const res = builtin_decode(this.resolving, s, frame, 0);
+
+                    return res === undefined ? [true, []] : [false, res];
+                }
+            ],
+            [
+                "builtin_abi_decodeWithHash_1",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const res = builtin_decode(this.resolving, s, frame, 4);
+
+                    return res === undefined ? [true, []] : [false, res];
+                }
+            ],
+            [
+                "builtin_abi_decodeWithHash_2",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const res = builtin_decode(this.resolving, s, frame, 4);
+
+                    return res === undefined ? [true, []] : [false, res];
+                }
+            ],
+            [
+                "builtin_abi_decodeWithHash_3",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const res = builtin_decode(this.resolving, s, frame, 4);
 
                     return res === undefined ? [true, []] : [false, res];
                 }

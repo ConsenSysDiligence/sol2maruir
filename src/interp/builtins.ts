@@ -1,5 +1,5 @@
 import * as ir from "maru-ir2";
-import { eq, getTypeRange, noSrc, Resolving, StructValue } from "maru-ir2";
+import { eq, getTypeRange, noSrc, pp, Resolving, StructValue } from "maru-ir2";
 import * as sol from "solc-typed-ast";
 import { assert } from "solc-typed-ast";
 import {
@@ -89,7 +89,11 @@ export function defineArrStruct(
 }
 
 export function defineString(s: ir.State, str: string, inMem: string): ir.PointerVal {
-    const bigIntArr = Array.from(str).map(BigInt);
+    const bigIntArr: bigint[] = [];
+
+    for (let i = 0; i < str.length; i++) {
+        bigIntArr.push(BigInt(str.charCodeAt(i)));
+    }
 
     return defineArrStruct(s, inMem, bigIntArr);
 }
@@ -481,7 +485,8 @@ export function getLastSolidityFun(s: ir.State): ir.FunctionDefinition {
 export function builtin_decode(
     resolving: Resolving,
     s: ir.State,
-    frame: ir.BuiltinFrame
+    frame: ir.BuiltinFrame,
+    byteOff: number
 ): ir.PrimitiveValue[] | undefined {
     assert(
         frame.args.length == frame.typeArgs.length + 1,
@@ -493,7 +498,11 @@ export function builtin_decode(
 
     assert(dataPtr instanceof Array, "Expected pointer, got {0}", dataPtr);
 
-    const data = decodeBytes(s, dataPtr);
+    let data = decodeBytes(s, dataPtr);
+
+    if (byteOff !== 0) {
+        data = data.slice(byteOff * 2);
+    }
 
     const abiTypeNames: string[] = [];
 

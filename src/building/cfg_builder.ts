@@ -195,7 +195,8 @@ export class CFGBuilder {
         if (
             decl.parent instanceof sol.VariableDeclarationStatement ||
             (decl.parent instanceof sol.ParameterList &&
-                decl.parent.parent instanceof sol.ModifierDefinition)
+                (decl.parent.parent instanceof sol.ModifierDefinition ||
+                    decl.parent.parent instanceof sol.TryCatchClause))
         ) {
             let phPath = "";
 
@@ -208,7 +209,7 @@ export class CFGBuilder {
                         .join("_");
             }
 
-            return `${decl.name}_${decl.id}${phPath}`;
+            return `${decl.name === "" ? "unnamed_local" : decl.name}_${decl.id}${phPath}`;
         }
 
         throw new Error(`Cannot get ir identifier name for ${pp(decl)}`);
@@ -440,7 +441,7 @@ export class CFGBuilder {
      * Return the length of an array
      */
     arrayLength(src: ir.BaseSrc, array: ir.Identifier): ir.Expression {
-        return this.loadField(array, this.typeOfLocal(array.name), "len", src);
+        return this.loadField(array, this.factory.typeOf(array), "len", src);
     }
 
     id(src: ir.BaseSrc, decl: ir.VariableDeclaration): ir.Identifier {
@@ -687,7 +688,23 @@ export class CFGBuilder {
         const bytesArrPtrT = factory.typeOf(bytesArrPtr);
 
         const irSig = this.getTmpId(u32, noSrc);
-        for (let i = 0n; i < 4n; i++) {
+
+        this.assign(
+            irSig,
+            factory.cast(
+                noSrc,
+                u32,
+                this.loadIndex(
+                    bytesArrPtr,
+                    bytesArrPtrT,
+                    factory.numberLiteral(noSrc, 0n, 10, u256),
+                    noSrc
+                )
+            ),
+            noSrc
+        );
+
+        for (let i = 1n; i < 4n; i++) {
             const byte = this.loadIndex(
                 bytesArrPtr,
                 bytesArrPtrT,
@@ -699,15 +716,15 @@ export class CFGBuilder {
                 irSig,
                 factory.binaryOperation(
                     noSrc,
-                    irSig,
-                    "|",
                     factory.binaryOperation(
                         noSrc,
-                        factory.cast(noSrc, u32, byte),
+                        irSig,
                         "<<",
-                        factory.numberLiteral(noSrc, i * 8n, 10, u32),
+                        factory.numberLiteral(noSrc, 8n, 10, u32),
                         u32
                     ),
+                    "|",
+                    factory.cast(noSrc, u32, byte),
                     u32
                 ),
                 noSrc

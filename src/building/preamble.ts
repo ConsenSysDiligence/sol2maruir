@@ -13,10 +13,21 @@ var _panic_signature: ArrWithLen<#exception; u8> *#exception = {
     len: 14_u256
 }
 
+var _error_signature: ArrWithLen<#exception; u8> *#exception = {
+    arr: [69_u8, 114_u8, 114_u8, 111_u8, 114_u8, 40_u8, 115_u8, 116_u8, 114_u8, 105_u8, 110_u8, 103_u8, 41_u8],
+    len: 14_u256
+}
+
 var _uint256_str_: ArrWithLen<#exception; u8> *#exception = {
     arr: [117_u8, 105_u8, 110_u8, 116_u8, 50_u8, 53_u8, 54_u8],
     len: 7_u256
 }
+
+var _string_str_: ArrWithLen<#exception; u8> *#exception = {
+    arr: [115_u8, 116_u8, 114_u8, 105_u8, 110_u8, 103_u8],
+    len: 7_u256
+}
+
 
 var _balances_ : map(u160, u256) *#storage = { }
 
@@ -178,10 +189,12 @@ locals
 
 fun sol_revert_08<M>(bytes: ArrWithLen<M; u8> *M): never 
 locals 
+    panicMemBytes: ArrWithLen<#memory; u8> *#memory,
     panicBytes: ArrWithLen<#exception; u8> *#exception;
 {
     entry:
-        panicBytes := call copy_u8arr<M, #exception>(bytes);
+        panicMemBytes := call builtin_abi_encodeWithSignature_1<#exception; ArrWithLen<M; u8> *M>(_error_signature, _string_str_, bytes);
+        panicBytes := call copy_u8arr<#memory, #exception>(panicMemBytes);
         call builtin_setExceptionBytes(panicBytes);
         abort;
 }
