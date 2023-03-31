@@ -4,17 +4,6 @@
     "steps": [
         {
             "act": "define",
-            "type": "OwnedToken",
-            "location": "storage",
-            "address": {
-                "kind": "literal",
-                "type": "address",
-                "value": "0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c"
-            },
-            "name": "token"
-        },
-        {
-            "act": "define",
             "type": "CreateContract",
             "location": "storage",
             "name": "this"
