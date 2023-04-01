@@ -388,31 +388,62 @@ fun builtin_register_contract<;T>(ptr: T): u160
 fun builtin_is_contract_at<;T>(addr: u160): bool
 fun builtin_get_contract_at<;T>(addr: u160): T
 
-fun builtin_send(sender: u160, receiver: u160, amount: u256): bool
-fun builtin_transfer(sender: u160, receiver: u160, amount: u256)
-locals succeeded: bool;
+fun sol_send_internal(block: Block *#memory, sender: u160, receiver: u160, amount: u256): (bool, ArrWithLen<#memory; u8> *#memory)
+locals succeeded: bool,
+    data: ArrWithLen<#memory; u8> *#memory,
+    retData: ArrWithLen<#memory; u8> *#memory,
+    msg: Message *#memory;
 {
     entry:
-        succeeded := call builtin_send(sender, receiver, amount);
+        msg := alloc Message in #memory;
+        store sender in msg.sender;
+        data := call new_array<#memory; u8>(0_u256);
+        store data in msg.data;
+        store amount in msg.value;
+        store 0_u32 in msg.sig;
+
+
+        succeeded, retData := call sol_call05(receiver, block, msg);
+        return (succeeded, retData);
+}
+
+fun sol_send(block: Block *#memory, sender: u160, receiver: u160, amount: u256): bool
+locals succeeded: bool,
+    retData: ArrWithLen<#memory; u8> *#memory;
+{
+    entry:
+        succeeded, retData := call sol_send_internal(block, sender, receiver, amount);
+        return succeeded;
+}
+
+fun sol_transfer(block: Block *#memory, sender: u160, receiver: u160, amount: u256)
+locals succeeded: bool,
+    panicBytesInExc: ArrWithLen<#exception; u8> *#exception,
+    retData: ArrWithLen<#memory; u8> *#memory;
+{
+    entry:
+        succeeded, retData := call sol_send_internal(block, sender, receiver, amount);
         branch succeeded exit fail;
 
     exit:
         return;
 
     fail:
-        call sol_revert();
+        panicBytesInExc := call copy_u8arr<#memory, #exception>(retData);
+        call builtin_setExceptionBytes(panicBytesInExc);
+        abort;
 }
 
 fun sol_call05(addr: u160, block: Block *#memory, msg: Message *#memory): (bool, ArrWithLen<#memory; u8> *#memory)
 locals  res: ArrWithLen<#memory; u8> *#memory,
-        success: bool;
+        aborted: bool;
 {
     entry:
-        res, success := trans_call contract_dispatch(addr, block, msg);
-        branch success return_bb fail_bb;
+        res, aborted := trans_call contract_dispatch(addr, block, msg);
+        branch aborted fail_bb return_bb;
 
     return_bb:
-        return (success, res);
+        return (!aborted, res);
 
     fail_bb:
         res := call copy_u8arr<#exception, #memory>(_exception_bytes_);
@@ -422,23 +453,23 @@ locals  res: ArrWithLen<#memory; u8> *#memory,
 
 fun sol_call04(addr: u160, block: Block *#memory, msg: Message *#memory): bool
 locals res: ArrWithLen<#memory; u8> *#memory,
-       success: bool;
+       aborted: bool;
 {
     entry:
-        res, success := trans_call contract_dispatch(addr, block, msg);
-        return success;
+        res, aborted := trans_call contract_dispatch(addr, block, msg);
+        return !aborted;
 }
 
-fun sol_staticcall05<M>(addr: u160, block: Block *#memory, msg: Message *#memory): (bool, ArrWithLen<#memory; u8> *#memory)
+fun sol_staticcall05(addr: u160, block: Block *#memory, msg: Message *#memory): (bool, ArrWithLen<#memory; u8> *#memory)
 locals res: ArrWithLen<#memory; u8> *#memory,
-       success: bool;
+       aborted: bool;
 {
     entry:
-        res, success := trans_call contract_dispatch(addr, block, msg);
-        branch success return_bb fail_bb;
+        res, aborted := trans_call contract_dispatch(addr, block, msg);
+        branch aborted fail_bb return_bb ;
 
     return_bb:
-        return (success, res);
+        return (!aborted, res);
 
     fail_bb:
         res := call copy_u8arr<#exception, #memory>(_exception_bytes_);
@@ -446,13 +477,49 @@ locals res: ArrWithLen<#memory; u8> *#memory,
 
 }
 
-fun sol_staticcall04<M>(addr: u160, block: Block *#memory, msg: Message *#memory): bool
+fun sol_staticcall04(addr: u160, block: Block *#memory, msg: Message *#memory): bool
 locals res: ArrWithLen<#memory; u8> *#memory,
-       success: bool;
+       aborted: bool;
 {
     entry:
-        res, success := trans_call contract_dispatch(addr, block, msg);
-        return success;
+        res, aborted := trans_call contract_dispatch(addr, block, msg);
+        return !aborted;
+}
+
+fun sol_get_balance(address: u160): u256
+locals
+    res: u256,
+    exists: bool;
+{
+    entry:
+        exists := _balances_ contains address;
+        branch exists existsBB doesntExistBB;
+    existsBB:
+        load _balances_[address] in res;
+        return res;
+    doesntExistBB:
+        return 0_u256;
+
+}
+
+fun sol_transfer_internal(sender: u160, receiver: u160, amount: u256)
+locals senderBal: u256,
+    receiverBal: u256;
+{
+    entry:
+        branch sender == receiver sameAddress diffAddress;
+    sameAddress:
+        return;
+    diffAddress:
+        senderBal := call sol_get_balance(sender);
+        receiverBal := call sol_get_balance(receiver);
+        branch senderBal < amount notEnoughFunds enoughFunds;
+    notEnoughFunds:
+        call sol_panic(0_u256);
+    enoughFunds:
+        store senderBal - amount in _balances_[sender];
+        store receiverBal + amount in _balances_[receiver];
+        return;
 }
 
 fun builtin_delegatecall05<M>(addr: u160, block: Block *#memory, msg: Message *#memory, data: ArrWithLen<M; u8> *M): (bool, ArrWithLen<#memory; u8> *#memory)
@@ -460,7 +527,7 @@ fun builtin_delegatecall04<M>(addr: u160, block: Block *#memory, msg: Message *#
 fun builtin_callcode04<M>(addr: u160, block: Block *#memory, msg: Message *#memory, data: ArrWithLen<M; u8> *M): bool
 fun builtin_balance(addr: u160): u256
 
-fun builtin_keccak256_05(bytes: ArrWithLen<#memory; u8> *#memory): u256
+fun builtin_keccak256_05<M>(bytes: ArrWithLen<M; u8> *M): u256
 `;
 
 export const preamble = ir.parseProgram(preambleStr);

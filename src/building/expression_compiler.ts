@@ -829,30 +829,7 @@ export class ExpressionCompiler {
 
             const irArg = this.compile(solArg);
             const irArgT = this.typeOf(irArg);
-
-            let abiSafeSolType: sol.TypeNode;
-
-            if (solType instanceof sol.IntLiteralType) {
-                const fitT = solType.smallestFittingType();
-
-                assert(
-                    fitT !== undefined,
-                    "Unable to detect smalles fitting type for {0}",
-                    solType
-                );
-
-                abiSafeSolType = fitT;
-            } else if (solType instanceof sol.StringLiteralType) {
-                abiSafeSolType = new sol.StringType();
-            } else {
-                abiSafeSolType = solType;
-            }
-
-            const abiType = generalizeType(
-                this.cfgBuilder.infer.toABIEncodedType(abiSafeSolType, this.abiEncodeVersion)
-            )[0];
-
-            const abiTypeName = this.cfgBuilder.getStrLit(abiType.pp(), noSrc);
+            const abiTypeName = this.getAbiTypeStringConst(solType);
 
             args.push(abiTypeName, irArg);
             argTs.push(irArgT);
@@ -882,12 +859,28 @@ export class ExpressionCompiler {
         }
 
         if (expr.vFunctionName === "revert") {
+            if (expr.vArguments.length === 0) {
+                this.cfgBuilder.call(
+                    [],
+                    this.factory.identifier(calleeSrc, "sol_revert", noType),
+                    [],
+                    [],
+                    [],
+                    exprSrc
+                );
+
+                return this.factory.tuple(noSrc, [], noType);
+            }
+            const irArg = this.compile(single(expr.vArguments));
+            const irArgT = this.typeOf(irArg);
+            assert(irArgT instanceof ir.PointerType, ``);
+
             this.cfgBuilder.call(
                 [],
-                this.factory.identifier(calleeSrc, "sol_revert", noType),
+                this.factory.identifier(calleeSrc, "sol_revert_08", noType),
+                [irArgT.region],
                 [],
-                [],
-                [],
+                [irArg],
                 exprSrc
             );
 
@@ -1001,10 +994,10 @@ export class ExpressionCompiler {
 
             this.cfgBuilder.call(
                 rets,
-                this.factory.identifier(calleeSrc, `builtin_${expr.vFunctionName}`, noType),
+                this.factory.identifier(calleeSrc, `sol_${expr.vFunctionName}`, noType),
                 [],
                 [],
-                [sendAddr, recvAddr, amount],
+                [builder.blockPtr(noSrc), sendAddr, recvAddr, amount],
                 exprSrc
             );
 
@@ -1064,7 +1057,7 @@ export class ExpressionCompiler {
             );
 
             const thisAddr = this.mustCastTo(this.cfgBuilder.this(noSrc), u160, noSrc);
-            const selector = this.cfgBuilder.getSelectorFromData(callBytes);
+            const selector = this.cfgBuilder.getSelectorFromData(callBytes, true);
 
             this.cfgBuilder.storeField(msgPtrArg, "sender", thisAddr, noSrc);
             this.cfgBuilder.storeField(msgPtrArg, "sig", selector, noSrc);
@@ -1142,11 +1135,18 @@ export class ExpressionCompiler {
 
             const builtinName = `builtin_keccak256_05`;
             const res = this.cfgBuilder.getTmpId(u256);
+            const argT = this.typeOf(single(args));
+
+            assert(
+                argT instanceof ir.PointerType,
+                `keccak256 expects a bytes pointer not {0}`,
+                argT
+            );
 
             this.cfgBuilder.call(
                 [res],
                 this.factory.identifier(calleeSrc, builtinName, noType),
-                [],
+                [argT.region],
                 [],
                 args,
                 exprSrc

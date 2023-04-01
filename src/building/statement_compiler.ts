@@ -713,7 +713,7 @@ export class StatementCompiler {
         builder.branch(lenLessThan4, catchAllBB, nextClauseBB, src);
 
         builder.curBB = nextClauseBB;
-        const sigExpr = builder.getSelectorFromData(excBytes);
+        const sigExpr = builder.getSelectorFromData(excBytes, false);
 
         // Next compile each clause with a signature. For each we check if its
         // signature matches the exception bytes selector.

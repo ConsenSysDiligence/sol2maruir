@@ -1,7 +1,7 @@
 import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
 import { BaseFunctionCompiler } from "./base_function_compiler";
-import { blockPtrT, msgPtrT, transpileType, u256, u32, u8ArrMemPtr } from "./typing";
+import { blockPtrT, msgPtrT, transpileType, u256, u32, u8ArrCDPtr, u8ArrMemPtr } from "./typing";
 import { BasicBlock, boolT, noSrc } from "maru-ir2";
 import {
     getContractDispatchName,
@@ -12,8 +12,12 @@ import {
 } from "./resolving";
 import { IRFactory } from "./factory";
 import { getContractCallables, isExternallyCallable, UIDGenerator } from "../utils";
+import { ExpressionCompiler } from "./expression_compiler";
+import { ASTSource } from "../ir/source";
 
 export class ContractDispatchCompiler extends BaseFunctionCompiler {
+    exprCompiler: ExpressionCompiler;
+
     constructor(
         factory: IRFactory,
         private readonly contract: sol.ContractDefinition,
@@ -24,6 +28,7 @@ export class ContractDispatchCompiler extends BaseFunctionCompiler {
         private readonly irContract: ir.StructDefinition
     ) {
         super(factory, globalUid, globalScope, solVersion, abiVersion);
+        this.exprCompiler = new ExpressionCompiler(this.cfgBuilder, abiVersion, contract);
     }
 
     private getRecvFallback(): [
@@ -169,7 +174,8 @@ export class ContractDispatchCompiler extends BaseFunctionCompiler {
      */
     private callFallbackOrAbort(
         fallback: sol.FunctionDefinition | undefined,
-        data: ir.Expression
+        data: ir.Expression,
+        abortBB: ir.BasicBlock
     ): void {
         const factory = this.cfgBuilder.factory;
 
@@ -181,7 +187,13 @@ export class ContractDispatchCompiler extends BaseFunctionCompiler {
             ];
 
             if (fallback.vParameters.vParameters.length === 1) {
-                args.push(data);
+                args.push(
+                    this.exprCompiler.mustCastTo(
+                        data,
+                        u8ArrCDPtr,
+                        new ASTSource(fallback.vParameters.vParameters[0])
+                    )
+                );
             }
 
             const rets: ir.Identifier[] =
@@ -197,7 +209,7 @@ export class ContractDispatchCompiler extends BaseFunctionCompiler {
                 this.cfgBuilder.return([this.cfgBuilder.zeroValue(u8ArrMemPtr, noSrc)], noSrc);
             }
         } else {
-            this.cfgBuilder.abort(noSrc);
+            this.cfgBuilder.jump(abortBB, noSrc);
         }
     }
 
@@ -235,41 +247,29 @@ export class ContractDispatchCompiler extends BaseFunctionCompiler {
         const [recv, fallback] = this.getRecvFallback();
         let nextBB: BasicBlock;
 
+        // First create a BB that just calls sol_revert() to use when we dont have enough bytes and no fallback, or no sig matches
+        const abortBB = builder.mkBB();
+        nextBB = builder.curBB;
+        builder.curBB = abortBB;
+        builder.call([], factory.funIdentifier("sol_revert"), [], [], [], noSrc);
+        builder.curBB = nextBB;
+
         const dataPtr = builder.loadField(builder.msgPtr(noSrc), msgPtrT, "data", noSrc);
         const dataT = factory.typeOf(dataPtr);
 
         const dataLen = builder.loadField(dataPtr, dataT, "len", noSrc);
 
         // 0. Update the balances. If sender has insufficient balance abort.
-        const value = builder.loadField(builder.msgPtr(noSrc), msgPtrT, "value", noSrc);
         const sender = builder.loadField(builder.msgPtr(noSrc), msgPtrT, "sender", noSrc);
-        const senderBalance = builder.getBalance(sender, noSrc);
+        const amount = builder.loadField(builder.msgPtr(noSrc), msgPtrT, "value", noSrc);
         const thisPtr = builder.this(noSrc);
         const thisAddr = builder.loadField(thisPtr, thisPtrT, "__address__", noSrc);
-        const thisBalance = builder.getBalance(thisAddr, noSrc);
-
-        const insufficientBalanceBB = builder.mkBB();
-        const okBalanceBB = builder.mkBB();
-
-        builder.branch(
-            factory.binaryOperation(noSrc, senderBalance, "<", value, boolT),
-            insufficientBalanceBB,
-            okBalanceBB,
-            noSrc
-        );
-
-        builder.curBB = insufficientBalanceBB;
-        builder.abort(noSrc);
-
-        builder.curBB = okBalanceBB;
-        builder.setBalance(
-            sender,
-            factory.binaryOperation(noSrc, senderBalance, "-", value, u256),
-            noSrc
-        );
-        builder.setBalance(
-            thisAddr,
-            factory.binaryOperation(noSrc, thisBalance, "+", value, u256),
+        builder.call(
+            [],
+            factory.funIdentifier("sol_transfer_internal"),
+            [],
+            [],
+            [sender, thisAddr, amount],
             noSrc
         );
 
@@ -304,6 +304,8 @@ export class ContractDispatchCompiler extends BaseFunctionCompiler {
                 noSrc
             );
 
+            this.cfgBuilder.return([this.cfgBuilder.zeroValue(u8ArrMemPtr, noSrc)], noSrc);
+
             builder.curBB = nextBB;
         }
 
@@ -325,32 +327,35 @@ export class ContractDispatchCompiler extends BaseFunctionCompiler {
 
         // 2. If msg.data.length < 4 && fallback is defined - call fallback. Otherwise abort
         builder.curBB = lessThan4BB;
-        this.callFallbackOrAbort(fallback, dataPtr);
+        this.callFallbackOrAbort(fallback, dataPtr, abortBB);
         builder.curBB = nextBB;
 
         // 3. Check if the selector msg.data[0:4] matches any method or public
         // getter - and if so try calling it.
         // 3.1 Extract selector from msg.data
-        const irSig = builder.getSelectorFromData(dataPtr);
+        const methods = [...getContractCallables(this.contract, builder.infer)];
+        if (methods.length > 0) {
+            const irSig = builder.getSelectorFromData(dataPtr, false);
 
-        // 3.2 For each callable method/getter in the contract, check if it matches the selector
-        for (const callable of getContractCallables(this.contract, builder.infer)) {
-            if (!isExternallyCallable(callable)) {
-                continue;
+            // 3.2 For each callable method/getter in the contract, check if it matches the selector
+            for (const callable of methods) {
+                if (!isExternallyCallable(callable)) {
+                    continue;
+                }
+
+                if (
+                    callable instanceof sol.FunctionDefinition &&
+                    callable.kind !== sol.FunctionKind.Function
+                ) {
+                    continue;
+                }
+
+                this.tryAndCall(irSig, dataPtr, res, builder.this(noSrc), callable);
             }
-
-            if (
-                callable instanceof sol.FunctionDefinition &&
-                callable.kind !== sol.FunctionKind.Function
-            ) {
-                continue;
-            }
-
-            this.tryAndCall(irSig, dataPtr, res, builder.this(noSrc), callable);
         }
 
         // 4. If no match - call fallback if defined. Otherwise abort
-        this.callFallbackOrAbort(fallback, dataPtr);
+        this.callFallbackOrAbort(fallback, dataPtr, abortBB);
 
         const name = getContractDispatchName(this.contract);
 

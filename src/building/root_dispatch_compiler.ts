@@ -93,7 +93,9 @@ export class RootDispatchCompiler extends BaseFunctionCompiler {
             }
         }
 
-        builder.abort(noSrc);
+        // In the case we didn't find a contract, match EVM's behavior and just return empty bytes.
+        builder.return([builder.zeroValue(u8ArrMemPtr, noSrc)], noSrc);
+        //builder.abort(noSrc);
 
         return this.finishCompile(noSrc, RootDispatchCompiler.methodName);
     }

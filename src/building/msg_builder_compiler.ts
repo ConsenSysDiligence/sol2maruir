@@ -95,7 +95,6 @@ export class MsgBuilderCompiler extends BaseFunctionCompiler {
                         : [getterRetT];
             }
         }
-        const signature: string = this.cfgBuilder.infer.signature(this.origDef);
 
         // Add arguments
         solArgTs.forEach((argT, i) =>
@@ -107,34 +106,37 @@ export class MsgBuilderCompiler extends BaseFunctionCompiler {
         );
         const irArgTs = this.cfgBuilder.args.map((argDecl) => argDecl.type);
 
-        // Add returns
         const resDecl = this.cfgBuilder.addIRRet("RET", u8ArrMemPtr, noSrc);
-        const res = factory.identifier(noSrc, resDecl.name, resDecl.type);
+        if (solArgTs.length === 0) {
+            this.cfgBuilder.return([this.cfgBuilder.zeroValue(u8ArrMemPtr, noSrc)], noSrc);
+        } else {
+            // Add returns
+            const res = factory.identifier(noSrc, resDecl.name, resDecl.type);
 
-        // @todo re-write this to use abi.encodeWithSelector, or just abi.encode
-        // to avoid adding string literals for signatures.
+            // @todo re-write this to use abi.encodeWithSelector, or just abi.encode
+            // to avoid adding string literals for signatures.
 
-        // Prep abi.encodeWithSignature arguments
-        const sigArg = this.cfgBuilder.getStrLit(signature, noSrc);
-        const callArgs = this.prepEncodeArgs(
-            this.cfgBuilder.args.map((argDecl) =>
-                factory.identifier(noSrc, argDecl.name, argDecl.type)
-            ),
-            solArgTs
-        );
+            // Prep abi.encodeWithSignature arguments
+            const callArgs = this.prepEncodeArgs(
+                this.cfgBuilder.args.map((argDecl) =>
+                    factory.identifier(noSrc, argDecl.name, argDecl.type)
+                ),
+                solArgTs
+            );
 
-        // Call abi.encodeWithSignature
-        this.cfgBuilder.call(
-            [res],
-            factory.identifier(noSrc, `builtin_abi_encodeWithSignature_${solArgTs.length}`, noType),
-            [factory.memConstant(noSrc, "exception")],
-            irArgTs,
-            [sigArg, ...callArgs],
-            noSrc
-        );
+            // Call abi.encode
+            this.cfgBuilder.call(
+                [res],
+                factory.identifier(noSrc, `builtin_abi_encode_${solArgTs.length}`, noType),
+                [],
+                irArgTs,
+                [...callArgs],
+                noSrc
+            );
 
-        // Return
-        this.cfgBuilder.return([res], noSrc);
+            // Return
+            this.cfgBuilder.return([res], noSrc);
+        }
 
         const name = getMsgBuilderName(
             this.contract,
