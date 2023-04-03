@@ -19,6 +19,14 @@ export class IRFactory {
         return res;
     }
 
+    locationOf(arg: ir.Type | ir.Expression): ir.MemDesc {
+        const t = arg instanceof ir.Type ? arg : this.typeOf(arg);
+
+        assert(t instanceof ir.PointerType, `Expected pointer type not {0} for {1}`, t, arg);
+
+        return t.region;
+    }
+
     binaryOperation(
         src: ir.BaseSrc,
         lExp: ir.Expression,

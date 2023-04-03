@@ -21,7 +21,7 @@
             "args": [
                 {
                     "kind": "object",
-                    "type": "Calls",
+                    "type": "Balance",
                     "name": "this"
                 }
             ],
@@ -35,7 +35,7 @@
             "args": [
                 {
                     "kind": "object",
-                    "type": "Calls",
+                    "type": "Balance",
                     "name": "this"
                 }
             ],
@@ -61,7 +61,7 @@
             "args": [
                 {
                     "kind": "object",
-                    "type": "Calls",
+                    "type": "BalanceFunc",
                     "name": "this1"
                 }
             ],
@@ -75,7 +75,7 @@
             "args": [
                 {
                     "kind": "object",
-                    "type": "Calls",
+                    "type": "BalanceFunc",
                     "name": "this1"
                 }
             ],

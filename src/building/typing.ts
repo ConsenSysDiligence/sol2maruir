@@ -10,8 +10,12 @@ import { getIRStructDefName } from "./resolving";
 // For now this is not a problem, but we should fix this eventually.
 export const boolT = new ir.BoolType(noSrc);
 export const u8 = new ir.IntType(noSrc, 8, false);
-export const u16 = new ir.IntType(noSrc, 8, false);
+export const u32 = new ir.IntType(noSrc, 32, false);
+export const u16 = new ir.IntType(noSrc, 16, false);
 export const u160 = new ir.IntType(noSrc, 160, false);
+export const u160Addr = new ir.IntType(noSrc, 160, false);
+u160Addr.md.set("sol_type", "address");
+
 export const u256 = new ir.IntType(noSrc, 256, false);
 export const u8ArrExc = new ir.UserDefinedType(
     noSrc,
@@ -25,18 +29,31 @@ export const u8ArrMem = new ir.UserDefinedType(
     [new ir.MemConstant(noSrc, "memory")],
     [u8]
 );
+export const u8ArrCD = new ir.UserDefinedType(
+    noSrc,
+    "ArrWithLen",
+    [new ir.MemConstant(noSrc, "calldata")],
+    [u8]
+);
 export const u8ArrExcPtr = new ir.PointerType(
     noSrc,
     u8ArrExc,
     new ir.MemConstant(noSrc, "exception")
 );
 export const u8ArrMemPtr = new ir.PointerType(noSrc, u8ArrMem, new ir.MemConstant(noSrc, "memory"));
+export const u8ArrCDPtr = new ir.PointerType(noSrc, u8ArrCD, new ir.MemConstant(noSrc, "calldata"));
 export const noType = new IRTupleType2(noSrc, []);
 
 export const blockT = new ir.UserDefinedType(noSrc, "Block", [], []);
 export const blockPtrT = new ir.PointerType(noSrc, blockT, new ir.MemConstant(noSrc, "memory"));
 export const msgT = new ir.UserDefinedType(noSrc, "Message", [], []);
 export const msgPtrT = new ir.PointerType(noSrc, msgT, new ir.MemConstant(noSrc, "memory"));
+export const balancesMapT = new ir.MapType(noSrc, u160, u256);
+export const balancesMapPtrT = new ir.PointerType(
+    noSrc,
+    balancesMapT,
+    new ir.MemConstant(noSrc, "storage")
+);
 
 export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: MemDesc): ir.Type {
     let res: ir.Type | undefined;
@@ -69,7 +86,7 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: M
 
             res = factory.userDefinedType(ir.noSrc, getIRStructDefName(def), [ptrLoc], []);
         } else if (def instanceof ContractDefinition) {
-            res = factory.intType(ir.noSrc, 160, false);
+            res = u160Addr;
         }
     } else if (type instanceof sol.PointerType) {
         const loc = ptrLoc ? ptrLoc : factory.memConstant(ir.noSrc, type.location);
@@ -114,9 +131,11 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: M
 }
 
 export function isAddressType(t: ir.Type): t is ir.IntType {
+    const solType = t.md.get("sol_type");
     return (
         t instanceof ir.IntType &&
-        ["address", "address payable", "payable"].includes(t.md.get("sol_type"))
+        (["address", "address payable", "payable"].includes(solType) ||
+            (solType !== undefined && solType.startsWith("contract ")))
     );
 }
 

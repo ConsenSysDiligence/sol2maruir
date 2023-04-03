@@ -26,7 +26,7 @@ export class ConstructorCompiler {
         private readonly irContract: ir.StructDefinition
     ) {}
 
-    public compilePartialConstructors(): ir.FunctionDefinition[] {
+    compilePartialConstructors(): ir.FunctionDefinition[] {
         const res: ir.FunctionDefinition[] = [];
 
         for (const base of this.contract.vLinearizedBaseContracts) {
@@ -47,6 +47,7 @@ export class ConstructorCompiler {
                 }
 
                 res.push(funCompiler.compile());
+
                 continue;
             }
 
@@ -68,7 +69,7 @@ export class ConstructorCompiler {
         return res;
     }
 
-    public compileConstructor(): ir.FunctionDefinition {
+    compileConstructor(): ir.FunctionDefinition {
         const funScope = new ir.Scope(this.globalScope);
 
         const builder = new CFGBuilder(
@@ -109,6 +110,7 @@ export class ConstructorCompiler {
         // List of referenced contract definitions. Can be used to call constructors in base classes
         const constructorCalls: Array<[sol.ContractDefinition, sol.Expression[]]> = [];
         const argMap = new Map<sol.ContractDefinition, sol.Expression[]>();
+
         grabInheritanceArgs(this.contract, argMap);
 
         const scopeBases = this.contract.vLinearizedBaseContracts;
@@ -165,6 +167,7 @@ export class ConstructorCompiler {
                 const rawArg = rawArgs[argIdx];
                 const irArg = exprCompiler.compile(rawArg);
                 const castedIrArg = exprCompiler.mustCastTo(irArg, irFormalTs[argIdx], irArg.src);
+
                 constrArgs.push(castedIrArg);
             }
 
@@ -209,6 +212,7 @@ export class ConstructorCompiler {
             [builder.this(noSrc)],
             noSrc
         );
+
         builder.storeField(
             builder.this(noSrc),
             "__address__",
@@ -223,6 +227,16 @@ export class ConstructorCompiler {
             this.factory.numberLiteral(noSrc, BigInt(this.contract.id), 10, u16),
             noSrc
         );
+
+        const balance = builder.loadField(
+            this.factory.identifier(noSrc, "msg", msgPtrT),
+            msgPtrT,
+            "value",
+            noSrc
+        );
+
+        // Set __balance__
+        builder.setBalance(this.factory.identifier(noSrc, addrTmp.name, u160), balance, noSrc);
 
         // Emit direct calls to all C3-linearized base constructors.
         for (const [constrId, constrArgs] of processedConstructorCalls) {

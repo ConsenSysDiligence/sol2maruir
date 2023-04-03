@@ -1,16 +1,25 @@
 import * as ir from "maru-ir2";
 import * as sol from "solc-typed-ast";
 import { ASTSource } from "../ir/source";
-import { UIDGenerator } from "../utils";
+import {
+    getContractCallables,
+    isExternallyCallable,
+    isExternallyVisible,
+    UIDGenerator
+} from "../utils";
 import { ConstructorCompiler } from "./constructor_compiler";
-import { DispatchCompiler } from "./dispatch_compiler";
+import { MethodDispatchCompiler } from "./method_dispatch_compiler";
 import { IRFactory } from "./factory";
 import { FunctionCompiler } from "./function_compiler";
 import { GetterCompiler } from "./getter_compiler";
 import { compileGlobalVarInitializer } from "./literal_compiler";
+import { MsgBuilderCompiler } from "./msg_builder_compiler";
 import { preamble } from "./preamble";
 import { getDesugaredGlobalVarName, getIRStructDefName } from "./resolving";
-import { transpileType, u16, u160, u256 } from "./typing";
+import { transpileType, u16, u160Addr } from "./typing";
+import { MsgDecoderCompiler } from "./msg_decoder_compiler";
+import { ContractDispatchCompiler } from "./contract_dispatch_compiler";
+import { RootDispatchCompiler } from "./root_dispatch_compiler";
 
 type InheritMap = Map<sol.ContractDefinition, sol.ContractDefinition[]>;
 
@@ -20,16 +29,8 @@ type OverridenImplsList = Array<
 type OverridenImplsMap = Map<sol.FunctionDefinition | sol.VariableDeclaration, OverridenImplsList>;
 type OverrideMap = Map<sol.ContractDefinition, OverridenImplsMap>;
 
-function isExternallyVisible(fun: sol.FunctionDefinition): boolean {
-    return [
-        sol.FunctionVisibility.Default,
-        sol.FunctionVisibility.Public,
-        sol.FunctionVisibility.External
-    ].includes(fun.visibility);
-}
-
 export class UnitCompiler {
-    private readonly globalScope: ir.Scope;
+    public readonly globalScope: ir.Scope;
 
     readonly inference: sol.InferType;
     readonly factory = new IRFactory();
@@ -77,12 +78,46 @@ export class UnitCompiler {
         for (const [contract, methodOverrideMap] of overrideMap) {
             const abiVersion = this.detectAbiEncoderVersion(contract.vScope);
 
+            this.globalDefine(this.compileContractDispatch(contract, abiVersion));
+
             for (const [methodOrVar, overridingImpls] of methodOverrideMap) {
                 this.globalDefine(
                     this.compileMethodDispatch(contract, methodOrVar, overridingImpls, abiVersion)
                 );
             }
         }
+
+        const infer = new sol.InferType(this.solVersion);
+        for (const [contract] of overrideMap) {
+            let emitDecodeMsgData: boolean;
+            const abiVersion = this.detectAbiEncoderVersion(contract.vScope);
+
+            for (const callable of getContractCallables(contract, infer)) {
+                if (!isExternallyCallable(callable)) {
+                    continue;
+                }
+
+                if (callable instanceof sol.FunctionDefinition) {
+                    if (callable.kind !== sol.FunctionKind.Function) {
+                        continue;
+                    }
+
+                    emitDecodeMsgData = callable.vParameters.vParameters.length > 0;
+                } else {
+                    const [args] = infer.getterArgsAndReturn(callable);
+                    emitDecodeMsgData = args.length > 0;
+                }
+
+                this.globalDefine(this.compileBuildMsgData(contract, callable, abiVersion));
+                this.globalDefine(this.compileBuildReturnData(contract, callable, abiVersion));
+
+                if (emitDecodeMsgData) {
+                    this.globalDefine(this.compileDecodeMsgData(contract, callable, abiVersion));
+                }
+            }
+        }
+
+        this.globalDefine(this.compileRootDispatch(units));
 
         return this.globalScope.definitions();
     }
@@ -226,7 +261,16 @@ export class UnitCompiler {
                     continue;
                 }
 
-                const sig = this.inference.signature(method);
+                let sig: string;
+                if (method.kind === sol.FunctionKind.Function) {
+                    sig = this.inference.signature(method);
+                } else if (method.kind === sol.FunctionKind.Fallback) {
+                    sig = "fallback";
+                } else if (method.kind === sol.FunctionKind.Receive) {
+                    sig = "receive";
+                } else {
+                    sol.assert(false, `Unexpected method kind {0}`, method.kind);
+                }
 
                 if (seenSigs.has(sig)) {
                     continue;
@@ -295,13 +339,31 @@ export class UnitCompiler {
         }
     }
 
+    compileContractDispatch(
+        contract: sol.ContractDefinition,
+        abiVersion: sol.ABIEncoderVersion
+    ): ir.FunctionDefinition {
+        const irContract = this.getContractStruct(contract);
+        const dispatchCompiler = new ContractDispatchCompiler(
+            this.factory,
+            contract,
+            this.globalScope,
+            this.globalUid,
+            this.solVersion,
+            abiVersion,
+            irContract
+        );
+
+        return dispatchCompiler.compile();
+    }
+
     compileMethodDispatch(
         contract: sol.ContractDefinition,
         solMethodOrVar: sol.FunctionDefinition | sol.VariableDeclaration,
         overridingImpls: OverridenImplsList,
         abiVersion: sol.ABIEncoderVersion
     ): ir.FunctionDefinition {
-        const dispatchCompiler = new DispatchCompiler(
+        const dispatchCompiler = new MethodDispatchCompiler(
             this.factory,
             contract,
             solMethodOrVar,
@@ -315,15 +377,87 @@ export class UnitCompiler {
         return dispatchCompiler.compile();
     }
 
+    compileBuildMsgData(
+        contract: sol.ContractDefinition,
+        solMethodOrVar: sol.FunctionDefinition | sol.VariableDeclaration,
+        abiVersion: sol.ABIEncoderVersion
+    ): ir.FunctionDefinition {
+        const dispatchCompiler = new MsgBuilderCompiler(
+            this.factory,
+            contract,
+            solMethodOrVar,
+            this.globalScope,
+            this.globalUid,
+            this.solVersion,
+            abiVersion,
+            true
+        );
+
+        return dispatchCompiler.compile();
+    }
+
+    compileBuildReturnData(
+        contract: sol.ContractDefinition,
+        solMethodOrVar: sol.FunctionDefinition | sol.VariableDeclaration,
+        abiVersion: sol.ABIEncoderVersion
+    ): ir.FunctionDefinition {
+        const dispatchCompiler = new MsgBuilderCompiler(
+            this.factory,
+            contract,
+            solMethodOrVar,
+            this.globalScope,
+            this.globalUid,
+            this.solVersion,
+            abiVersion,
+            false
+        );
+
+        return dispatchCompiler.compile();
+    }
+
+    compileDecodeMsgData(
+        contract: sol.ContractDefinition,
+        solMethodOrVar: sol.FunctionDefinition | sol.VariableDeclaration,
+        abiVersion: sol.ABIEncoderVersion
+    ): ir.FunctionDefinition {
+        const dispatchCompiler = new MsgDecoderCompiler(
+            this.factory,
+            contract,
+            solMethodOrVar,
+            this.globalScope,
+            this.globalUid,
+            this.solVersion,
+            abiVersion
+        );
+
+        return dispatchCompiler.compile();
+    }
+
+    compileRootDispatch(units: sol.SourceUnit[]): ir.FunctionDefinition {
+        const dispatchCompiler = new RootDispatchCompiler(
+            this.factory,
+            units,
+            this,
+            this.globalScope,
+            this.globalUid,
+            this.solVersion
+        );
+
+        return dispatchCompiler.compile();
+    }
+
     getContractStruct(contract: sol.ContractDefinition): ir.StructDefinition {
+        if (this.emittedStructMap.has(contract)) {
+            return this.emittedStructMap.get(contract) as ir.StructDefinition;
+        }
+
         const name = `${contract.name}_${contract.id}`;
 
         /// @todo Make sure these don't clash with other contract fields
         /// @todo Maybe move the EVM states in their own sub-struct?
         const fields: Array<[string, ir.Type]> = [
-            ["__address__", u160],
-            ["__rtti__", u16],
-            ["__balance__", u256]
+            ["__address__", u160Addr],
+            ["__rtti__", u16]
         ];
 
         for (const base of contract.vLinearizedBaseContracts) {

@@ -1,0 +1,46 @@
+{
+    "name": "Check dynamic dispatch",
+    "file": "./test/samples/solidity/dispatch.sol",
+    "steps": [
+        {
+            "act": "define",
+            "type": "Dispatch",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
+            "definingContract": "Dispatch",
+            "mdc": "Dispatch",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Dispatch",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "Dispatch",
+            "mdc": "Dispatch",
+            "method": "main()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Dispatch",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "179"
+                }
+            ]
+        }
+    ]
+}

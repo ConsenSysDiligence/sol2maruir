@@ -54,3 +54,68 @@ export function grabInheritanceArgs(
         }
     }
 }
+
+/**
+ * Given a `contract` return an iterable over all solidity "callable"
+ * declarations for the contract, for which we need to emit an IR function. This
+ * includes methods and public getters of this contract, as well as methods and
+ * public getters inherited from base contracts.
+ */
+export function* getContractCallables(
+    contract: sol.ContractDefinition,
+    infer: sol.InferType
+): Iterable<sol.FunctionDefinition | sol.VariableDeclaration> {
+    const seenSigs = new Set<string>();
+
+    for (const base of contract.vLinearizedBaseContracts) {
+        for (const method of base.vFunctions) {
+            // Skip constructors, receive and fallback functions
+            if (method.kind === sol.FunctionKind.Constructor) {
+                continue;
+            }
+
+            const sig = infer.signature(method);
+
+            if (seenSigs.has(sig)) {
+                continue;
+            }
+
+            seenSigs.add(sig);
+
+            yield method;
+        }
+
+        for (const sVar of base.vStateVariables) {
+            if (sVar.visibility !== sol.StateVariableVisibility.Public) {
+                continue;
+            }
+
+            const sig = infer.signature(sVar);
+
+            if (seenSigs.has(sig)) {
+                continue;
+            }
+
+            seenSigs.add(sig);
+            yield sVar;
+        }
+    }
+}
+
+export function isExternallyCallable(
+    callable: sol.FunctionDefinition | sol.VariableDeclaration
+): boolean {
+    if (callable instanceof sol.FunctionDefinition) {
+        return isExternallyVisible(callable);
+    }
+
+    return callable.visibility === sol.StateVariableVisibility.Public;
+}
+
+export function isExternallyVisible(fun: sol.FunctionDefinition): boolean {
+    return [
+        sol.FunctionVisibility.Default,
+        sol.FunctionVisibility.Public,
+        sol.FunctionVisibility.External
+    ].includes(fun.visibility);
+}

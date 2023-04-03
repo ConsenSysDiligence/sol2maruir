@@ -1,13 +1,13 @@
 import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
 import { BaseFunctionCompiler } from "./base_function_compiler";
-import { blockPtrT, msgPtrT, noType, transpileType, u160 } from "./typing";
+import { blockPtrT, msgPtrT, noType, transpileType, u160Addr } from "./typing";
 import { noSrc } from "maru-ir2";
-import { getDispatchName } from "./resolving";
+import { getMethodDispatchName } from "./resolving";
 import { IRFactory } from "./factory";
 import { UIDGenerator } from "../utils";
 
-export class DispatchCompiler extends BaseFunctionCompiler {
+export class MethodDispatchCompiler extends BaseFunctionCompiler {
     constructor(
         factory: IRFactory,
         private readonly contract: sol.ContractDefinition,
@@ -30,7 +30,7 @@ export class DispatchCompiler extends BaseFunctionCompiler {
         const factory = this.cfgBuilder.factory;
 
         // Add this argument
-        this.cfgBuilder.addThis(u160);
+        this.cfgBuilder.addThis(u160Addr);
 
         this.cfgBuilder.addIRArg("block", blockPtrT, noSrc);
         this.cfgBuilder.addIRArg("msg", msgPtrT, noSrc);
@@ -59,7 +59,7 @@ export class DispatchCompiler extends BaseFunctionCompiler {
             retTs.forEach((retElT, i) =>
                 this.cfgBuilder.addIRRet(
                     `RET_${i}`,
-                    transpileType(retElT, this.cfgBuilder.factory),
+                    transpileType(retElT as sol.TypeNode, this.cfgBuilder.factory),
                     noSrc
                 )
             );
@@ -124,7 +124,7 @@ export class DispatchCompiler extends BaseFunctionCompiler {
 
         this.cfgBuilder.abort(noSrc);
 
-        const name = getDispatchName(this.contract, this.origDef, this.cfgBuilder.infer);
+        const name = getMethodDispatchName(this.contract, this.origDef, this.cfgBuilder.infer);
 
         return this.finishCompile(noSrc, name);
     }

@@ -1,9 +1,16 @@
 import * as ir from "maru-ir2";
 import { BaseSrc, noSrc } from "maru-ir2";
-import { gte } from "semver";
+import { gte, lt } from "semver";
 import * as sol from "solc-typed-ast";
-import { assert, ContractKind, generalizeType, pp } from "solc-typed-ast";
-import { IRTuple2 } from "../ir";
+import {
+    assert,
+    ContractDefinition,
+    ContractKind,
+    generalizeType,
+    pp,
+    TypeNode
+} from "solc-typed-ast";
+import { IRTuple2, IRTupleType2 } from "../ir";
 import { ASTSource } from "../ir/source";
 import { single } from "../utils";
 import { CFGBuilder } from "./cfg_builder";
@@ -13,18 +20,23 @@ import {
     FunctionScope,
     getDesugaredConstructorName,
     getDesugaredFunName,
-    getDispatchName,
+    getMethodDispatchName,
     getIRContractName,
-    getIRStructDefName
+    getIRStructDefName,
+    getMsgBuilderName
 } from "./resolving";
 import {
     boolT,
     convertToMem,
     isAddressType,
+    msgPtrT,
+    msgT,
     noType,
     transpileType,
     u160,
+    u160Addr,
     u256,
+    u32,
     u8,
     u8ArrExcPtr,
     u8ArrMemPtr
@@ -37,6 +49,19 @@ const overflowBuiltinMap = new Map<string, string>([
     ["/", "builtin_div_overflows"],
     ["**", "builtin_pow_overflows"]
 ]);
+
+interface DecodedCall {
+    thisExpr: ir.Expression;
+    calleeDecl: sol.FunctionDefinition | sol.VariableDeclaration;
+    gasModifier: sol.Expression | undefined;
+    valueModifier: sol.Expression | undefined;
+    saltModifier: sol.Expression | undefined;
+    isExternal: boolean;
+    isTransaction: boolean;
+    irFun: string;
+    argTs: sol.TypeNode[];
+    retTs: sol.TypeNode[];
+}
 
 export class ExpressionCompiler {
     private factory: IRFactory;
@@ -148,19 +173,22 @@ export class ExpressionCompiler {
             return this.assignTo(lhs.vOriginalComponents[0], rhs, assignSrc);
         }
 
+        if (lhs === null) {
+            const irLHS = this.cfgBuilder.getTmpId(this.typeOf(rhs), assignSrc);
+            this.cfgBuilder.assign(irLHS, rhs, assignSrc);
+            return irLHS;
+        }
+
+        const lhsT = transpileType(this.cfgBuilder.infer.typeOf(lhs), this.factory);
+
+        let castedRHS = this.mustCastTo(rhs, lhsT, rhs.src);
+
         if (lhs instanceof sol.Identifier) {
             const def = lhs.vReferencedDeclaration;
 
             assert(def !== undefined, `No def for {0}`, lhs);
 
             if (def instanceof sol.VariableDeclaration) {
-                const lhsT = transpileType(
-                    this.cfgBuilder.infer.variableDeclarationToTypeNode(def),
-                    this.factory
-                );
-
-                const castedRHS = this.mustCastTo(rhs, lhsT, rhs.src);
-
                 if (def.stateVariable) {
                     this.cfgBuilder.storeField(
                         this.cfgBuilder.this(noSrc),
@@ -183,15 +211,18 @@ export class ExpressionCompiler {
             const base = this.compile(lhs.vExpression);
             const baseIrT = this.typeOf(base);
 
+            // Assignments from storage to storage require a copy. In other
+            // cases the copy is done implicitly by mustCastTo. Note that we
+            // purposefully check rhs below and not castedRHS
             if (this.isStoragePtrExpr(rhs) && this.isStoragePtrExpr(base)) {
-                rhs = this.copy(rhs);
+                castedRHS = this.copy(castedRHS);
             }
 
             if (baseIrT instanceof ir.PointerType && baseIrT.toType instanceof ir.UserDefinedType) {
                 const def = this.cfgBuilder.globalScope.getTypeDecl(baseIrT.toType);
 
                 if (def instanceof ir.StructDefinition) {
-                    this.cfgBuilder.storeField(base, lhs.memberName, rhs, assignSrc);
+                    this.cfgBuilder.storeField(base, lhs.memberName, castedRHS, assignSrc);
 
                     return rhs;
                 }
@@ -252,13 +283,11 @@ export class ExpressionCompiler {
             return this.factory.tuple(assignSrc, resExprs, resT);
         }
 
-        if (lhs === null) {
-            const irLHS = this.cfgBuilder.getTmpId(this.typeOf(rhs), assignSrc);
-            this.cfgBuilder.assign(irLHS, rhs, assignSrc);
-            return irLHS;
-        }
-
-        throw new Error(`NYI Assigning to solidity expression ${pp(lhs)}`);
+        throw new Error(
+            `NYI Assigning to solidity expression ${pp(lhs)} from ${pp(rhs)} of type ${pp(
+                this.factory.typeOf(rhs)
+            )}`
+        );
     }
 
     solArrRead(arrPtr: ir.Expression, idx: ir.Expression, src: BaseSrc): ir.Identifier {
@@ -313,12 +342,6 @@ export class ExpressionCompiler {
 
     /**
      * Compile a solidity assignment. This needs to handle:
-     * TODO:
-     *  - breaking tuple assignments into primitive assignments
-     *  - converting assignments to array/structs/map into heap operations
-     * DONE:
-     *  - implicit casts from lhs to rhs
-     *  - desugaring assignments of the shape +=, -=...
      */
     compileAssignment(expr: sol.Assignment): ir.Expression {
         const src = new ASTSource(expr);
@@ -398,32 +421,6 @@ export class ExpressionCompiler {
         return resT;
     }
 
-    getStrLit(str: string, src: ir.BaseSrc): ir.Identifier {
-        const val: bigint[] = [...Buffer.from(str, "utf-8")].map((x) => BigInt(x));
-
-        const name = this.cfgBuilder.globalUid.get(`_str_lit_`);
-
-        this.cfgBuilder.globalScope.define(
-            this.factory.globalVariable(
-                noSrc,
-                name,
-                u8ArrExcPtr,
-                this.factory.structLiteral(noSrc, [
-                    ["len", this.factory.numberLiteral(noSrc, BigInt(val.length), 10, u256)],
-                    [
-                        "arr",
-                        this.factory.arrayLiteral(
-                            noSrc,
-                            val.map((v) => this.factory.numberLiteral(noSrc, v, 10, u8))
-                        )
-                    ]
-                ])
-            )
-        );
-
-        return this.factory.identifier(src, name, u8ArrExcPtr);
-    }
-
     getBytesLit(bytes: string, src: ir.BaseSrc): ir.Identifier {
         const val: bigint[] = [...Buffer.from(bytes, "hex")].map((x) => BigInt(x));
 
@@ -478,7 +475,7 @@ export class ExpressionCompiler {
         }
 
         if (expr.kind === sol.LiteralKind.String) {
-            return this.getStrLit(expr.value, src);
+            return this.cfgBuilder.getStrLit(expr.value, src);
         }
 
         if (expr.kind === sol.LiteralKind.HexString) {
@@ -679,29 +676,27 @@ export class ExpressionCompiler {
         if (expr.operator === "++" || expr.operator === "--") {
             assert(subT instanceof ir.IntType, `Unexpected type {0} of {1}`, subT, subExp);
 
-            let res: ir.Expression;
-
-            if (expr.prefix) {
-                res = this.compile(expr.vSubExpression);
-            } else {
-                res = this.cfgBuilder.getTmpId(subT, src);
-
-                this.cfgBuilder.assign(res as ir.Identifier, subExp, src);
-            }
-
-            this.assignTo(
-                expr.vSubExpression,
-                this.makeBinaryOperation(
-                    subExp,
-                    expr.operator === "++" ? "+" : "-",
-                    this.factory.numberLiteral(noSrc, 1n, 10, subT),
-                    this.isArithmeticChecked(expr),
-                    src
-                ),
+            const newVal = this.makeBinaryOperation(
+                subExp,
+                expr.operator === "++" ? "+" : "-",
+                this.factory.numberLiteral(noSrc, 1n, 10, subT),
+                this.isArithmeticChecked(expr),
                 src
             );
 
-            return res;
+            if (expr.prefix) {
+                this.assignTo(expr.vSubExpression, newVal, src);
+
+                return this.compile(expr.vSubExpression);
+            }
+
+            const oldVal = this.cfgBuilder.getTmpId(subT, src);
+
+            this.cfgBuilder.assign(oldVal, subExp, src);
+
+            this.assignTo(expr.vSubExpression, newVal, src);
+
+            return oldVal;
         }
 
         throw new Error(`NYI unary operator ${expr.operator}`);
@@ -763,6 +758,71 @@ export class ExpressionCompiler {
         );
     }
 
+    public getAbiTypeStringConst(solType: TypeNode): ir.Identifier {
+        let abiSafeSolType: sol.TypeNode;
+
+        if (solType instanceof sol.IntLiteralType) {
+            const fitT = solType.smallestFittingType();
+
+            assert(fitT !== undefined, "Unable to detect smalles fitting type for {0}", solType);
+
+            abiSafeSolType = fitT;
+        } else if (solType instanceof sol.StringLiteralType) {
+            abiSafeSolType = new sol.StringType();
+        } else {
+            abiSafeSolType = solType;
+        }
+
+        const abiType = generalizeType(
+            this.cfgBuilder.infer.toABIEncodedType(abiSafeSolType, this.abiEncodeVersion)
+        )[0];
+
+        return this.cfgBuilder.getStrLit(abiType.pp(), noSrc);
+    }
+
+    /**
+     * Given a solidity type name or type tuple (second argument to decode)
+     * return a list of ir-types corresponding to each solidity type, and a list
+     * of string constants that give a Web3-compatible name to decode.
+     */
+    private prepDecodeArgs(solTypesExpr: sol.Expression): [ir.Expression[], ir.Type[]] {
+        const solTypes = this.cfgBuilder.infer.typeOf(solTypesExpr);
+
+        let solArgTs: sol.TypeNode[];
+
+        if (solTypes instanceof sol.TypeNameType) {
+            solArgTs = [solTypes.type];
+        } else if (solTypes instanceof sol.TupleType) {
+            const tupleElTs = solTypes.elements as sol.TypeNode[];
+            solArgTs = [];
+
+            for (const tupleElT of tupleElTs) {
+                assert(
+                    tupleElT instanceof sol.TypeNameType,
+                    `Expected type in tuple not {0}`,
+                    tupleElT
+                );
+
+                solArgTs.push(tupleElT.type);
+            }
+        } else {
+            throw new Error(`NYI decode arg ${sol.pp(solTypesExpr)} of type ${solTypes.pp()}`);
+        }
+
+        solArgTs = solArgTs.map((argT) => sol.specializeType(argT, sol.DataLocation.Memory));
+
+        const args: ir.Expression[] = [];
+        const argTs: ir.Type[] = [];
+
+        for (const solType of solArgTs) {
+            const irArgT = transpileType(solType, this.factory);
+            args.push(this.getAbiTypeStringConst(solType));
+            argTs.push(irArgT);
+        }
+
+        return [args, argTs];
+    }
+
     /**
      * @todo Please, be careful with encoder here. Things may get bad quickly.
      *
@@ -780,30 +840,7 @@ export class ExpressionCompiler {
 
             const irArg = this.compile(solArg);
             const irArgT = this.typeOf(irArg);
-
-            let abiSafeSolType: sol.TypeNode;
-
-            if (solType instanceof sol.IntLiteralType) {
-                const fitT = solType.smallestFittingType();
-
-                assert(
-                    fitT !== undefined,
-                    "Unable to detect smalles fitting type for {0}",
-                    solType
-                );
-
-                abiSafeSolType = fitT;
-            } else if (solType instanceof sol.StringLiteralType) {
-                abiSafeSolType = new sol.StringType();
-            } else {
-                abiSafeSolType = solType;
-            }
-
-            const abiType = generalizeType(
-                this.cfgBuilder.infer.toABIEncodedType(abiSafeSolType, this.abiEncodeVersion)
-            )[0];
-
-            const abiTypeName = this.getStrLit(abiType.pp(), noSrc);
+            const abiTypeName = this.getAbiTypeStringConst(solType);
 
             args.push(abiTypeName, irArg);
             argTs.push(irArgT);
@@ -813,6 +850,9 @@ export class ExpressionCompiler {
     }
 
     compileBuiltinFunctionCall(expr: sol.FunctionCall): ir.Expression {
+        const builder = this.cfgBuilder;
+        const factory = builder.factory;
+
         const exprSrc = new ASTSource(expr);
         const calleeSrc = new ASTSource(expr.vCallee);
 
@@ -830,12 +870,28 @@ export class ExpressionCompiler {
         }
 
         if (expr.vFunctionName === "revert") {
+            if (expr.vArguments.length === 0) {
+                this.cfgBuilder.call(
+                    [],
+                    this.factory.identifier(calleeSrc, "sol_revert", noType),
+                    [],
+                    [],
+                    [],
+                    exprSrc
+                );
+
+                return this.factory.tuple(noSrc, [], noType);
+            }
+            const irArg = this.compile(single(expr.vArguments));
+            const irArgT = this.typeOf(irArg);
+            assert(irArgT instanceof ir.PointerType, ``);
+
             this.cfgBuilder.call(
                 [],
-                this.factory.identifier(calleeSrc, "sol_revert", noType),
+                this.factory.identifier(calleeSrc, "sol_revert_08", noType),
+                [irArgT.region],
                 [],
-                [],
-                [],
+                [irArg],
                 exprSrc
             );
 
@@ -844,14 +900,20 @@ export class ExpressionCompiler {
 
         if (expr.vFunctionName === "require") {
             const args = expr.vArguments.map((arg) => this.compile(arg));
-            const argTs: ir.Type[] = [];
+            const memArgs: ir.MemDesc[] = [];
 
             let name: string;
 
             if (args.length === 2) {
                 name = "sol_require_msg";
 
-                argTs.push(this.typeOf(args[1]));
+                const strT = this.typeOf(args[1]);
+                assert(
+                    strT instanceof ir.PointerType,
+                    `Second arg of require must be a string pointer`
+                );
+
+                memArgs.push(strT.region);
             } else {
                 name = "sol_require";
             }
@@ -859,8 +921,8 @@ export class ExpressionCompiler {
             this.cfgBuilder.call(
                 [],
                 this.factory.identifier(calleeSrc, name, noType),
+                memArgs,
                 [],
-                argTs,
                 args,
                 exprSrc
             );
@@ -870,7 +932,7 @@ export class ExpressionCompiler {
 
         if (expr.vFunctionName === "encode") {
             const [args, argTs] = this.prepEncodeArgs(expr.vArguments);
-            const builtinName = `builtin_abi_encode_${expr.vArguments.length}`;
+            const builtinName = `builtin_abi_encode_${argTs.length}`;
             const res = this.cfgBuilder.getTmpId(u8ArrMemPtr);
 
             this.cfgBuilder.call(
@@ -883,6 +945,45 @@ export class ExpressionCompiler {
             );
 
             return res;
+        }
+
+        if (expr.vFunctionName === "decode") {
+            sol.assert(expr.vArguments.length === 2, `Decode expects 2 arguments`);
+
+            const solData = expr.vArguments[0];
+            const solTypes = expr.vArguments[1];
+
+            assert(
+                solTypes instanceof sol.TupleExpression || solTypes instanceof sol.TypeName,
+                `Second argument to decode must be type or tuple not {0}`,
+                solTypes
+            );
+
+            const irData = this.compile(solData);
+            const irDataT = this.typeOf(irData);
+
+            assert(
+                irDataT instanceof ir.PointerType,
+                `First argument to decode must be a bytes pointer not {0}`,
+                irDataT
+            );
+
+            const [args, argTs] = this.prepDecodeArgs(solTypes);
+            const builtinName = `builtin_abi_decode_${argTs.length}`;
+            const rets = argTs.map((argT) => this.cfgBuilder.getTmpId(argT));
+
+            this.cfgBuilder.call(
+                rets,
+                this.factory.identifier(calleeSrc, builtinName, noType),
+                [irDataT.region],
+                argTs,
+                [irData, ...args],
+                exprSrc
+            );
+
+            return rets.length === 1
+                ? rets[0]
+                : this.factory.tuple(exprSrc, rets, this.factory.tupleType(noSrc, argTs));
         }
 
         if (expr.vFunctionName === "send" || expr.vFunctionName === "transfer") {
@@ -904,10 +1005,10 @@ export class ExpressionCompiler {
 
             this.cfgBuilder.call(
                 rets,
-                this.factory.identifier(calleeSrc, `builtin_${expr.vFunctionName}`, noType),
+                this.factory.identifier(calleeSrc, `sol_${expr.vFunctionName}`, noType),
                 [],
                 [],
-                [sendAddr, recvAddr, amount],
+                [builder.blockPtr(noSrc), sendAddr, recvAddr, amount],
                 exprSrc
             );
 
@@ -917,7 +1018,6 @@ export class ExpressionCompiler {
         if (
             expr.vFunctionName === "call" ||
             expr.vFunctionName === "staticcall" ||
-            expr.vFunctionName === "delegatecall" ||
             expr.vFunctionName === "callcode"
         ) {
             /**
@@ -926,7 +1026,7 @@ export class ExpressionCompiler {
              *
              * @see https://docs.soliditylang.org/en/latest/050-breaking-changes.html#semantic-and-syntactic-changes
              */
-            const calledOn = expr.vExpression;
+            const [calledOn, , valueMod] = this.stripCallOptions(expr.vExpression);
             const callBytes = single(expr.vArguments.map((arg) => this.compile(arg)));
             const callBytesT = this.typeOf(callBytes);
 
@@ -953,17 +1053,45 @@ export class ExpressionCompiler {
             if (gte(this.cfgBuilder.solVersion, "0.5.0") && expr.vFunctionName !== "callcode") {
                 rets.push(this.cfgBuilder.getTmpId(u8ArrMemPtr));
 
-                builtinName = `builtin_${expr.vFunctionName}05`;
+                builtinName = `sol_${expr.vFunctionName}05`;
             } else {
-                builtinName = `builtin_${expr.vFunctionName}04`;
+                builtinName = `sol_${expr.vFunctionName}04`;
             }
+
+            // Make new msg struct to pass
+            const msgPtrArg = this.cfgBuilder.getTmpId(msgPtrT, noSrc);
+            this.cfgBuilder.allocStruct(
+                msgPtrArg,
+                msgT,
+                this.factory.memConstant(noSrc, "memory"),
+                noSrc
+            );
+
+            const thisAddr = this.mustCastTo(this.cfgBuilder.this(noSrc), u160, noSrc);
+            const selector = this.cfgBuilder.getSelectorFromData(callBytes, true);
+
+            this.cfgBuilder.storeField(msgPtrArg, "sender", thisAddr, noSrc);
+            this.cfgBuilder.storeField(msgPtrArg, "sig", selector, noSrc);
+            this.cfgBuilder.storeField(
+                msgPtrArg,
+                "data",
+                this.mustCastTo(callBytes, u8ArrMemPtr, noSrc),
+                noSrc
+            );
+
+            const value =
+                valueMod !== undefined
+                    ? this.mustCastTo(this.compile(valueMod), u256, new ASTSource(valueMod))
+                    : factory.numberLiteral(noSrc, 0n, 10, u256);
+
+            this.cfgBuilder.storeField(msgPtrArg, "value", value, noSrc);
 
             this.cfgBuilder.call(
                 rets,
                 this.factory.identifier(calleeSrc, builtinName, noType),
-                [callBytesT.region],
                 [],
-                [addr, callBytes],
+                [],
+                [addr, this.cfgBuilder.blockPtr(exprSrc), msgPtrArg],
                 exprSrc
             );
 
@@ -972,7 +1100,7 @@ export class ExpressionCompiler {
 
         if (expr.vFunctionName === "encodePacked") {
             const [args, argTs] = this.prepEncodeArgs(expr.vArguments);
-            const builtinName = `builtin_abi_encodePacked_${expr.vArguments.length}`;
+            const builtinName = `builtin_abi_encodePacked_${argTs.length}`;
             const res = this.cfgBuilder.getTmpId(u8ArrMemPtr);
 
             this.cfgBuilder.call(
@@ -981,6 +1109,26 @@ export class ExpressionCompiler {
                 [],
                 argTs,
                 args,
+                exprSrc
+            );
+
+            return res;
+        }
+
+        if (expr.vFunctionName === "encodeWithSignature") {
+            const sigPtr = this.compile(expr.vArguments[0]);
+            const [args, argTs] = this.prepEncodeArgs(expr.vArguments.slice(1));
+            const builtinName = `builtin_abi_encodeWithSignature_${argTs.length}`;
+            const res = this.cfgBuilder.getTmpId(u8ArrMemPtr);
+
+            const sigPtrLoc = this.factory.locationOf(sigPtr);
+
+            this.cfgBuilder.call(
+                [res],
+                this.factory.identifier(calleeSrc, builtinName, noType),
+                [sigPtrLoc],
+                argTs,
+                [sigPtr, ...args],
                 exprSrc
             );
 
@@ -998,11 +1146,18 @@ export class ExpressionCompiler {
 
             const builtinName = `builtin_keccak256_05`;
             const res = this.cfgBuilder.getTmpId(u256);
+            const argT = this.typeOf(single(args));
+
+            assert(
+                argT instanceof ir.PointerType,
+                `keccak256 expects a bytes pointer not {0}`,
+                argT
+            );
 
             this.cfgBuilder.call(
                 [res],
                 this.factory.identifier(calleeSrc, builtinName, noType),
-                [],
+                [argT.region],
                 [],
                 args,
                 exprSrc
@@ -1015,15 +1170,19 @@ export class ExpressionCompiler {
     }
 
     compileNewCall(expr: sol.FunctionCall): ir.Expression {
-        const newE = expr.vCallee as sol.NewExpression;
-        const newSolT = this.cfgBuilder.infer.typeOf(expr);
-        const newIrT = transpileType(newSolT, this.factory);
+        const builder = this.cfgBuilder;
+        const factory = builder.factory;
+
+        const [newE, , valueMod] = this.stripCallOptions(expr.vExpression);
+        assert(newE instanceof sol.NewExpression, ``);
+        const newSolT = builder.infer.typeOf(expr);
+        const newIrT = transpileType(newSolT, factory);
         let resId: ir.Identifier;
         const src = new ASTSource(expr);
 
         // New array
         if (newE.vTypeName instanceof sol.ArrayTypeName) {
-            resId = this.cfgBuilder.getTmpId(newIrT);
+            resId = builder.getTmpId(newIrT);
             assert(
                 newIrT instanceof ir.PointerType &&
                     newIrT.toType instanceof ir.UserDefinedType &&
@@ -1033,14 +1192,33 @@ export class ExpressionCompiler {
 
             const irSize = this.compile(expr.vArguments[0]);
             const size = this.mustCastTo(irSize, u256, irSize.src);
-            this.cfgBuilder.call(
+            const elT = newIrT.toType.typeArgs[0];
+            builder.call(
                 [resId],
-                this.factory.identifier(noSrc, "new_array", noType),
-                [this.factory.memConstant(noSrc, "memory")],
-                [newIrT.toType.typeArgs[0]],
+                factory.identifier(noSrc, "new_array", noType),
+                [factory.memConstant(noSrc, "memory")],
+                [elT],
                 [size],
                 src
             );
+
+            if (irSize instanceof ir.NumberLiteral) {
+                // Fixed size allocation
+                for (let i = 0n; i < irSize.value; i++) {
+                    this.solArrWrite(
+                        resId,
+                        factory.numberLiteral(src, i, 10, u256),
+                        builder.zeroValue(elT, src),
+                        src
+                    );
+                }
+            } else {
+                // Dynamic size allocation
+                const start = factory.numberLiteral(src, 0n, 10, u256);
+                const [ctr, header, , exit] = builder.startForLoop(start, irSize, src);
+                this.solArrWrite(resId, ctr, builder.zeroValue(elT, src), src);
+                builder.finishForLoop(ctr, start, header, exit, src);
+            }
         } else if (
             newE.vTypeName instanceof sol.UserDefinedTypeName &&
             newE.vTypeName.vReferencedDeclaration instanceof sol.ContractDefinition
@@ -1051,10 +1229,10 @@ export class ExpressionCompiler {
 
             const solFormalTs = contract.vConstructor
                 ? contract.vConstructor.vParameters.vParameters.map((decl) =>
-                      this.cfgBuilder.infer.variableDeclarationToTypeNode(decl)
+                      builder.infer.variableDeclarationToTypeNode(decl)
                   )
                 : [];
-            const irFormalTs = solFormalTs.map((solT) => transpileType(solT, this.factory));
+            const irFormalTs = solFormalTs.map((solT) => transpileType(solT, factory));
 
             const args: ir.Expression[] = [];
 
@@ -1063,26 +1241,48 @@ export class ExpressionCompiler {
                 args.push(this.mustCastTo(irArg, irFormalTs[i], irArg.src));
             }
 
-            args.splice(0, 0, this.cfgBuilder.blockPtr(noSrc), this.cfgBuilder.msgPtr(noSrc));
+            // Make a new Message struct for the constructor call
+            const data = builder.getTmpId(u8ArrMemPtr, noSrc);
+            const value =
+                valueMod !== undefined
+                    ? this.mustCastTo(this.compile(valueMod), u256, new ASTSource(valueMod))
+                    : factory.numberLiteral(noSrc, 0n, 10, u256);
 
-            const ptrT = this.factory.pointerType(
-                noSrc,
-                this.factory.userDefinedType(noSrc, getIRContractName(contract), [], []),
-                this.factory.memConstant(noSrc, "storage")
+            builder.call(
+                [data],
+                this.factory.funIdentifier("new_array"),
+                [this.factory.memConstant(noSrc, "memory")],
+                [u8],
+                [factory.numberLiteral(noSrc, 0n, 10, u256)],
+                src
+            );
+            const msgPtr = builder.makeMsgPtr(
+                this.mustCastTo(builder.this(noSrc), u160Addr, noSrc),
+                value,
+                data,
+                factory.numberLiteral(noSrc, 0n, 10, u32)
             );
 
-            const ptrId = this.cfgBuilder.getTmpId(ptrT, src);
+            args.splice(0, 0, builder.blockPtr(noSrc), msgPtr);
 
-            this.cfgBuilder.call(
+            const ptrT = factory.pointerType(
+                noSrc,
+                factory.userDefinedType(noSrc, getIRContractName(contract), [], []),
+                factory.memConstant(noSrc, "storage")
+            );
+
+            const ptrId = builder.getTmpId(ptrT, src);
+
+            builder.call(
                 [ptrId],
-                this.factory.identifier(noSrc, irConstructorName, noType),
+                factory.identifier(noSrc, irConstructorName, noType),
                 [],
                 [],
                 args,
                 src
             );
 
-            resId = this.cfgBuilder.loadField(ptrId, ptrT, "__address__", src);
+            resId = builder.loadField(ptrId, ptrT, "__address__", src);
         } else {
             throw new Error(`NYI new expression of type ${newE.print()}`);
         }
@@ -1141,27 +1341,17 @@ export class ExpressionCompiler {
     /**
      * Helper to decode a NON-builtin solidity call. This computes and returns:
      * 1. The "this" argument. Depending on the context its either a u160 or a struct pointer
-     * 2. Any gas modifiers
-     * 3. Any value modifiers
-     * 4. Any salt modifiers
-     * 5. Whether this is an external call
-     * 6. The name of the compiled function
+     * 2. The solidity function/public getter declaration that corresponds to the call
+     * 3. Any gas modifiers
+     * 4. Any value modifiers
+     * 5. Any salt modifiers
+     * 6. Whether this is an external call
+     * 7. The name of the compiled function
      * 8. The Solidity formal argument types
-     * 7. The Solidity return types
+     * 9. The Solidity return types
      * @param expr
      */
-    private decodeCall(
-        expr: sol.FunctionCall
-    ): [
-        ir.Expression,
-        sol.Expression | undefined,
-        sol.Expression | undefined,
-        sol.Expression | undefined,
-        boolean,
-        string,
-        sol.TypeNode[],
-        sol.TypeNode[]
-    ] {
+    private decodeCall(expr: sol.FunctionCall): DecodedCall {
         const [callee, gasModifier, valueModifier, saltModifier] = this.stripCallOptions(
             expr.vExpression
         );
@@ -1169,6 +1359,7 @@ export class ExpressionCompiler {
         const funT = this.cfgBuilder.infer.typeOf(callee);
         let retTs: sol.TypeNode[] = [];
         let argTs: sol.TypeNode[] = [];
+        let calleeDecl: sol.FunctionDefinition | sol.VariableDeclaration;
 
         if (funT instanceof sol.FunctionType) {
             retTs = funT.returns;
@@ -1189,6 +1380,9 @@ export class ExpressionCompiler {
         let thisExpr: ir.Expression;
         let isExternal: boolean;
         let irFun: string;
+
+        const isTransaction =
+            expr.parent instanceof sol.TryStatement && expr === expr.parent.vExternalCall;
 
         // There are several cases:
         if (callee instanceof sol.Identifier) {
@@ -1221,6 +1415,7 @@ export class ExpressionCompiler {
                 solDef
             );
 
+            calleeDecl = solDef;
             irFun = getDesugaredFunName(solDef, this.solScope, this.cfgBuilder.infer);
         } else if (callee instanceof sol.MemberAccess) {
             const base = callee.vExpression;
@@ -1236,23 +1431,26 @@ export class ExpressionCompiler {
                 const def = expr.vReferencedDeclaration;
 
                 if (def instanceof sol.FunctionDefinition) {
-                    irFun = getDispatchName(baseT.definition, def, this.cfgBuilder.infer);
+                    irFun = getMethodDispatchName(baseT.definition, def, this.cfgBuilder.infer);
 
                     const baseIRExpr = this.compile(base);
 
                     thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));
                 } else if (def instanceof sol.VariableDeclaration) {
-                    irFun = getDispatchName(
-                        this.solScope as sol.ContractDefinition,
-                        def,
-                        this.cfgBuilder.infer
+                    sol.assert(
+                        def.stateVariable && def.vScope instanceof ContractDefinition,
+                        `Expected a state var in decodeCall`
                     );
+
+                    irFun = getMethodDispatchName(def.vScope, def, this.cfgBuilder.infer);
                     const baseIRExpr = this.compile(base);
 
                     thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));
                 } else {
                     assert(false, `Unexpected declaration ${sol.pp(def)} for ${sol.pp(expr)}`);
                 }
+
+                calleeDecl = def;
             } else if (
                 baseT instanceof sol.TypeNameType &&
                 baseT.type instanceof sol.UserDefinedType &&
@@ -1281,19 +1479,24 @@ export class ExpressionCompiler {
             throw new Error(`NYI call to callee ${callee.print()}`);
         }
 
-        return [
+        return {
             thisExpr,
+            calleeDecl,
             gasModifier,
             valueModifier,
             saltModifier,
             isExternal,
+            isTransaction,
             irFun,
             argTs,
             retTs
-        ];
+        };
     }
 
     compileFunctionCall(expr: sol.FunctionCall): ir.Expression {
+        const builder = this.cfgBuilder;
+        const factory = this.factory;
+
         if (expr.vFunctionCallType === sol.ExternalReferenceType.Builtin) {
             if (expr.vCallee instanceof sol.NewExpression) {
                 return this.compileNewCall(expr);
@@ -1303,23 +1506,83 @@ export class ExpressionCompiler {
         }
 
         const src = new ASTSource(expr);
-        const [irCallee, , , , , irFun, argTs, retTs] = this.decodeCall(expr);
+        const decoded = this.decodeCall(expr);
+
+        const irCallee = decoded.thisExpr;
+        const solCallee = decoded.calleeDecl;
+        const valueMod = decoded.valueModifier;
+        const isExternal = decoded.isExternal;
+        const isTransaction = decoded.isTransaction;
+        const irFun = decoded.irFun;
+        const argTs = decoded.argTs;
+        const retTs = decoded.retTs;
+
+        assert(!isTransaction || isExternal, `All transactions must be external`);
+        const irRetTs = retTs.map((retT) => transpileType(retT, factory));
+        const lhss = irRetTs.map((retT) => builder.getTmpId(retT, src));
+        const callee = factory.identifier(src, irFun, noType);
 
         const args: ir.Expression[] = [];
 
         for (let i = 0; i < expr.vArguments.length; i++) {
             const irArg = this.compile(expr.vArguments[i]);
-            const formalIRT = transpileType(argTs[i], this.factory);
+            const formalIRT = transpileType(argTs[i], factory);
             args.push(this.mustCastTo(irArg, formalIRT, irArg.src));
         }
 
-        args.splice(0, 0, irCallee, this.cfgBuilder.blockPtr(noSrc), this.cfgBuilder.msgPtr(noSrc));
+        let msgPtrArg: ir.Identifier;
 
-        const irRetTs = retTs.map((retT) => transpileType(retT, this.factory));
-        const lhss = irRetTs.map((retT) => this.cfgBuilder.getTmpId(retT, src));
-        const callee = this.factory.identifier(src, irFun, noType);
+        if (isExternal) {
+            // TODO @dimo Consider moving block and msg pointers to calldata or another region?
+            const msgData = builder.getTmpId(u8ArrMemPtr, noSrc);
+            builder.call(
+                [msgData],
+                factory.funIdentifier(
+                    getMsgBuilderName(
+                        solCallee.vScope as sol.ContractDefinition,
+                        solCallee,
+                        builder.infer,
+                        true
+                    )
+                ),
+                [],
+                [],
+                [...args],
+                noSrc
+            );
 
-        this.cfgBuilder.call(lhss, callee, [], [], args, src);
+            const sigHash = factory.numberLiteral(
+                noSrc,
+                BigInt("0x" + builder.infer.signatureHash(solCallee)),
+                16,
+                u32
+            );
+
+            const value =
+                valueMod !== undefined
+                    ? this.mustCastTo(this.compile(valueMod), u256, new ASTSource(valueMod))
+                    : factory.numberLiteral(noSrc, 0n, 10, u256);
+
+            // @todo implement value
+            msgPtrArg = builder.makeMsgPtr(
+                this.mustCastTo(builder.this(noSrc), u160, noSrc),
+                value,
+                msgData,
+                sigHash,
+                noSrc
+            );
+        } else {
+            msgPtrArg = builder.msgPtr(noSrc);
+        }
+
+        args.splice(0, 0, irCallee, builder.blockPtr(noSrc), msgPtrArg);
+
+        if (isTransaction) {
+            lhss.push(builder.getTmpId(boolT, src));
+            builder.transCall(lhss, callee, [], [], args, src);
+        } else {
+            builder.call(lhss, callee, [], [], args, src);
+        }
 
         if (lhss.length === 0) {
             return noType;
@@ -1329,7 +1592,7 @@ export class ExpressionCompiler {
             return lhss[0];
         }
 
-        return this.factory.tuple(src, lhss, this.factory.tupleType(noSrc, irRetTs));
+        return factory.tuple(src, lhss, factory.tupleType(noSrc, irRetTs));
     }
 
     compileStructConstructorCall(expr: sol.FunctionCall): ir.Expression {
@@ -1463,7 +1726,6 @@ export class ExpressionCompiler {
         const base = this.compile(expr.vExpression);
         const baseT = this.typeOf(base);
         const src = new ASTSource(expr);
-        const factory = this.cfgBuilder.factory;
 
         if (baseT instanceof ir.PointerType && baseT.toType instanceof ir.UserDefinedType) {
             const def = this.cfgBuilder.globalScope.getTypeDecl(baseT.toType);
@@ -1488,18 +1750,25 @@ export class ExpressionCompiler {
             }
         }
 
-        if (isAddressType(baseT) && expr.memberName === "balance") {
-            const res = this.cfgBuilder.getTmpId(u256, src);
-            this.cfgBuilder.call(
-                [res],
-                factory.funIdentifier("builtin_balance"),
-                [],
-                [],
-                [base],
-                src
-            );
+        if (expr.vReferencedDeclaration === undefined) {
+            if (expr.memberName === "balance") {
+                let addrExpr: ir.Expression;
 
-            return res;
+                if (isAddressType(baseT)) {
+                    addrExpr = base;
+                } else {
+                    assert(
+                        lt(this.cfgBuilder.solVersion, "0.5.0"),
+                        "Unexpected non-address base {0} of type {1} after Solidity 0.5.0 for builtin_balance()",
+                        base,
+                        baseT
+                    );
+
+                    addrExpr = this.mustCastTo(base, u160, src);
+                }
+
+                return this.cfgBuilder.getBalance(addrExpr, src);
+            }
         }
 
         throw new Error(
@@ -1669,6 +1938,17 @@ export class ExpressionCompiler {
         }
 
         /**
+         * Integer types can be implicitly casted to enums
+         */
+        if (
+            fromT instanceof ir.IntType &&
+            toT instanceof ir.IntType &&
+            toT.md.get("sol_type").startsWith("enum ")
+        ) {
+            return this.factory.cast(src, toT, expr);
+        }
+
+        /**
          * Integer types with same sign can be implicitly converted fromSolT lower to higher bit-width
          */
         if (
@@ -1774,6 +2054,32 @@ export class ExpressionCompiler {
                     fromT
                 )
             );
+        }
+
+        if (
+            fromT instanceof IRTupleType2 &&
+            toT instanceof IRTupleType2 &&
+            expr instanceof IRTuple2 &&
+            expr.elements.length === fromT.elementTypes.length &&
+            fromT.elementTypes.length === toT.elementTypes.length
+        ) {
+            const castedEls: Array<ir.Expression | null> = [];
+
+            for (let i = 0; i < fromT.elementTypes.length; i++) {
+                const toElT = toT.elementTypes[i];
+                const elExpr = expr.elements[i];
+
+                const castedElExpr =
+                    toElT === null || elExpr === null ? elExpr : this.castTo(elExpr, toElT, src);
+
+                if (castedElExpr === undefined) {
+                    return undefined;
+                }
+
+                castedEls.push(castedElExpr);
+            }
+
+            return new IRTuple2(src, castedEls);
         }
 
         return undefined;

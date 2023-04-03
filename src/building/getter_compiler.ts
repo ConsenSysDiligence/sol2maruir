@@ -57,7 +57,7 @@ export class GetterCompiler extends BaseFunctionCompiler {
         retTs.forEach((retElT, i) =>
             this.cfgBuilder.addIRRet(
                 `RET_${i}`,
-                transpileType(retElT, this.cfgBuilder.factory),
+                transpileType(retElT as sol.TypeNode, this.cfgBuilder.factory),
                 noSrc
             )
         );
