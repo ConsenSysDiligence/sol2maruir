@@ -29,12 +29,19 @@ export const u8ArrMem = new ir.UserDefinedType(
     [new ir.MemConstant(noSrc, "memory")],
     [u8]
 );
+export const u8ArrCD = new ir.UserDefinedType(
+    noSrc,
+    "ArrWithLen",
+    [new ir.MemConstant(noSrc, "calldata")],
+    [u8]
+);
 export const u8ArrExcPtr = new ir.PointerType(
     noSrc,
     u8ArrExc,
     new ir.MemConstant(noSrc, "exception")
 );
 export const u8ArrMemPtr = new ir.PointerType(noSrc, u8ArrMem, new ir.MemConstant(noSrc, "memory"));
+export const u8ArrCDPtr = new ir.PointerType(noSrc, u8ArrCD, new ir.MemConstant(noSrc, "calldata"));
 export const noType = new IRTupleType2(noSrc, []);
 
 export const blockT = new ir.UserDefinedType(noSrc, "Block", [], []);

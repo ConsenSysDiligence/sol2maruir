@@ -1,7 +1,7 @@
 import expect from "expect";
 import * as fse from "fs-extra";
 import { Definition } from "maru-ir2";
-import { assert, ASTReader, compileSol } from "solc-typed-ast";
+import { assert, ASTReader, compileSol, getABIEncoderVersion } from "solc-typed-ast";
 import { UnitCompiler } from "../src";
 import { SolMaruirInterp } from "../src/interp";
 import { buildMaps, JSONConfigTranspiler } from "./json_config_transpiler";
@@ -167,7 +167,7 @@ const files = [
     "test/samples/solidity/VirtualModifiersVsOverriding.config.json",
     "test/samples/solidity/while_v04.config.json"
 ];
-*/
+        */
 
 describe("Interpreter tests", () => {
     const files = [
@@ -188,8 +188,10 @@ describe("Interpreter tests", () => {
         "test/samples/solidity/TryCatchShadowing.config.json",
         "test/samples/solidity/TryCatchState.config.json",
         "test/samples/solidity/TryCatchStateNested.config.json"
-        */
         "test/samples/solidity/TryCatch08.config.json"
+        */
+        "test/samples/solidity/lowlevel_calls_04.config.json",
+        "test/samples/solidity/lowlevel_calls_08.config.json"
     ];
 
     for (const jsonFile of files) {
@@ -204,12 +206,6 @@ describe("Interpreter tests", () => {
             assert(result.compilerVersion !== undefined, "Unable to detect compiler version");
 
             const compiler = new UnitCompiler(result.compilerVersion);
-
-            const jsonCompiler = new JSONConfigTranspiler(
-                result.compilerVersion as string,
-                compiler.factory,
-                compiler.globalUid
-            );
 
             let transpiledDefs: Definition[];
 
@@ -226,8 +222,22 @@ describe("Interpreter tests", () => {
                 result.compilerVersion as string
             );
 
-            const mainDefs = [...jsonCompiler.compileConfig(config, methodMap, contractMap)];
-            const defs = [...transpiledDefs, ...mainDefs];
+            const jsonCompiler = new JSONConfigTranspiler(
+                result.compilerVersion as string,
+                getABIEncoderVersion(units[0], result.compilerVersion),
+                compiler.factory,
+                compiler.globalUid,
+                compiler.globalScope,
+                config,
+                methodMap,
+                contractMap,
+                units[0]
+            );
+
+            const main = jsonCompiler.compile();
+            compiler.globalScope.define(main);
+
+            const defs = [...compiler.globalScope.definitions()];
 
             // Uncomment below lines to see compiled maruir file
             const contents = defs.map((def) => def.pp()).join("\n");

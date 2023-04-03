@@ -30,7 +30,7 @@ type OverridenImplsMap = Map<sol.FunctionDefinition | sol.VariableDeclaration, O
 type OverrideMap = Map<sol.ContractDefinition, OverridenImplsMap>;
 
 export class UnitCompiler {
-    private readonly globalScope: ir.Scope;
+    public readonly globalScope: ir.Scope;
 
     readonly inference: sol.InferType;
     readonly factory = new IRFactory();
@@ -261,7 +261,16 @@ export class UnitCompiler {
                     continue;
                 }
 
-                const sig = this.inference.signature(method);
+                let sig: string;
+                if (method.kind === sol.FunctionKind.Function) {
+                    sig = this.inference.signature(method);
+                } else if (method.kind === sol.FunctionKind.Fallback) {
+                    sig = "fallback";
+                } else if (method.kind === sol.FunctionKind.Receive) {
+                    sig = "receive";
+                } else {
+                    sol.assert(false, `Unexpected method kind {0}`, method.kind);
+                }
 
                 if (seenSigs.has(sig)) {
                     continue;
