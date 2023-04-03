@@ -7,7 +7,7 @@ import { grabInheritanceArgs, UIDGenerator } from "../utils";
 import { getDesugaredConstructorName, getDesugaredPartialConstructorName } from "./resolving";
 import { ExpressionCompiler } from "./expression_compiler";
 import { ASTSource } from "../ir/source";
-import { blockPtrT, msgPtrT, noType, transpileType, u16, u160, u256 } from "./typing";
+import { blockPtrT, msgPtrT, noType, transpileType, u16, u160 } from "./typing";
 import { ImplicitConstructorCompiler } from "./implicit_constructor_compiler";
 import { IRFactory } from "./factory";
 
@@ -228,12 +228,15 @@ export class ConstructorCompiler {
             noSrc
         );
 
-        // Set __balance__
-        builder.setBalance(
-            this.factory.identifier(noSrc, addrTmp.name, u160),
-            this.factory.numberLiteral(noSrc, 0n, 10, u256),
+        const balance = builder.loadField(
+            this.factory.identifier(noSrc, "msg", msgPtrT),
+            msgPtrT,
+            "value",
             noSrc
         );
+
+        // Set __balance__
+        builder.setBalance(this.factory.identifier(noSrc, addrTmp.name, u160), balance, noSrc);
 
         // Emit direct calls to all C3-linearized base constructors.
         for (const [constrId, constrArgs] of processedConstructorCalls) {

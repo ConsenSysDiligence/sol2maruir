@@ -1,10 +1,20 @@
 import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
 import { BasicBlock } from "maru-ir2/dist/ir/cfg";
-import { assert, InferType, pp } from "solc-typed-ast";
+import { pp } from "solc-typed-ast";
 import { UIDGenerator } from "../utils";
 import { BaseSrc, concretizeType, makeSubst, noSrc } from "maru-ir2";
-import { balancesMapPtrT, boolT, transpileType, u256, u32, u8, u8ArrExcPtr } from "./typing";
+import {
+    balancesMapPtrT,
+    boolT,
+    msgPtrT,
+    msgT,
+    transpileType,
+    u256,
+    u32,
+    u8,
+    u8ArrExcPtr
+} from "./typing";
 import { ASTSource } from "../ir/source";
 import { IRFactory } from "./factory";
 
@@ -101,7 +111,7 @@ export class CFGBuilder {
         this.placeHolderStack = [];
 
         this.defMap = new Map();
-        this.infer = new InferType(solVersion);
+        this.infer = new sol.InferType(solVersion);
     }
 
     get locals(): ir.VariableDeclaration[] {
@@ -153,7 +163,7 @@ export class CFGBuilder {
     public getVarId(decl: sol.VariableDeclaration, src: BaseSrc): ir.Identifier {
         const irDecl = this.solidityVarsToIRVarsMap.get(decl);
 
-        assert(irDecl !== undefined, `No IR decl for solidity variable {0}`, decl);
+        sol.assert(irDecl !== undefined, `No IR decl for solidity variable {0}`, decl);
 
         return this.factory.identifier(src, this.getVarName(decl), irDecl.type);
     }
@@ -161,7 +171,7 @@ export class CFGBuilder {
     public getVarType(decl: sol.VariableDeclaration): ir.Type {
         const irDecl = this.solidityVarsToIRVarsMap.get(decl);
 
-        assert(irDecl !== undefined, `No IR decl for solidity variable {0}`, decl);
+        sol.assert(irDecl !== undefined, `No IR decl for solidity variable {0}`, decl);
 
         return irDecl.type;
     }
@@ -185,7 +195,8 @@ export class CFGBuilder {
         if (
             decl.parent instanceof sol.VariableDeclarationStatement ||
             (decl.parent instanceof sol.ParameterList &&
-                decl.parent.parent instanceof sol.ModifierDefinition)
+                (decl.parent.parent instanceof sol.ModifierDefinition ||
+                    decl.parent.parent instanceof sol.TryCatchClause))
         ) {
             let phPath = "";
 
@@ -198,7 +209,7 @@ export class CFGBuilder {
                         .join("_");
             }
 
-            return `${decl.name}_${decl.id}${phPath}`;
+            return `${decl.name === "" ? "unnamed_local" : decl.name}_${decl.id}${phPath}`;
         }
 
         throw new Error(`Cannot get ir identifier name for ${pp(decl)}`);
@@ -236,7 +247,7 @@ export class CFGBuilder {
     }
 
     get curBB(): BasicBlock {
-        assert(this._curBB !== undefined, `Missing _curBB`);
+        sol.assert(this._curBB !== undefined, `Missing _curBB`);
 
         return this._curBB;
     }
@@ -246,7 +257,7 @@ export class CFGBuilder {
     }
 
     get entry(): BasicBlock {
-        assert(this._entryBB !== undefined, `Missing _entry`);
+        sol.assert(this._entryBB !== undefined, `Missing _entry`);
 
         return this._entryBB;
     }
@@ -286,7 +297,7 @@ export class CFGBuilder {
      * Add a statement to the current BB that loads `base.field` in a new temp identifier and returns it.
      */
     loadField(base: ir.Expression, type: ir.Type, field: string, src: ir.BaseSrc): ir.Identifier {
-        assert(
+        sol.assert(
             type instanceof ir.PointerType && type.toType instanceof ir.UserDefinedType,
             `Expected a pointer type not {0}`,
             type
@@ -294,11 +305,15 @@ export class CFGBuilder {
 
         const def = this.resolve(type.toType.name);
 
-        assert(def instanceof ir.StructDefinition, `Cannot load field on non-struct def {0}`, def);
+        sol.assert(
+            def instanceof ir.StructDefinition,
+            `Cannot load field on non-struct def {0}`,
+            def
+        );
 
         const fieldT = def.getFieldType(field);
 
-        assert(fieldT !== undefined, `No field {0} on struct {1}`, field, def);
+        sol.assert(fieldT !== undefined, `No field {0} on struct {1}`, field, def);
 
         const subst = makeSubst(type.toType, this.funScope);
         const concreteFieldT = concretizeType(fieldT, subst, this.globalScope.scopeOf(def));
@@ -326,14 +341,16 @@ export class CFGBuilder {
         idx: ir.Expression,
         src: ir.BaseSrc
     ): ir.Identifier {
-        assert(
-            type instanceof ir.PointerType && type.toType instanceof ir.ArrayType,
+        sol.assert(
+            type instanceof ir.PointerType &&
+                (type.toType instanceof ir.ArrayType || type.toType instanceof ir.MapType),
             `Expected a pointer type not {0}`,
             type
         );
 
-        const elT = type.toType.baseType;
-        const lhs = this.getTmpId(elT, src);
+        const resT =
+            type.toType instanceof ir.ArrayType ? type.toType.baseType : type.toType.valueType;
+        const lhs = this.getTmpId(resT, src);
         this.curBB.statements.push(this.factory.loadIndex(src, lhs, base, idx));
 
         return lhs;
@@ -418,9 +435,13 @@ export class CFGBuilder {
         this._curBB = undefined;
     }
 
+    assert(cond: ir.Expression, src: BaseSrc): void {
+        this.curBB.statements.push(this.factory.assert(src, cond));
+    }
+
     typeOfLocal(name: string): ir.Type {
         const decl = this.defMap.get(name);
-        assert(decl !== undefined, `Unknown local {0}`, name);
+        sol.assert(decl !== undefined, `Unknown local {0}`, name);
         return decl.type;
     }
 
@@ -428,7 +449,7 @@ export class CFGBuilder {
      * Return the length of an array
      */
     arrayLength(src: ir.BaseSrc, array: ir.Identifier): ir.Expression {
-        return this.loadField(array, this.typeOfLocal(array.name), "len", src);
+        return this.loadField(array, this.factory.typeOf(array), "len", src);
     }
 
     id(src: ir.BaseSrc, decl: ir.VariableDeclaration): ir.Identifier {
@@ -437,7 +458,7 @@ export class CFGBuilder {
 
     private getInternalId(name: string, src: ir.BaseSrc) {
         const def = this.defMap.get(name);
-        assert(def !== undefined, `Missing {0} def`, name);
+        sol.assert(def !== undefined, `Missing {0} def`, name);
         return this.factory.identifier(src, name, def.type);
     }
 
@@ -556,7 +577,7 @@ export class CFGBuilder {
         const res: Array<[string, ir.Type]> = [];
         const def = this.globalScope.get(userT.name);
 
-        assert(def instanceof ir.StructDefinition, `Expected a struct not {0}`, def);
+        sol.assert(def instanceof ir.StructDefinition, `Expected a struct not {0}`, def);
         const defScope = this.globalScope.scopeOf(def);
 
         for (const [fieldName, fieldT] of def.fields) {
@@ -595,8 +616,9 @@ export class CFGBuilder {
     }
 
     getBalance(addr: ir.Expression, src: ir.BaseSrc): ir.Identifier {
-        const balances = this.factory.identifier(noSrc, "_balances_", balancesMapPtrT);
-        return this.loadIndex(balances, balancesMapPtrT, addr, src);
+        const balance = this.getTmpId(u256, src);
+        this.call([balance], this.factory.funIdentifier("sol_get_balance"), [], [], [addr], src);
+        return balance;
     }
 
     setBalance(addr: ir.Expression, newBalance: ir.Expression, src: ir.BaseSrc): void {
@@ -665,15 +687,63 @@ export class CFGBuilder {
         this.curBB = exitBB;
     }
 
-    getSelectorFromData(dataArrPtr: ir.Expression): ir.Identifier {
+    /**
+     * Get the selector from a bytes array. Expects the type of dataArrPtr to be `ArrWithLen<M; u8>`
+     */
+    getSelectorFromData(bytesPtr: ir.Expression, needsLengthCheck: boolean): ir.Identifier {
         const factory = this.factory;
-        const dataArrPtrT = factory.typeOf(dataArrPtr);
+        const bytesPtrT = factory.typeOf(bytesPtr);
+        const bytesArrPtr = this.loadField(bytesPtr, bytesPtrT, "arr", noSrc);
+        const bytesLen = this.loadField(bytesPtr, bytesPtrT, "len", noSrc);
+        const bytesArrPtrT = factory.typeOf(bytesArrPtr);
 
         const irSig = this.getTmpId(u32, noSrc);
-        for (let i = 0n; i < 4n; i++) {
+        let unionBB: BasicBlock | undefined;
+
+        if (needsLengthCheck) {
+            const lessThan4BB = this.mkBB();
+            const moreThan4BB = this.mkBB();
+            unionBB = this.mkBB();
+
+            this.branch(
+                factory.binaryOperation(
+                    noSrc,
+                    bytesLen,
+                    "<",
+                    factory.numberLiteral(noSrc, 4n, 10, u256),
+                    boolT
+                ),
+                lessThan4BB,
+                moreThan4BB,
+                noSrc
+            );
+
+            this.curBB = lessThan4BB;
+            this.assign(irSig, factory.numberLiteral(noSrc, 0n, 10, u32), noSrc);
+            this.jump(unionBB, noSrc);
+
+            this.curBB = moreThan4BB;
+        }
+
+        this.assign(
+            irSig,
+            factory.cast(
+                noSrc,
+                u32,
+                this.loadIndex(
+                    bytesArrPtr,
+                    bytesArrPtrT,
+                    factory.numberLiteral(noSrc, 0n, 10, u256),
+                    noSrc
+                )
+            ),
+            noSrc
+        );
+
+        for (let i = 1n; i < 4n; i++) {
             const byte = this.loadIndex(
-                dataArrPtr,
-                dataArrPtrT,
+                bytesArrPtr,
+                bytesArrPtrT,
                 factory.numberLiteral(noSrc, i, 10, u256),
                 noSrc
             );
@@ -682,21 +752,44 @@ export class CFGBuilder {
                 irSig,
                 factory.binaryOperation(
                     noSrc,
-                    irSig,
-                    "|",
                     factory.binaryOperation(
                         noSrc,
-                        factory.cast(noSrc, u32, byte),
+                        irSig,
                         "<<",
-                        factory.numberLiteral(noSrc, i * 8n, 10, u32),
+                        factory.numberLiteral(noSrc, 8n, 10, u32),
                         u32
                     ),
+                    "|",
+                    factory.cast(noSrc, u32, byte),
                     u32
                 ),
                 noSrc
             );
         }
 
+        if (needsLengthCheck) {
+            this.jump(unionBB as BasicBlock, noSrc);
+            this.curBB = unionBB;
+        }
+
         return irSig;
+    }
+
+    makeMsgPtr(
+        sender: ir.Expression,
+        value: ir.Expression,
+        data: ir.Expression,
+        sig: ir.Expression,
+        src: BaseSrc = noSrc
+    ): ir.Identifier {
+        const fac = this.factory;
+        const res = this.getTmpId(msgPtrT, src);
+        this.allocStruct(res, msgT, fac.memConstant(src, "memory"), src);
+        this.storeField(res, "sender", sender, src);
+        this.storeField(res, "value", value, src);
+        this.storeField(res, "data", data, src);
+        this.storeField(res, "sig", sig, src);
+
+        return res;
     }
 }

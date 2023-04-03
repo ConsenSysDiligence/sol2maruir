@@ -84,11 +84,16 @@ export function defineArrStruct(
         len: BigInt(values.length)
     });
 
-    return s.define(struct, inMem);
+    const res = s.define(struct, inMem);
+    return res;
 }
 
 export function defineString(s: ir.State, str: string, inMem: string): ir.PointerVal {
-    const bigIntArr = Array.from(str).map(BigInt);
+    const bigIntArr: bigint[] = [];
+
+    for (let i = 0; i < str.length; i++) {
+        bigIntArr.push(BigInt(str.charCodeAt(i)));
+    }
 
     return defineArrStruct(s, inMem, bigIntArr);
 }
@@ -136,7 +141,7 @@ export function toWeb3Value(val: any, abiType: string | sol.TypeNode, s: ir.Stat
             typeof val
         );
 
-        return "0x" + bigIntToHex(val);
+        return "0x" + bigIntToHex(val).padStart(40, "0");
     }
 
     if (type instanceof sol.StringType) {
@@ -480,7 +485,8 @@ export function getLastSolidityFun(s: ir.State): ir.FunctionDefinition {
 export function builtin_decode(
     resolving: Resolving,
     s: ir.State,
-    frame: ir.BuiltinFrame
+    frame: ir.BuiltinFrame,
+    byteOff: number
 ): ir.PrimitiveValue[] | undefined {
     assert(
         frame.args.length == frame.typeArgs.length + 1,
@@ -492,7 +498,11 @@ export function builtin_decode(
 
     assert(dataPtr instanceof Array, "Expected pointer, got {0}", dataPtr);
 
-    const data = decodeBytes(s, dataPtr);
+    let data = decodeBytes(s, dataPtr);
+
+    if (byteOff !== 0) {
+        data = data.slice(byteOff * 2);
+    }
 
     const abiTypeNames: string[] = [];
 
@@ -508,6 +518,7 @@ export function builtin_decode(
 
     let web3Vals: any[];
 
+    // console.error(`Decode data: ${data} abiTypeNames: ${abiTypeNames}`);
     try {
         web3Vals = decodeParameters(abiTypeNames, data) as any[];
     } catch (e) {
@@ -515,6 +526,7 @@ export function builtin_decode(
         return undefined;
     }
 
+    // console.error(`Decode vals: ${web3Vals}`);
     const lastFun = getLastSolidityFun(s);
 
     const scope = resolving.getScope(lastFun);
@@ -632,92 +644,4 @@ export function builtin_keccak256_05(s: ir.State, frame: ir.BuiltinFrame): ir.Pr
     // console.error(`builtin_keccak256_05: result "${hash}"`);
 
     return BigInt(hash);
-}
-
-export function builtin_send(
-    registry: ContractRegistry,
-    s: ir.State,
-    frame: ir.BuiltinFrame
-): boolean {
-    const sendAddr = frame.args[0][1] as bigint;
-    const recvAddr = frame.args[1][1] as bigint;
-    const amount = frame.args[2][1] as bigint;
-
-    const sendTypAndPtr = registry.get(sendAddr);
-    const recvTypAndPtr = registry.get(recvAddr);
-
-    if (recvTypAndPtr === undefined || sendTypAndPtr === undefined) {
-        return false;
-    }
-
-    const sendStruct = s.deref(sendTypAndPtr[1] as ir.PointerVal);
-    const recvStruct = s.deref(recvTypAndPtr[1] as ir.PointerVal);
-
-    assert(
-        recvStruct instanceof StructValue && sendStruct instanceof StructValue,
-        `Expected structs not {0} and {1} in builtin_send of {2}`,
-        recvStruct,
-        sendStruct,
-        recvAddr
-    );
-
-    const sendBalance = sendStruct.get("__balance__");
-    const recvBalance = recvStruct.get("__balance__");
-
-    let update: bigint;
-
-    assert(typeof sendBalance === "bigint", `Missing balance of sender {0}`, sendAddr);
-
-    // Not enough funds
-    if (sendBalance < amount) {
-        return false;
-    }
-
-    sendStruct.set("__balance__", sendBalance - amount);
-
-    if (recvBalance === undefined) {
-        update = amount;
-    } else {
-        assert(
-            typeof recvBalance === "bigint",
-            `Expected bigint for __balance__ of {0}, got {1}`,
-            recvAddr,
-            typeof recvBalance
-        );
-
-        update = recvBalance + amount;
-    }
-
-    recvStruct.set("__balance__", update);
-
-    return true;
-}
-
-export function builtin_balance(
-    registry: ContractRegistry,
-    s: ir.State,
-    frame: ir.BuiltinFrame
-): ir.PrimitiveValue {
-    const addr = frame.args[0][1] as bigint;
-
-    const typAndPtr = registry.get(addr);
-
-    if (typAndPtr === undefined) {
-        return 0n;
-    }
-
-    const contractStruct = s.deref(typAndPtr[1] as ir.PointerVal);
-
-    assert(
-        contractStruct instanceof StructValue,
-        `Expected a struct not {0} in builtin_balance of {1}`,
-        contractStruct,
-        addr
-    );
-
-    const balance = contractStruct.get("__balance__");
-
-    assert(balance !== undefined, `Missing __balance__ in {0}`, contractStruct);
-
-    return balance;
 }

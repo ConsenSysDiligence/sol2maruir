@@ -16,7 +16,6 @@ import {
 } from "maru-ir2";
 import { assert } from "solc-typed-ast";
 import {
-    builtin_balance,
     builtin_bin_op_overflows,
     builtin_decode,
     builtin_encode,
@@ -26,7 +25,6 @@ import {
     builtin_is_contract_at,
     builtin_keccak256_05,
     builtin_register_contact,
-    builtin_send,
     builtin_un_op_overflows,
     ContractRegistry
 } from "./builtins";
@@ -179,7 +177,7 @@ export class SolMaruirInterp {
             [
                 "builtin_abi_decode_1",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
-                    const res = builtin_decode(this.resolving, s, frame);
+                    const res = builtin_decode(this.resolving, s, frame, 0);
 
                     return res === undefined ? [true, []] : [false, res];
                 }
@@ -187,7 +185,7 @@ export class SolMaruirInterp {
             [
                 "builtin_abi_decode_2",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
-                    const res = builtin_decode(this.resolving, s, frame);
+                    const res = builtin_decode(this.resolving, s, frame, 0);
 
                     return res === undefined ? [true, []] : [false, res];
                 }
@@ -195,7 +193,31 @@ export class SolMaruirInterp {
             [
                 "builtin_abi_decode_3",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
-                    const res = builtin_decode(this.resolving, s, frame);
+                    const res = builtin_decode(this.resolving, s, frame, 0);
+
+                    return res === undefined ? [true, []] : [false, res];
+                }
+            ],
+            [
+                "builtin_abi_decodeWithHash_1",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const res = builtin_decode(this.resolving, s, frame, 4);
+
+                    return res === undefined ? [true, []] : [false, res];
+                }
+            ],
+            [
+                "builtin_abi_decodeWithHash_2",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const res = builtin_decode(this.resolving, s, frame, 4);
+
+                    return res === undefined ? [true, []] : [false, res];
+                }
+            ],
+            [
+                "builtin_abi_decodeWithHash_3",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const res = builtin_decode(this.resolving, s, frame, 4);
 
                     return res === undefined ? [true, []] : [false, res];
                 }
@@ -258,20 +280,6 @@ export class SolMaruirInterp {
                         throw e;
                     }
                 }
-            ],
-            [
-                "builtin_send",
-                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    false,
-                    [builtin_send(this.contractRegistry, s, frame)]
-                ]
-            ],
-            [
-                "builtin_balance",
-                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    false,
-                    [builtin_balance(this.contractRegistry, s, frame)]
-                ]
             ],
             [
                 "builtin_keccak256_05",

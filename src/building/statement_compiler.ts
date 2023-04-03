@@ -1,12 +1,21 @@
 import * as ir from "maru-ir2";
-import { noSrc } from "maru-ir2";
+import { BasicBlock, boolT, noSrc } from "maru-ir2";
 import * as sol from "solc-typed-ast";
-import { abiTypeToCanonicalName, assert, ErrorDefinition, pp } from "solc-typed-ast";
+import {
+    abiTypeToCanonicalName,
+    assert,
+    ErrorDefinition,
+    generalizeType,
+    pp,
+    TryCatchClause,
+    TryStatement
+} from "solc-typed-ast";
 import { IRTuple2, IRTupleType2 } from "../ir";
 import { ASTSource } from "../ir/source";
+import { single } from "../utils";
 import { CFGBuilder } from "./cfg_builder";
 import { ExpressionCompiler } from "./expression_compiler";
-import { noType, u8ArrMemPtr } from "./typing";
+import { noType, transpileType, u256, u32, u8ArrExcPtr, u8ArrMemPtr } from "./typing";
 
 export type ModifierStack2 = Array<
     [sol.Block | sol.UncheckedBlock | undefined, sol.ModifierInvocation | undefined]
@@ -468,6 +477,260 @@ export class StatementCompiler {
         );
     }
 
+    private detectClauses(
+        node: sol.TryStatement
+    ): [sol.TryCatchClause, sol.TryCatchClause | undefined, sol.TryCatchClause[]] {
+        const success = node.vClauses[0];
+
+        const withSignature: sol.TryCatchClause[] = [];
+
+        let catchAll: sol.TryCatchClause | undefined;
+
+        for (let i = 1; i < node.vClauses.length; i++) {
+            const clause = node.vClauses[i];
+
+            if (clause.errorName === "") {
+                assert(catchAll === undefined, "Multiple catch-all clauses", node);
+
+                catchAll = clause;
+            } else {
+                withSignature.push(clause);
+            }
+        }
+
+        return [success, catchAll, withSignature];
+    }
+
+    // @todo (dimo) this should be moved to solc-typed-ast
+    private getClauseSigHash(clause: TryCatchClause): string {
+        const infer = this.cfgBuilder.infer;
+        const argTypes: string[] = clause.vParameters
+            ? clause.vParameters.vParameters.map((decl) =>
+                  abiTypeToCanonicalName(
+                      generalizeType(infer.variableDeclarationToTypeNode(decl))[0]
+                  )
+              )
+            : [];
+        const sig = `${clause.errorName}(${argTypes.join(",")})`;
+        return sol.encodeFuncSignature(sig, true);
+    }
+
+    /**
+     * Compile a single try-catch clause with pre-computed arguments in `actuals`.
+     */
+    private compileTryClause(
+        clause: TryCatchClause,
+        actuals: ir.Expression[],
+        unionBB: BasicBlock
+    ): void {
+        const builder = this.cfgBuilder;
+        const formals = clause.vParameters === undefined ? [] : clause.vParameters.vParameters;
+
+        assert(
+            clause.vParameters === undefined || formals.length === actuals.length,
+            "Mismatch between try/catch clause params: {0} and actuals: {1}",
+            clause,
+            actuals
+        );
+
+        // Assign clause formals
+        for (let i = 0; i < formals.length; i++) {
+            const formal = formals[i];
+            const actual = actuals[i];
+
+            const declSrc = new ASTSource(formal);
+            const irFormal = builder.getVarId(formal, declSrc);
+            builder.assign(irFormal, actual, declSrc);
+        }
+
+        // Compile clause body
+        this.compile(clause.vBlock);
+
+        // Jump to union BB if we didnt terminate already
+        if (builder.isCurBBSet) {
+            builder.jump(unionBB, new ASTSource(clause));
+        }
+    }
+
+    /**
+     * Compile a single try-catch clause with signature. Just abi-decodes the arguments
+     * and lets `compileTryClause` do ther est.
+     */
+    private compileTryClauseWithSignature(
+        clause: TryCatchClause,
+        sigExpr: ir.Expression,
+        errorBytes: ir.Expression,
+        nextClauseBB: BasicBlock,
+        unionBB: BasicBlock
+    ): void {
+        const builder = this.cfgBuilder;
+        const factory = builder.factory;
+        const infer = builder.infer;
+
+        const sigMatchBB = builder.mkBB();
+        const sig = this.getClauseSigHash(clause);
+        const clauseSrc = new ASTSource(clause);
+        const errorBytesT = factory.typeOf(errorBytes);
+
+        assert(errorBytesT instanceof ir.PointerType, ``);
+
+        builder.branch(
+            factory.binaryOperation(
+                noSrc,
+                sigExpr,
+                "==",
+                factory.numberLiteral(noSrc, BigInt(sig), 16, u32),
+                boolT
+            ),
+            sigMatchBB,
+            nextClauseBB,
+            clauseSrc
+        );
+
+        builder.curBB = sigMatchBB;
+
+        const params = clause.vParameters ? clause.vParameters.vParameters : [];
+        const paramTs = params.map((decl) => infer.variableDeclarationToTypeNode(decl));
+        const paramIrTs = paramTs.map((soLT) => transpileType(soLT, factory));
+        const irParams = params.map((decl, i) =>
+            this.cfgBuilder.getTmpId(paramIrTs[i], new ASTSource(decl))
+        );
+
+        if (irParams.length > 0) {
+            const args: ir.Expression[] = [errorBytes];
+
+            for (let i = 0; i < irParams.length; i++) {
+                args.push(this.exprCompiler.getAbiTypeStringConst(paramTs[i]));
+            }
+
+            builder.call(
+                irParams,
+                factory.funIdentifier(`builtin_abi_decodeWithHash_${paramTs.length}`),
+                [errorBytesT.region],
+                paramIrTs,
+                args,
+                clauseSrc
+            );
+        }
+
+        this.compileTryClause(clause, irParams, unionBB);
+    }
+
+    /**
+     * Compile the try-catch clause. Several edge cases:
+     * 1. If no clause is present, emit a default clause that aborts.
+     * 2. Handle the case when not bytes memory arg is present
+     */
+    private compileCatchAllClause(
+        clause: TryCatchClause | undefined,
+        errorBytes: ir.Expression,
+        unionBB: BasicBlock
+    ): void {
+        const builder = this.cfgBuilder;
+        const factory = builder.factory;
+
+        if (clause === undefined) {
+            builder.abort(noSrc);
+            return;
+        }
+
+        const params: ir.Expression[] = [];
+
+        if (clause.vParameters) {
+            const decl = single(clause.vParameters.vParameters);
+            const declSrc = new ASTSource(decl);
+            const irDecl = builder.getVarId(decl, declSrc);
+            params.push(this.exprCompiler.mustCastTo(errorBytes, factory.typeOf(irDecl), declSrc));
+        }
+
+        this.compileTryClause(clause, params, unionBB);
+    }
+
+    compileTryStatement(stmt: sol.TryStatement): void {
+        const builder = this.cfgBuilder;
+        const factory = builder.factory;
+
+        // Before we get started add clause decls as locals
+        for (const clause of stmt.vClauses) {
+            if (clause.vParameters === undefined) {
+                continue;
+            }
+
+            for (const decl of clause.vParameters.vParameters) {
+                this.cfgBuilder.addLocal(decl);
+            }
+        }
+
+        // First make the transaction call
+        const callRes = this.exprCompiler.compile(stmt.vExternalCall);
+        let rets: ir.Expression[];
+        let aborted: ir.Expression;
+        const src = new ASTSource(stmt);
+
+        if (callRes instanceof IRTuple2) {
+            rets = callRes.elements.slice(0, -1) as ir.Expression[];
+            aborted = callRes.elements[callRes.elements.length - 1] as ir.Expression;
+        } else {
+            rets = [];
+            aborted = callRes;
+        }
+
+        // Next detect the different kinds of clauses
+        const [successClause, catchAllClause, clausesWithSigs] = this.detectClauses(stmt);
+
+        const successBB = builder.mkBB();
+        const checkArrLenBB = builder.mkBB();
+        const unionBB = builder.mkBB();
+
+        builder.branch(aborted, checkArrLenBB, successBB, src);
+
+        // Next compile the success clause
+        builder.curBB = successBB;
+        this.compileTryClause(successClause, rets, unionBB);
+
+        // Next compile the catch-all clause. If no catch-all clause is present, emit a
+        // default one that aborts to propagate exception
+        const catchAllBB = builder.mkBB();
+        builder.curBB = catchAllBB;
+        this.compileCatchAllClause(
+            catchAllClause,
+            factory.identifier(noSrc, "_exception_bytes_", u8ArrExcPtr),
+            unionBB
+        );
+
+        // Jump to catch-all clause if < 4 bytes of exception bytes found
+        let nextClauseBB = builder.mkBB();
+        builder.curBB = checkArrLenBB;
+
+        const excBytes = factory.identifier(noSrc, "_exception_bytes_", u8ArrExcPtr);
+        const lenLessThan4 = factory.binaryOperation(
+            noSrc,
+            builder.arrayLength(noSrc, excBytes),
+            "<",
+            factory.numberLiteral(noSrc, 4n, 10, u256),
+            boolT
+        );
+        builder.branch(lenLessThan4, catchAllBB, nextClauseBB, src);
+
+        builder.curBB = nextClauseBB;
+        const sigExpr = builder.getSelectorFromData(excBytes, false);
+
+        // Next compile each clause with a signature. For each we check if its
+        // signature matches the exception bytes selector.
+        for (const clause of clausesWithSigs) {
+            nextClauseBB = builder.mkBB();
+            this.compileTryClauseWithSignature(clause, sigExpr, excBytes, nextClauseBB, unionBB);
+
+            builder.curBB = nextClauseBB;
+        }
+
+        // If none of the signature clauses matched, jump to the catch-all clause
+        builder.jump(catchAllBB, src);
+
+        // Finally set the curBB to the unionBB to continue compilation
+        builder.curBB = unionBB;
+    }
+
     /**
      * Compile a single Solidity statment `stmt`. Note that this may
      * add multiple ir statements, or even new basic blocks (e.g. for ternaries)
@@ -522,6 +785,10 @@ export class StatementCompiler {
 
         if (stmt instanceof sol.Throw) {
             return this.compileThrow(stmt);
+        }
+
+        if (stmt instanceof TryStatement) {
+            return this.compileTryStatement(stmt);
         }
 
         throw new Error(`NYI compiling ${pp(stmt)}`);

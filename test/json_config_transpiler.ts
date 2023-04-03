@@ -1,7 +1,15 @@
 import * as ir from "maru-ir2";
+import * as sol from "solc-typed-ast";
 import { noSrc } from "maru-ir2";
-import { assert, ContractDefinition, FunctionDefinition, InferType, pp } from "solc-typed-ast";
-import { CFGBuilder, UIDGenerator } from "../src";
+import {
+    ABIEncoderVersion,
+    assert,
+    ContractDefinition,
+    FunctionDefinition,
+    InferType,
+    pp
+} from "solc-typed-ast";
+import { UIDGenerator } from "../src";
 import { IRFactory } from "../src/building/factory";
 import {
     balancesMapPtrT,
@@ -9,13 +17,14 @@ import {
     blockT,
     boolT,
     msgPtrT,
-    msgT,
     noType,
     u160,
     u256,
     u8
 } from "../src/building/typing";
 import { ASTSource } from "../src/ir/source";
+import { BaseFunctionCompiler } from "../src/building/base_function_compiler";
+import { ExpressionCompiler } from "../src/building/expression_compiler";
 
 export type MethodMap = Map<string, Map<string, ir.FunctionDefinition>>;
 export type ContractMap = Map<string, ir.StructDefinition>;
@@ -69,26 +78,25 @@ export function buildMaps(defs: ir.Definition[], solVersion: string): [MethodMap
     return [mMap, cMap];
 }
 
-export class JSONConfigTranspiler {
-    private readonly globalScope: ir.Scope;
-    private readonly funScope: ir.Scope;
-    private readonly builder: CFGBuilder;
+export class JSONConfigTranspiler extends BaseFunctionCompiler {
     private readonly factory: IRFactory;
     private nGlboals = 0;
+    private exprCompiler: ExpressionCompiler;
 
-    constructor(solVersion: string, factory: IRFactory, globalUid: UIDGenerator) {
-        this.globalScope = new ir.Scope();
-        this.funScope = new ir.Scope(this.globalScope);
-
-        this.builder = new CFGBuilder(
-            this.globalScope,
-            this.funScope,
-            globalUid,
-            solVersion,
-            factory
-        );
-
+    constructor(
+        solVersion: string,
+        abiVersion: ABIEncoderVersion,
+        factory: IRFactory,
+        globalUid: UIDGenerator,
+        globalScope: ir.Scope,
+        private config: any,
+        private methodMap: Map<string, Map<string, ir.FunctionDefinition>>,
+        private contractMap: Map<string, ir.StructDefinition>,
+        unit: sol.SourceUnit
+    ) {
+        super(factory, globalUid, globalScope, solVersion, abiVersion);
         this.factory = factory;
+        this.exprCompiler = new ExpressionCompiler(this.cfgBuilder, abiVersion, unit);
     }
 
     extraLocals: ir.VariableDeclaration[] = [];
@@ -103,30 +111,6 @@ export class JSONConfigTranspiler {
         this.globalScope.define(this.factory.globalVariable(ir.noSrc, name, t, initialVal));
 
         return this.factory.identifier(ir.noSrc, name, t);
-    }
-
-    getNewConstStr(s: string, mem: string): ir.Expression {
-        const val = [...Buffer.from(s, "utf-8")].map((x) => BigInt(x));
-        const memC = this.factory.memConstant(ir.noSrc, mem);
-
-        return this.getNewGlobal(
-            this.factory.pointerType(
-                ir.noSrc,
-                this.factory.userDefinedType(ir.noSrc, "ArrWithLen", [memC], [u8]),
-                memC
-            ),
-            this.factory.structLiteral(ir.noSrc, [
-                ["len", this.factory.numberLiteral(ir.noSrc, BigInt(val.length), 10, u256)],
-                [
-                    "arr",
-                    this.factory.arrayLiteral(
-                        ir.noSrc,
-                        val.map((v) => this.factory.numberLiteral(ir.noSrc, v, 10, u8))
-                    )
-                ]
-            ]),
-            "_str_lit_"
-        );
     }
 
     compileJSType(strType: string, arg: any): ir.Type {
@@ -175,23 +159,26 @@ export class JSONConfigTranspiler {
     }
 
     compileJSArg(arg: any): ir.Expression {
+        const factory = this.factory;
+        const builder = this.cfgBuilder;
+
         if (arg.kind === "object") {
-            return this.factory.identifier(ir.noSrc, arg.name, this.builder.typeOfLocal(arg.name));
+            return factory.identifier(ir.noSrc, arg.name, builder.typeOfLocal(arg.name));
         }
 
         if (arg.kind === "literal") {
             const litT = this.compileJSType(arg.type, arg);
 
             if (litT instanceof ir.BoolType) {
-                return this.factory.booleanLiteral(ir.noSrc, arg.value);
+                return factory.booleanLiteral(ir.noSrc, arg.value);
             }
 
             if (litT instanceof ir.IntType) {
                 if (arg.type.startsWith("bytes")) {
-                    return this.factory.numberLiteral(ir.noSrc, BigInt("0x" + arg.value), 16, litT);
+                    return factory.numberLiteral(ir.noSrc, BigInt("0x" + arg.value), 16, litT);
                 }
 
-                return this.factory.numberLiteral(ir.noSrc, BigInt(arg.value), 10, litT);
+                return factory.numberLiteral(ir.noSrc, BigInt(arg.value), 10, litT);
             }
 
             throw new Error(`NYI transpiling JS value ${litT.pp()}`);
@@ -208,21 +195,21 @@ export class JSONConfigTranspiler {
                 values.push(BigInt("0x" + byteStr.slice(2 * i, 2 * i + 2)));
             }
 
-            const loc = this.factory.memConstant(ir.noSrc, arg.location);
+            const loc = factory.memConstant(ir.noSrc, arg.location);
 
             return this.getNewGlobal(
-                this.factory.pointerType(
+                factory.pointerType(
                     ir.noSrc,
-                    this.factory.userDefinedType(ir.noSrc, "ArrWithLen", [loc], [u8]),
+                    factory.userDefinedType(ir.noSrc, "ArrWithLen", [loc], [u8]),
                     loc
                 ),
-                this.factory.structLiteral(ir.noSrc, [
-                    ["len", this.factory.numberLiteral(ir.noSrc, BigInt(values.length), 10, u256)],
+                factory.structLiteral(ir.noSrc, [
+                    ["len", factory.numberLiteral(ir.noSrc, BigInt(values.length), 10, u256)],
                     [
                         "arr",
-                        this.factory.arrayLiteral(
+                        factory.arrayLiteral(
                             ir.noSrc,
-                            values.map((v) => this.factory.numberLiteral(ir.noSrc, v, 10, u8))
+                            values.map((v) => factory.numberLiteral(ir.noSrc, v, 10, u8))
                         )
                     ]
                 ]),
@@ -231,11 +218,11 @@ export class JSONConfigTranspiler {
         }
 
         if (arg.kind === "string") {
-            return this.getNewConstStr(arg.value, arg.location);
+            return builder.getStrLit(arg.value, noSrc);
         }
 
         if (arg.kind === "array") {
-            const arr: ir.ArrayLiteral = this.factory.arrayLiteral(ir.noSrc, []);
+            const arr: ir.ArrayLiteral = factory.arrayLiteral(ir.noSrc, []);
             const typ: ir.Type = this.compileJSType(arg.type, arg);
 
             for (const el of arg.elements) {
@@ -247,19 +234,16 @@ export class JSONConfigTranspiler {
                 arr.values.push(elV);
             }
 
-            const loc = this.factory.memConstant(ir.noSrc, "exception");
+            const loc = factory.memConstant(ir.noSrc, "exception");
 
             return this.getNewGlobal(
-                this.factory.pointerType(
+                factory.pointerType(
                     ir.noSrc,
-                    this.factory.userDefinedType(ir.noSrc, "ArrWithLen", [loc], [typ]),
+                    factory.userDefinedType(ir.noSrc, "ArrWithLen", [loc], [typ]),
                     loc
                 ),
-                this.factory.structLiteral(ir.noSrc, [
-                    [
-                        "len",
-                        this.factory.numberLiteral(ir.noSrc, BigInt(arr.values.length), 10, u256)
-                    ],
+                factory.structLiteral(ir.noSrc, [
+                    ["len", factory.numberLiteral(ir.noSrc, BigInt(arr.values.length), 10, u256)],
                     ["arr", arr]
                 ]),
                 "_arg_"
@@ -269,16 +253,12 @@ export class JSONConfigTranspiler {
         throw new Error(`NYI transpiling JS kind ${arg.kind}`);
     }
 
-    compileConfig(
-        config: any,
-        methodMap: Map<string, Map<string, ir.FunctionDefinition>>,
-        contractMap: Map<string, ir.StructDefinition>
-    ): ir.Definition[] {
-        this.builder.addIRLocal("block", blockPtrT, ir.noSrc);
-        this.builder.addIRLocal("msg", msgPtrT, ir.noSrc);
+    compile(): ir.FunctionDefinition {
+        const builder = this.cfgBuilder;
+        const factory = this.factory;
 
-        const entry = new ir.BasicBlock("entry");
-        const body = new ir.CFG([entry], entry, [entry]);
+        builder.addIRLocal("block", blockPtrT, ir.noSrc);
+        builder.addIRLocal("msg", msgPtrT, ir.noSrc);
 
         let lCtr = 0;
         let lastObjName: string | undefined;
@@ -286,54 +266,72 @@ export class JSONConfigTranspiler {
 
         const constuctionFollowups: Map<string, ir.Statement[]> = new Map();
 
-        entry.statements.push(
-            this.factory.allocStruct(
-                ir.noSrc,
-                this.factory.identifier(ir.noSrc, "block", blockPtrT),
-                blockT,
-                this.factory.memConstant(ir.noSrc, "memory")
-            ),
-            this.factory.storeField(
-                ir.noSrc,
-                this.factory.identifier(ir.noSrc, "block", blockPtrT),
-                "number",
-                this.factory.numberLiteral(ir.noSrc, 1n, 10, u256)
-            ),
-            this.factory.allocStruct(
-                ir.noSrc,
-                this.factory.identifier(ir.noSrc, "msg", msgPtrT),
-                msgT,
-                this.factory.memConstant(ir.noSrc, "memory")
-            ),
-            this.factory.storeField(
-                ir.noSrc,
-                this.factory.identifier(ir.noSrc, "msg", msgPtrT),
-                "sender",
-                this.factory.numberLiteral(ir.noSrc, 2n, 10, u160)
-            )
+        builder.allocStruct(
+            factory.identifier(ir.noSrc, "block", blockPtrT),
+            blockT,
+            factory.memConstant(ir.noSrc, "memory"),
+            ir.noSrc
         );
 
-        for (const step of config.steps) {
+        builder.storeField(
+            factory.identifier(ir.noSrc, "block", blockPtrT),
+            "number",
+            factory.numberLiteral(ir.noSrc, 1n, 10, u256),
+            ir.noSrc
+        );
+
+        for (const step of this.config.steps) {
+            if (
+                lastObjName !== undefined &&
+                lastContractName !== undefined &&
+                (step.act !== "call" || step.method !== "constructor")
+            ) {
+                builder.transCall(
+                    [
+                        factory.identifier(noSrc, lastObjName, builder.typeOfLocal(lastObjName)),
+                        builder.getTmpId(boolT)
+                    ],
+                    factory.identifier(ir.noSrc, `${lastContractName}_constructor`, noType),
+                    [],
+                    [],
+                    [
+                        factory.identifier(noSrc, "block", blockPtrT),
+                        factory.identifier(noSrc, "msg", msgPtrT)
+                    ],
+                    ir.noSrc
+                );
+
+                const followups = constuctionFollowups.get(lastObjName);
+
+                if (followups) {
+                    followups.forEach((followup) => builder.addStmt(followup));
+                    constuctionFollowups.delete(lastObjName);
+                }
+
+                lastObjName = undefined;
+                lastContractName = undefined;
+            }
+
             if (step.act === "define") {
                 lastObjName = step.name;
                 lastContractName = step.type;
 
-                const def = contractMap.get(lastContractName as string) as ir.StructDefinition;
-                const thisT = this.factory.pointerType(
+                const def = this.contractMap.get(lastContractName as string) as ir.StructDefinition;
+                const thisT = factory.pointerType(
                     noSrc,
-                    this.factory.userDefinedType(noSrc, def?.name, [], []),
-                    this.factory.memConstant(noSrc, "storage")
+                    factory.userDefinedType(noSrc, def?.name, [], []),
+                    factory.memConstant(noSrc, "storage")
                 );
 
-                this.builder.addIRLocal(lastObjName as string, thisT, ir.noSrc);
+                builder.addIRLocal(lastObjName as string, thisT, ir.noSrc);
 
                 const followups: ir.Statement[] = [];
 
                 if (step.address) {
                     followups.push(
-                        this.factory.storeField(
+                        factory.storeField(
                             ir.noSrc,
-                            this.factory.identifier(noSrc, lastObjName as string, thisT),
+                            factory.identifier(noSrc, lastObjName as string, thisT),
                             "__address__",
                             this.compileJSArg(step.address)
                         )
@@ -341,17 +339,17 @@ export class JSONConfigTranspiler {
                 }
 
                 if (step.balance) {
-                    const addr = this.builder.getTmpId(u160, ir.noSrc);
+                    const addr = builder.getTmpId(u160, ir.noSrc);
                     followups.push(
-                        this.factory.loadField(
+                        factory.loadField(
                             ir.noSrc,
                             addr,
-                            this.factory.identifier(noSrc, lastObjName as string, thisT),
+                            factory.identifier(noSrc, lastObjName as string, thisT),
                             "__address__"
                         ),
-                        this.factory.storeIndex(
+                        factory.storeIndex(
                             ir.noSrc,
-                            this.factory.identifier(noSrc, "_balances_", balancesMapPtrT),
+                            factory.identifier(noSrc, "_balances_", balancesMapPtrT),
                             addr,
                             this.compileJSArg(step.balance)
                         )
@@ -360,126 +358,100 @@ export class JSONConfigTranspiler {
 
                 constuctionFollowups.set(lastObjName as string, followups);
             } else if (step.act === "call") {
-                const fun = methodMap.get(step.definingContract)?.get(step.method);
+                const fun = this.methodMap.get(step.definingContract)?.get(step.method);
 
                 assert(fun !== undefined, `Missing fun ${step.method} in ${step.definingContract}`);
 
-                const args: ir.Expression[] = step.args.map((jsArg: any) =>
-                    this.compileJSArg(jsArg)
+                const args: ir.Expression[] = [];
+
+                // Add this argument
+                if (step.method !== "constructor") {
+                    args.push(
+                        this.exprCompiler.mustCastTo(
+                            this.compileJSArg(step.args[0]),
+                            fun.parameters[0].type,
+                            noSrc
+                        )
+                    );
+                }
+
+                // Add block and message
+                args.push(
+                    factory.identifier(ir.noSrc, "block", blockPtrT),
+                    factory.identifier(ir.noSrc, "msg", msgPtrT)
                 );
 
-                args.splice(
-                    1,
-                    0,
-                    this.factory.identifier(ir.noSrc, "block", blockPtrT),
-                    this.factory.identifier(ir.noSrc, "msg", msgPtrT)
+                // Add remaining args
+                args.push(
+                    ...step.args
+                        .slice(1)
+                        .map((jsArg: any, i: number) =>
+                            this.exprCompiler.mustCastTo(
+                                this.compileJSArg(jsArg),
+                                fun.parameters[i + 3].type,
+                                noSrc
+                            )
+                        )
                 );
 
                 const lhss: ir.Identifier[] = [];
 
-                for (const retT of fun.returns) {
-                    const name = `tmp_${lCtr++}`;
-                    this.builder.addIRLocal(name, retT, ir.noSrc);
-                    lhss.push(this.factory.identifier(ir.noSrc, name, retT));
+                const aborted = builder.getTmpId(boolT, ir.noSrc);
+                if (step.method === "constructor") {
+                    lhss.push(
+                        factory.identifier(
+                            ir.noSrc,
+                            lastObjName as string,
+                            builder.typeOfLocal(lastObjName as string)
+                        )
+                    );
+                } else {
+                    for (const retT of fun.returns) {
+                        const name = `tmp_${lCtr++}`;
+                        builder.addIRLocal(name, retT, ir.noSrc);
+                        lhss.push(factory.identifier(ir.noSrc, name, retT));
+                    }
                 }
-
-                const aborted = this.builder.getTmpId(boolT, ir.noSrc);
 
                 lhss.push(aborted);
 
                 const funName = fun.name;
-                const isExternal = true;
 
-                if (
-                    lastObjName !== undefined &&
-                    lastContractName !== undefined &&
-                    step.method !== "constructor"
-                ) {
-                    entry.statements.push(
-                        this.factory.transactionCall(
-                            ir.noSrc,
-                            [
-                                this.factory.identifier(
-                                    noSrc,
-                                    lastObjName,
-                                    this.builder.typeOfLocal(lastObjName)
-                                ),
-                                this.builder.getTmpId(boolT)
-                            ],
-                            this.factory.identifier(
-                                ir.noSrc,
-                                `${lastContractName}_constructor`,
-                                noType
-                            ),
-                            [],
-                            [],
-                            [
-                                this.factory.identifier(noSrc, "block", blockPtrT),
-                                this.factory.identifier(noSrc, "msg", msgPtrT)
-                            ]
-                        )
-                    );
+                builder.transCall(
+                    lhss,
+                    factory.identifier(ir.noSrc, funName, noType),
+                    [],
+                    [],
+                    args,
+                    ir.noSrc
+                );
 
-                    const followups = constuctionFollowups.get(lastObjName);
+                const expectFail =
+                    step.expectedReturns === undefined && step.nameReturns === undefined;
 
+                builder.assert(
+                    expectFail ? aborted : factory.unaryOperation(noSrc, "!", aborted, boolT),
+                    ir.noSrc
+                );
+
+                if (step.method === "constructor") {
+                    const followups = constuctionFollowups.get(lastObjName as string);
                     if (followups) {
-                        entry.statements.push(...followups);
-
-                        constuctionFollowups.delete(lastObjName);
+                        followups.forEach((followup) => builder.addStmt(followup));
+                        constuctionFollowups.delete(lastObjName as string);
                     }
 
                     lastObjName = undefined;
                     lastContractName = undefined;
                 }
 
-                if (step.method === "constructor") {
-                    lhss.splice(
-                        0,
-                        1,
-                        this.factory.identifier(
-                            ir.noSrc,
-                            lastObjName as string,
-                            this.builder.typeOfLocal(lastObjName as string)
-                        )
-                    );
-
-                    args.splice(0, 1);
-                }
-
-                entry.statements.push(
-                    (isExternal ? this.factory.transactionCall : this.factory.functionCall)(
-                        ir.noSrc,
-                        lhss,
-                        this.factory.identifier(ir.noSrc, funName, noType),
-                        [],
-                        [],
-                        args
-                    )
-                );
-
-                const expectFail =
-                    step.expectedReturns === undefined && step.nameReturns === undefined;
-
-                if (expectFail) {
-                    entry.statements.push(this.factory.assert(ir.noSrc, aborted));
-                } else {
-                    entry.statements.push(
-                        this.factory.assert(
-                            ir.noSrc,
-                            this.factory.unaryOperation(noSrc, "!", aborted, boolT)
-                        )
-                    );
-                }
-
                 if (step.nameReturns !== undefined) {
                     (step.nameReturns as string[]).forEach((name, i) => {
-                        this.builder.addIRLocal(name, fun.returns[i], ir.noSrc);
-                        entry.statements.push(
-                            this.factory.assignment(
-                                noSrc,
-                                this.factory.identifier(noSrc, name, fun.returns[i]),
-                                lhss[i]
-                            )
+                        builder.addIRLocal(name, fun.returns[i], ir.noSrc);
+                        builder.assign(
+                            factory.identifier(noSrc, name, fun.returns[i]),
+                            lhss[i],
+                            noSrc
                         );
                     });
                 }
@@ -490,50 +462,30 @@ export class JSONConfigTranspiler {
                         const maruirRet = this.compileJSArg(jsRet);
 
                         if (jsRet.kind === "literal") {
-                            entry.statements.push(
-                                this.factory.assert(
-                                    ir.noSrc,
-                                    this.factory.binaryOperation(
-                                        ir.noSrc,
-                                        lhss[i],
-                                        "==",
-                                        maruirRet,
-                                        boolT
-                                    )
-                                )
+                            builder.assert(
+                                factory.binaryOperation(ir.noSrc, lhss[i], "==", maruirRet, boolT),
+                                ir.noSrc
                             );
                         } else if (jsRet.kind === "array") {
-                            const eqId = this.builder.getTmpId(boolT, noSrc);
+                            const eqId = builder.getTmpId(boolT, noSrc);
                             const elT = this.compileJSType(jsRet.type, {});
 
-                            entry.statements.push(
-                                this.factory.functionCall(
-                                    noSrc,
-                                    [eqId],
-                                    this.factory.funIdentifier("sol_arr_eq"),
-                                    [
-                                        this.factory.memConstant(noSrc, "memory"),
-                                        this.factory.memConstant(noSrc, "exception")
-                                    ],
-                                    [elT],
-                                    [lhss[i], maruirRet]
-                                )
+                            // NOTE: This only works for primitive array types
+                            // @todo (dimo): Remove sol_arr_eq from preamble as its only needed for tests
+                            builder.call(
+                                [eqId],
+                                factory.funIdentifier("sol_arr_eq"),
+                                [
+                                    factory.memConstant(noSrc, "memory"),
+                                    factory.memConstant(noSrc, "exception")
+                                ],
+                                [elT],
+                                [lhss[i], maruirRet],
+                                noSrc
                             );
+                            builder.assert(eqId, noSrc);
                         }
                     }
-                }
-
-                if (step.method === "constructor") {
-                    const followups = constuctionFollowups.get(lastObjName as string);
-
-                    if (followups) {
-                        entry.statements.push(...followups);
-
-                        constuctionFollowups.delete(lastObjName as string);
-                    }
-
-                    lastObjName = undefined;
-                    lastContractName = undefined;
                 }
             } else if (step.act === "validateBySnapshot") {
                 /// skip
@@ -542,23 +494,8 @@ export class JSONConfigTranspiler {
             }
         }
 
-        entry.statements.push(this.factory.return(ir.noSrc, []));
+        builder.return([], ir.noSrc);
 
-        const res: ir.Definition[] = [...this.globalScope.definitions()];
-
-        res.push(
-            this.factory.functionDefinition(
-                ir.noSrc,
-                [],
-                [],
-                "main",
-                [],
-                this.builder.locals,
-                [],
-                body
-            )
-        );
-
-        return res;
+        return this.finishCompile(noSrc, "main", []);
     }
 }
