@@ -522,11 +522,7 @@ locals senderBal: u256,
         return;
 }
 
-fun builtin_delegatecall05<M>(addr: u160, block: Block *#memory, msg: Message *#memory, data: ArrWithLen<M; u8> *M): (bool, ArrWithLen<#memory; u8> *#memory)
-fun builtin_delegatecall04<M>(addr: u160, block: Block *#memory, msg: Message *#memory, data: ArrWithLen<M; u8> *M): bool
-fun builtin_callcode04<M>(addr: u160, block: Block *#memory, msg: Message *#memory, data: ArrWithLen<M; u8> *M): bool
 fun builtin_balance(addr: u160): u256
-
 fun builtin_keccak256_05<M>(bytes: ArrWithLen<M; u8> *M): u256
 `;
 

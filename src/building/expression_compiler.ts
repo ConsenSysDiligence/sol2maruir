@@ -153,6 +153,25 @@ export class ExpressionCompiler {
     }
 
     /**
+     * Return true if the solidity LHS expression is a storage location, and is NOT a storage pointer.
+     * This is used to determine if a Solidity Storage->Storage assignment needs a copy.
+     */
+    isSolLHSNonPtrStorage(lhs: sol.Expression): boolean {
+        // Storage pointer - no need for copy
+        if (
+            lhs instanceof sol.Identifier &&
+            lhs.vReferencedDeclaration instanceof sol.VariableDeclaration &&
+            lhs.vReferencedDeclaration.parent instanceof sol.VariableDeclarationStatement
+        ) {
+            return false;
+        }
+
+        const lhsSolT = this.cfgBuilder.infer.typeOf(lhs);
+
+        return lhsSolT instanceof sol.PointerType && lhsSolT.location === sol.DataLocation.Storage;
+    }
+
+    /**
      * Assign a rhs _compiled_ expression to a solidity lhs. This handles several cases:
      *
      * 1. Assignment to a solidity local/return - normal assignment
@@ -183,6 +202,13 @@ export class ExpressionCompiler {
 
         let castedRHS = this.mustCastTo(rhs, lhsT, rhs.src);
 
+        // Assignments from storage to storage require a copy in all cases where
+        // the LHS is not a storage pointer. If the RHS is not in storage, then
+        // the copy is done implicitly by mustCastTo. Otherwise insert the copy here
+        if (this.isSolLHSNonPtrStorage(lhs) && this.isStoragePtrExpr(rhs)) {
+            castedRHS = this.copy(castedRHS);
+        }
+
         if (lhs instanceof sol.Identifier) {
             const def = lhs.vReferencedDeclaration;
 
@@ -211,13 +237,6 @@ export class ExpressionCompiler {
             const base = this.compile(lhs.vExpression);
             const baseIrT = this.typeOf(base);
 
-            // Assignments from storage to storage require a copy. In other
-            // cases the copy is done implicitly by mustCastTo. Note that we
-            // purposefully check rhs below and not castedRHS
-            if (this.isStoragePtrExpr(rhs) && this.isStoragePtrExpr(base)) {
-                castedRHS = this.copy(castedRHS);
-            }
-
             if (baseIrT instanceof ir.PointerType && baseIrT.toType instanceof ir.UserDefinedType) {
                 const def = this.cfgBuilder.globalScope.getTypeDecl(baseIrT.toType);
 
@@ -236,16 +255,12 @@ export class ExpressionCompiler {
             const idx = this.compile(lhs.vIndexExpression);
             const baseIrT = this.typeOf(base);
 
-            if (this.isStoragePtrExpr(rhs) && this.isStoragePtrExpr(base)) {
-                rhs = this.copy(rhs);
-            }
-
             if (
                 baseIrT instanceof ir.PointerType &&
                 baseIrT.toType instanceof ir.UserDefinedType &&
                 baseIrT.toType.name === "ArrWithLen"
             ) {
-                this.solArrWrite(base, idx, rhs, assignSrc);
+                this.solArrWrite(base, idx, castedRHS, assignSrc);
 
                 return rhs;
             }
@@ -353,19 +368,16 @@ export class ExpressionCompiler {
 
         const rhsIRT = this.factory.typeOf(rhs);
 
-        // Perform any implicit casts from the rhs to the lhs (e.g. u8 to u16)
-        const castedRHS = this.castTo(rhs, lhsIRT, src);
-
-        assert(castedRHS !== undefined, "Cannot assign {0} to {1}", rhsIRT, lhsIRT);
-
-        rhs = castedRHS;
-
         // Handle +=,-=, ...
         if (expr.operator !== "=") {
+            // Perform any implicit casts from the rhs to the lhs (e.g. u8 to u16)
+            const castedRHS = this.castTo(rhs, lhsIRT, src);
+
+            assert(castedRHS !== undefined, "Cannot assign {0} to {1}", rhsIRT, lhsIRT);
             rhs = this.makeBinaryOperation(
                 this.compile(expr.vLeftHandSide),
                 expr.operator.slice(0, -1) as ir.BinaryOperator,
-                rhs,
+                castedRHS,
                 this.isArithmeticChecked(expr),
                 src
             );
@@ -1015,11 +1027,7 @@ export class ExpressionCompiler {
             return rets.length === 1 ? rets[0] : new IRTuple2(noSrc, []);
         }
 
-        if (
-            expr.vFunctionName === "call" ||
-            expr.vFunctionName === "staticcall" ||
-            expr.vFunctionName === "callcode"
-        ) {
+        if (expr.vFunctionName === "call" || expr.vFunctionName === "staticcall") {
             /**
              * @todo This function family uses variadic arguments in Solidity 0.4.
              * Args are processed with ABI ecnoding routines.
@@ -1027,7 +1035,13 @@ export class ExpressionCompiler {
              * @see https://docs.soliditylang.org/en/latest/050-breaking-changes.html#semantic-and-syntactic-changes
              */
             const [calledOn, , valueMod] = this.stripCallOptions(expr.vExpression);
-            const callBytes = single(expr.vArguments.map((arg) => this.compile(arg)));
+            let callBytes;
+
+            if (expr.vArguments.length === 0) {
+                callBytes = builder.zeroValue(u8ArrMemPtr, noSrc);
+            } else {
+                callBytes = single(expr.vArguments.map((arg) => this.compile(arg)));
+            }
             const callBytesT = this.typeOf(callBytes);
 
             assert(
@@ -1050,7 +1064,7 @@ export class ExpressionCompiler {
 
             let builtinName: string;
 
-            if (gte(this.cfgBuilder.solVersion, "0.5.0") && expr.vFunctionName !== "callcode") {
+            if (gte(this.cfgBuilder.solVersion, "0.5.0")) {
                 rets.push(this.cfgBuilder.getTmpId(u8ArrMemPtr));
 
                 builtinName = `sol_${expr.vFunctionName}05`;
@@ -2086,29 +2100,6 @@ export class ExpressionCompiler {
     }
 
     private getCopyFun(fromT: ir.Type, toT: ir.Type): ir.Identifier {
-        const name = CopyFunCompiler.getCopyName(fromT, toT);
-        const decl = this.cfgBuilder.globalScope.get(name);
-
-        if (decl !== undefined) {
-            assert(decl instanceof ir.FunctionDefinition, ``);
-
-            return this.factory.identifier(noSrc, name, noType);
-        }
-
-        const compiler = new CopyFunCompiler(
-            this.factory,
-            this.cfgBuilder.globalScope,
-            this.cfgBuilder.globalUid,
-            this.cfgBuilder.solVersion,
-            this.abiEncodeVersion,
-            fromT,
-            toT
-        );
-
-        const fun = compiler.compile();
-
-        this.cfgBuilder.globalScope.define(fun);
-
-        return this.factory.identifier(noSrc, name, noType);
+        return this.cfgBuilder.getCopyFun(fromT, toT, this.abiEncodeVersion);
     }
 }
