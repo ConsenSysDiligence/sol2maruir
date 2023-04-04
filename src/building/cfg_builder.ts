@@ -9,6 +9,7 @@ import {
     boolT,
     msgPtrT,
     msgT,
+    noType,
     transpileType,
     u256,
     u32,
@@ -17,6 +18,7 @@ import {
 } from "./typing";
 import { ASTSource } from "../ir/source";
 import { IRFactory } from "./factory";
+import { CopyFunCompiler } from "./copy_fun_compiler";
 
 export class CFGBuilder {
     /**
@@ -791,5 +793,32 @@ export class CFGBuilder {
         this.storeField(res, "sig", sig, src);
 
         return res;
+    }
+
+    getCopyFun(fromT: ir.Type, toT: ir.Type, abiVersion: sol.ABIEncoderVersion): ir.Identifier {
+        const name = CopyFunCompiler.getCopyName(fromT, toT);
+        const decl = this.globalScope.get(name);
+
+        if (decl !== undefined) {
+            sol.assert(decl instanceof ir.FunctionDefinition, ``);
+
+            return this.factory.identifier(noSrc, name, noType);
+        }
+
+        const compiler = new CopyFunCompiler(
+            this.factory,
+            this.globalScope,
+            this.globalUid,
+            this.solVersion,
+            abiVersion,
+            fromT,
+            toT
+        );
+
+        const fun = compiler.compile();
+
+        this.globalScope.define(fun);
+
+        return this.factory.identifier(noSrc, name, noType);
     }
 }

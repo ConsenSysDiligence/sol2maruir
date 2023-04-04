@@ -7,6 +7,7 @@ import { noType, u256 } from "./typing";
 import { UIDGenerator } from "../utils";
 
 export class CopyFunCompiler extends BaseFunctionCompiler {
+    private readonly funName: string;
     constructor(
         factory: IRFactory,
         globalScope: ir.Scope,
@@ -17,6 +18,7 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
         private readonly toT: ir.Type
     ) {
         super(factory, globalUid, globalScope, solVersion, abiVersion);
+        this.funName = CopyFunCompiler.getCopyName(this.fromT, this.toT);
     }
 
     templateType(t: ir.Type, memVar: ir.MemVariableDeclaration): ir.Type {
@@ -88,7 +90,8 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
         src: ir.Expression,
         srcT: ir.Type,
         dst: ir.Identifier,
-        dstT: ir.Type
+        dstT: ir.Type,
+        recuseCopyFun = false
     ): void {
         const factory = this.cfgBuilder.factory;
 
@@ -104,20 +107,6 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
             return;
         }
 
-        const existingCopyFun = this.globalScope.get(CopyFunCompiler.getCopyName(srcT, dstT));
-
-        if (existingCopyFun instanceof ir.FunctionDefinition) {
-            this.cfgBuilder.call(
-                [dst],
-                factory.identifier(noSrc, existingCopyFun.name, noType),
-                [factory.memIdentifier(noSrc, "srcM"), factory.memIdentifier(noSrc, "dstM")],
-                [],
-                [src],
-                noSrc
-            );
-            return;
-        }
-
         if (
             srcT instanceof ir.PointerType &&
             dstT instanceof ir.PointerType &&
@@ -128,6 +117,34 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
             const def = this.globalScope.getTypeDecl(srcT.toType);
 
             sol.assert(def instanceof ir.StructDefinition, ``);
+
+            if (recuseCopyFun) {
+                const copyFunName = CopyFunCompiler.getCopyName(srcT, dstT);
+                const existingCopyFun = this.globalScope.get(copyFunName);
+
+                if (existingCopyFun === undefined && copyFunName !== this.funName) {
+                    const copyFunCompiler = new CopyFunCompiler(
+                        this.cfgBuilder.factory,
+                        this.cfgBuilder.globalScope,
+                        this.cfgBuilder.globalUid,
+                        this.cfgBuilder.solVersion,
+                        this.abiVersion,
+                        srcT,
+                        dstT
+                    );
+
+                    this.cfgBuilder.globalScope.define(copyFunCompiler.compile());
+                }
+
+                this.cfgBuilder.call(
+                    [dst],
+                    factory.identifier(noSrc, copyFunName, noType),
+                    [factory.memIdentifier(noSrc, "srcM"), factory.memIdentifier(noSrc, "dstM")],
+                    [],
+                    [src],
+                    noSrc
+                );
+            }
 
             if (def.name === "ArrWithLen") {
                 const srcArrBaseT = srcT.toType.typeArgs[0];
@@ -208,6 +225,8 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
             const srcFields = this.cfgBuilder.getConcreteFields(srcT.toType);
             const dstFields = this.cfgBuilder.getConcreteFields(dstT.toType);
 
+            this.cfgBuilder.allocStruct(dst, dstT.toType, dstT.region, noSrc);
+
             sol.assert(srcFields.length === dstFields.length, ``);
             for (let i = 0; i < srcFields.length; i++) {
                 const [srcFieldName, srcFieldT] = srcFields[i];
@@ -218,7 +237,7 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
                 const srcField = this.cfgBuilder.loadField(src, srcT, srcFieldName, noSrc);
                 const dstFieldTmp = this.cfgBuilder.getTmpId(dstFieldT, noSrc);
 
-                this.compileCopy(srcField, srcFieldT, dstFieldTmp, dstFieldT);
+                this.compileCopy(srcField, srcFieldT, dstFieldTmp, dstFieldT, true);
 
                 this.cfgBuilder.storeField(dst, dstFieldName, dstFieldTmp, noSrc);
             }
@@ -238,9 +257,15 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
         const dstM = factory.memVariableDeclaration(noSrc, "dstM");
 
         // Add this argument
-
         const srcT = this.templateType(this.fromT, srcM);
         const dstT = this.templateType(this.toT, dstM);
+
+        sol.assert(
+            srcT instanceof ir.PointerType && dstT instanceof ir.PointerType,
+            `Copy function expects poniter types not {0} and {1}`,
+            srcT,
+            dstT
+        );
 
         this.cfgBuilder.addIRArg("src", srcT, noSrc);
         this.cfgBuilder.addIRRet("res", dstT, noSrc);
@@ -252,9 +277,7 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
 
         this.cfgBuilder.jump(this.cfgBuilder.returnBB, noSrc);
 
-        const name = CopyFunCompiler.getCopyName(this.fromT, this.toT);
-
-        return this.finishCompile(noSrc, name, [srcM, dstM]);
+        return this.finishCompile(noSrc, this.funName, [srcM, dstM]);
     }
 
     /**
