@@ -50,6 +50,19 @@ const overflowBuiltinMap = new Map<string, string>([
     ["**", "builtin_pow_overflows"]
 ]);
 
+interface DecodedCall {
+    thisExpr: ir.Expression;
+    calleeDecl: sol.FunctionDefinition | sol.VariableDeclaration;
+    gasModifier: sol.Expression | undefined;
+    valueModifier: sol.Expression | undefined;
+    saltModifier: sol.Expression | undefined;
+    isExternal: boolean;
+    isTransaction: boolean;
+    irFun: string;
+    argTs: sol.TypeNode[];
+    retTs: sol.TypeNode[];
+}
+
 export class ExpressionCompiler {
     private factory: IRFactory;
 
@@ -663,29 +676,27 @@ export class ExpressionCompiler {
         if (expr.operator === "++" || expr.operator === "--") {
             assert(subT instanceof ir.IntType, `Unexpected type {0} of {1}`, subT, subExp);
 
-            let res: ir.Expression;
-
-            if (expr.prefix) {
-                res = this.compile(expr.vSubExpression);
-            } else {
-                res = this.cfgBuilder.getTmpId(subT, src);
-
-                this.cfgBuilder.assign(res as ir.Identifier, subExp, src);
-            }
-
-            this.assignTo(
-                expr.vSubExpression,
-                this.makeBinaryOperation(
-                    subExp,
-                    expr.operator === "++" ? "+" : "-",
-                    this.factory.numberLiteral(noSrc, 1n, 10, subT),
-                    this.isArithmeticChecked(expr),
-                    src
-                ),
+            const newVal = this.makeBinaryOperation(
+                subExp,
+                expr.operator === "++" ? "+" : "-",
+                this.factory.numberLiteral(noSrc, 1n, 10, subT),
+                this.isArithmeticChecked(expr),
                 src
             );
 
-            return res;
+            if (expr.prefix) {
+                this.assignTo(expr.vSubExpression, newVal, src);
+
+                return this.compile(expr.vSubExpression);
+            }
+
+            const oldVal = this.cfgBuilder.getTmpId(subT, src);
+
+            this.cfgBuilder.assign(oldVal, subExp, src);
+
+            this.assignTo(expr.vSubExpression, newVal, src);
+
+            return oldVal;
         }
 
         throw new Error(`NYI unary operator ${expr.operator}`);
@@ -1340,20 +1351,7 @@ export class ExpressionCompiler {
      * 9. The Solidity return types
      * @param expr
      */
-    private decodeCall(
-        expr: sol.FunctionCall
-    ): [
-        ir.Expression,
-        sol.FunctionDefinition | sol.VariableDeclaration,
-        sol.Expression | undefined,
-        sol.Expression | undefined,
-        sol.Expression | undefined,
-        boolean,
-        boolean,
-        string,
-        sol.TypeNode[],
-        sol.TypeNode[]
-    ] {
+    private decodeCall(expr: sol.FunctionCall): DecodedCall {
         const [callee, gasModifier, valueModifier, saltModifier] = this.stripCallOptions(
             expr.vExpression
         );
@@ -1481,7 +1479,7 @@ export class ExpressionCompiler {
             throw new Error(`NYI call to callee ${callee.print()}`);
         }
 
-        return [
+        return {
             thisExpr,
             calleeDecl,
             gasModifier,
@@ -1492,7 +1490,7 @@ export class ExpressionCompiler {
             irFun,
             argTs,
             retTs
-        ];
+        };
     }
 
     compileFunctionCall(expr: sol.FunctionCall): ir.Expression {
@@ -1508,8 +1506,16 @@ export class ExpressionCompiler {
         }
 
         const src = new ASTSource(expr);
-        const [irCallee, solCallee, , valueMod, , isExternal, isTransaction, irFun, argTs, retTs] =
-            this.decodeCall(expr);
+        const decoded = this.decodeCall(expr);
+
+        const irCallee = decoded.thisExpr;
+        const solCallee = decoded.calleeDecl;
+        const valueMod = decoded.valueModifier;
+        const isExternal = decoded.isExternal;
+        const isTransaction = decoded.isTransaction;
+        const irFun = decoded.irFun;
+        const argTs = decoded.argTs;
+        const retTs = decoded.retTs;
 
         assert(!isTransaction || isExternal, `All transactions must be external`);
         const irRetTs = retTs.map((retT) => transpileType(retT, factory));
