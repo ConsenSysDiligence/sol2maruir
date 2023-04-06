@@ -603,6 +603,7 @@ export class CFGBuilder {
                 u8ArrExcPtr,
                 this.factory.structLiteral(noSrc, [
                     ["len", this.factory.numberLiteral(noSrc, BigInt(val.length), 10, u256)],
+                    ["capacity", this.factory.numberLiteral(noSrc, BigInt(val.length), 10, u256)],
                     [
                         "arr",
                         this.factory.arrayLiteral(

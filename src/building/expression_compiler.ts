@@ -200,7 +200,7 @@ export class ExpressionCompiler {
 
         const lhsT = transpileType(this.cfgBuilder.infer.typeOf(lhs), this.factory);
 
-        let castedRHS = this.mustCastTo(rhs, lhsT, rhs.src);
+        let castedRHS = this.mustImplicitlyCastTo(rhs, lhsT, rhs.src);
 
         // Assignments from storage to storage require a copy in all cases where
         // the LHS is not a storage pointer. If the RHS is not in storage, then
@@ -241,7 +241,12 @@ export class ExpressionCompiler {
                 const def = this.cfgBuilder.globalScope.getTypeDecl(baseIrT.toType);
 
                 if (def instanceof ir.StructDefinition) {
-                    this.cfgBuilder.storeField(base, lhs.memberName, castedRHS, assignSrc);
+                    const member =
+                        lhs.memberName === "length" && def.name === "ArrWithLen"
+                            ? "len"
+                            : lhs.memberName;
+
+                    this.cfgBuilder.storeField(base, member, castedRHS, assignSrc);
 
                     return rhs;
                 }
@@ -264,6 +269,39 @@ export class ExpressionCompiler {
 
                 return rhs;
             }
+        }
+
+        if (
+            lhs instanceof sol.FunctionCall &&
+            lhs.vExpression instanceof sol.MemberAccess &&
+            lhs.vExpression.memberName === "push"
+        ) {
+            const base = this.compile(lhs.vExpression.vExpression);
+            const baseT = this.typeOf(base);
+            const lhsSrc = new ASTSource(lhs);
+
+            assert(
+                baseT instanceof ir.PointerType &&
+                    baseT.toType instanceof ir.UserDefinedType &&
+                    baseT.toType.name === "ArrWithLen",
+                `Expected storage array not {0} of type {1} in lhs {2}`,
+                lhs.vExpression.vExpression,
+                baseT,
+                lhs
+            );
+
+            const elT = baseT.toType.typeArgs[0];
+            const castedRHS = this.mustImplicitlyCastTo(rhs, elT, noSrc);
+
+            const len = this.cfgBuilder.loadField(base, baseT, "len", lhsSrc);
+
+            // Compile the push
+            this.compile(lhs);
+
+            // Assign at the last element
+            this.solArrWrite(base, len, castedRHS, assignSrc);
+
+            return castedRHS;
         }
 
         if (rhs instanceof IRTuple2) {
@@ -323,7 +361,7 @@ export class ExpressionCompiler {
             this.factory.funIdentifier("sol_arr_read"),
             [arrPtrT.region],
             [elT],
-            [arrPtr, this.mustCastTo(idx, u256, idx.src)],
+            [arrPtr, this.mustImplicitlyCastTo(idx, u256, idx.src)],
             src
         );
 
@@ -350,7 +388,7 @@ export class ExpressionCompiler {
             this.factory.funIdentifier("sol_arr_write"),
             [arrPtrT.region],
             [arrPtrT.toType.typeArgs[0]],
-            [arrPtr, this.mustCastTo(idx, u256, idx.src), val],
+            [arrPtr, this.mustImplicitlyCastTo(idx, u256, idx.src), val],
             src
         );
     }
@@ -371,7 +409,7 @@ export class ExpressionCompiler {
         // Handle +=,-=, ...
         if (expr.operator !== "=") {
             // Perform any implicit casts from the rhs to the lhs (e.g. u8 to u16)
-            const castedRHS = this.castTo(rhs, lhsIRT, src);
+            const castedRHS = this.implicitCastTo(rhs, lhsIRT, src);
 
             assert(castedRHS !== undefined, "Cannot assign {0} to {1}", rhsIRT, lhsIRT);
             rhs = this.makeBinaryOperation(
@@ -445,6 +483,7 @@ export class ExpressionCompiler {
                 u8ArrExcPtr,
                 this.factory.structLiteral(noSrc, [
                     ["len", this.factory.numberLiteral(noSrc, BigInt(val.length), 10, u256)],
+                    ["capacity", this.factory.numberLiteral(noSrc, BigInt(val.length), 10, u256)],
                     [
                         "arr",
                         this.factory.arrayLiteral(
@@ -618,7 +657,7 @@ export class ExpressionCompiler {
     }
 
     compileConstExpr(expr: sol.Expression): ir.Expression {
-        const val = sol.evalConstantExpr(expr);
+        const val = sol.evalConstantExpr(expr, this.cfgBuilder.infer);
         const src = new ASTSource(expr);
 
         if (typeof val === "boolean") {
@@ -739,7 +778,7 @@ export class ExpressionCompiler {
         );
 
         for (let i = 0; i < els.length; i++) {
-            const castedEl = this.mustCastTo(els[i], elT, els[i].src);
+            const castedEl = this.mustImplicitlyCastTo(els[i], elT, els[i].src);
             this.solArrWrite(
                 res,
                 this.factory.numberLiteral(noSrc, BigInt(i), 10, u256),
@@ -1001,7 +1040,11 @@ export class ExpressionCompiler {
         if (expr.vFunctionName === "send" || expr.vFunctionName === "transfer") {
             const calledOn = expr.vExpression;
             const solAmount = single(expr.vArguments);
-            const amount = this.mustCastTo(this.compile(solAmount), u256, new ASTSource(solAmount));
+            const amount = this.mustImplicitlyCastTo(
+                this.compile(solAmount),
+                u256,
+                new ASTSource(solAmount)
+            );
 
             assert(
                 calledOn instanceof sol.MemberAccess,
@@ -1010,7 +1053,7 @@ export class ExpressionCompiler {
                 calledOn
             );
 
-            const sendAddr = this.mustCastTo(this.cfgBuilder.this(noSrc), u160, noSrc);
+            const sendAddr = this.mustImplicitlyCastTo(this.cfgBuilder.this(noSrc), u160, noSrc);
             const recvAddr = this.compile(calledOn.vExpression);
             const rets =
                 expr.vFunctionName === "send" ? [this.cfgBuilder.getTmpId(boolT, exprSrc)] : [];
@@ -1081,7 +1124,7 @@ export class ExpressionCompiler {
                 noSrc
             );
 
-            const thisAddr = this.mustCastTo(this.cfgBuilder.this(noSrc), u160, noSrc);
+            const thisAddr = this.mustImplicitlyCastTo(this.cfgBuilder.this(noSrc), u160, noSrc);
             const selector = this.cfgBuilder.getSelectorFromData(callBytes, true);
 
             this.cfgBuilder.storeField(msgPtrArg, "sender", thisAddr, noSrc);
@@ -1089,13 +1132,17 @@ export class ExpressionCompiler {
             this.cfgBuilder.storeField(
                 msgPtrArg,
                 "data",
-                this.mustCastTo(callBytes, u8ArrMemPtr, noSrc),
+                this.mustImplicitlyCastTo(callBytes, u8ArrMemPtr, noSrc),
                 noSrc
             );
 
             const value =
                 valueMod !== undefined
-                    ? this.mustCastTo(this.compile(valueMod), u256, new ASTSource(valueMod))
+                    ? this.mustImplicitlyCastTo(
+                          this.compile(valueMod),
+                          u256,
+                          new ASTSource(valueMod)
+                      )
                     : factory.numberLiteral(noSrc, 0n, 10, u256);
 
             this.cfgBuilder.storeField(msgPtrArg, "value", value, noSrc);
@@ -1180,6 +1227,75 @@ export class ExpressionCompiler {
             return res;
         }
 
+        if (
+            expr.vExpression instanceof sol.MemberAccess &&
+            expr.vExpression.memberName === "push"
+        ) {
+            const arr = this.compile(expr.vExpression.vExpression);
+            const arrT = this.typeOf(arr);
+
+            assert(
+                arrT instanceof ir.PointerType &&
+                    arrT.toType instanceof ir.UserDefinedType &&
+                    arrT.toType.name === "ArrWithLen",
+                `Expected push to be called on an arr not {0}`,
+                arrT
+            );
+
+            const elT = arrT.toType.typeArgs[0];
+            let irNewEl: ir.Expression;
+
+            if (expr.vArguments.length > 0) {
+                const solNewEl = single(expr.vArguments);
+                irNewEl = this.mustImplicitlyCastTo(
+                    this.compile(solNewEl),
+                    elT,
+                    new ASTSource(solNewEl)
+                );
+            } else {
+                irNewEl = builder.zeroValue(elT, noSrc);
+            }
+
+            const funName = lt(builder.solVersion, "0.6.0") ? "sol_arr_push_04" : "sol_arr_push_06";
+            const retT = lt(builder.solVersion, "0.6.0") ? u256 : elT;
+            const res = builder.getTmpId(retT, exprSrc);
+
+            this.cfgBuilder.call(
+                [res],
+                this.factory.identifier(calleeSrc, funName, noType),
+                [arrT.region],
+                [elT],
+                [arr, irNewEl],
+                exprSrc
+            );
+
+            return res;
+        }
+
+        if (expr.vExpression instanceof sol.MemberAccess && expr.vExpression.memberName === "pop") {
+            const arr = this.compile(expr.vExpression.vExpression);
+            const arrT = this.typeOf(arr);
+
+            assert(
+                arrT instanceof ir.PointerType &&
+                    arrT.toType instanceof ir.UserDefinedType &&
+                    arrT.toType.name === "ArrWithLen",
+                `Expected push to be called on an arr not {0}`,
+                arrT
+            );
+
+            this.cfgBuilder.call(
+                [],
+                this.factory.identifier(calleeSrc, "sol_arr_pop", noType),
+                [arrT.region],
+                [arrT.toType.typeArgs[0]],
+                [arr],
+                exprSrc
+            );
+
+            return new IRTuple2(noSrc, []);
+        }
+
         throw new Error(`NYI compileBuiltinFunctionCall(${expr.vFunctionName})`);
     }
 
@@ -1205,7 +1321,7 @@ export class ExpressionCompiler {
             );
 
             const irSize = this.compile(expr.vArguments[0]);
-            const size = this.mustCastTo(irSize, u256, irSize.src);
+            const size = this.mustImplicitlyCastTo(irSize, u256, irSize.src);
             const elT = newIrT.toType.typeArgs[0];
             builder.call(
                 [resId],
@@ -1252,14 +1368,18 @@ export class ExpressionCompiler {
 
             for (let i = 0; i < expr.vArguments.length; i++) {
                 const irArg = this.compile(expr.vArguments[i]);
-                args.push(this.mustCastTo(irArg, irFormalTs[i], irArg.src));
+                args.push(this.mustImplicitlyCastTo(irArg, irFormalTs[i], irArg.src));
             }
 
             // Make a new Message struct for the constructor call
             const data = builder.getTmpId(u8ArrMemPtr, noSrc);
             const value =
                 valueMod !== undefined
-                    ? this.mustCastTo(this.compile(valueMod), u256, new ASTSource(valueMod))
+                    ? this.mustImplicitlyCastTo(
+                          this.compile(valueMod),
+                          u256,
+                          new ASTSource(valueMod)
+                      )
                     : factory.numberLiteral(noSrc, 0n, 10, u256);
 
             builder.call(
@@ -1271,7 +1391,7 @@ export class ExpressionCompiler {
                 src
             );
             const msgPtr = builder.makeMsgPtr(
-                this.mustCastTo(builder.this(noSrc), u160Addr, noSrc),
+                this.mustImplicitlyCastTo(builder.this(noSrc), u160Addr, noSrc),
                 value,
                 data,
                 factory.numberLiteral(noSrc, 0n, 10, u32)
@@ -1449,7 +1569,7 @@ export class ExpressionCompiler {
 
                     const baseIRExpr = this.compile(base);
 
-                    thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));
+                    thisExpr = this.mustImplicitlyCastTo(baseIRExpr, u160, new ASTSource(base));
                 } else if (def instanceof sol.VariableDeclaration) {
                     sol.assert(
                         def.stateVariable && def.vScope instanceof ContractDefinition,
@@ -1459,7 +1579,7 @@ export class ExpressionCompiler {
                     irFun = getMethodDispatchName(def.vScope, def, this.cfgBuilder.infer);
                     const baseIRExpr = this.compile(base);
 
-                    thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));
+                    thisExpr = this.mustImplicitlyCastTo(baseIRExpr, u160, new ASTSource(base));
                 } else {
                     assert(false, `Unexpected declaration ${sol.pp(def)} for ${sol.pp(expr)}`);
                 }
@@ -1541,7 +1661,7 @@ export class ExpressionCompiler {
         for (let i = 0; i < expr.vArguments.length; i++) {
             const irArg = this.compile(expr.vArguments[i]);
             const formalIRT = transpileType(argTs[i], factory);
-            args.push(this.mustCastTo(irArg, formalIRT, irArg.src));
+            args.push(this.mustImplicitlyCastTo(irArg, formalIRT, irArg.src));
         }
 
         let msgPtrArg: ir.Identifier;
@@ -1574,12 +1694,16 @@ export class ExpressionCompiler {
 
             const value =
                 valueMod !== undefined
-                    ? this.mustCastTo(this.compile(valueMod), u256, new ASTSource(valueMod))
+                    ? this.mustImplicitlyCastTo(
+                          this.compile(valueMod),
+                          u256,
+                          new ASTSource(valueMod)
+                      )
                     : factory.numberLiteral(noSrc, 0n, 10, u256);
 
             // @todo implement value
             msgPtrArg = builder.makeMsgPtr(
-                this.mustCastTo(builder.this(noSrc), u160, noSrc),
+                this.mustImplicitlyCastTo(builder.this(noSrc), u160, noSrc),
                 value,
                 msgData,
                 sigHash,
@@ -1654,7 +1778,7 @@ export class ExpressionCompiler {
         for (let i = 0; i < concreteFields.length; i++) {
             const [fieldName, fieldT] = concreteFields[i];
             const initVal = this.compile(expr.vArguments[i]);
-            const castedInitVal = this.mustCastTo(initVal, fieldT, initVal.src);
+            const castedInitVal = this.mustImplicitlyCastTo(initVal, fieldT, initVal.src);
 
             this.cfgBuilder.storeField(res, fieldName, castedInitVal, new ASTSource(expr));
         }
@@ -1686,7 +1810,11 @@ export class ExpressionCompiler {
             );
         }
 
-        return this.mustCastTo(this.compile(expr.vArguments[0]), toT, new ASTSource(expr));
+        return this.mustExplicitlyCastTo(
+            this.compile(expr.vArguments[0]),
+            toT,
+            new ASTSource(expr)
+        );
     }
 
     compileConditional(expr: sol.Conditional): ir.Expression {
@@ -1778,7 +1906,7 @@ export class ExpressionCompiler {
                         baseT
                     );
 
-                    addrExpr = this.mustCastTo(base, u160, src);
+                    addrExpr = this.mustImplicitlyCastTo(base, u160, src);
                 }
 
                 return this.cfgBuilder.getBalance(addrExpr, src);
@@ -1872,14 +2000,14 @@ export class ExpressionCompiler {
         }
 
         // Try casting e1->e2
-        const e1Casted = this.castTo(irE1, irE2T, new ASTSource(e1));
+        const e1Casted = this.implicitCastTo(irE1, irE2T, new ASTSource(e1));
 
         if (e1Casted) {
             return [e1Casted, irE2, irE2T];
         }
 
         // Try casting e2->e1
-        const e2Casted = this.castTo(irE2, irE1T, new ASTSource(e2));
+        const e2Casted = this.implicitCastTo(irE2, irE1T, new ASTSource(e2));
 
         if (e2Casted) {
             return [irE1, e2Casted, irE1T];
@@ -1890,12 +2018,36 @@ export class ExpressionCompiler {
         );
     }
 
-    mustCastTo(expr: ir.Expression, toT: ir.Type, src: BaseSrc): ir.Expression {
-        const res = this.castTo(expr, toT, src);
+    mustExplicitlyCastTo(expr: ir.Expression, toT: ir.Type, src: BaseSrc): ir.Expression {
+        // First try implict cast
+        const res = this.implicitCastTo(expr, toT, src);
+
+        if (res !== undefined) {
+            return res;
+        }
+
+        // Next implement explicit casts
+        const exprT = this.typeOf(expr);
+
+        if (exprT instanceof ir.IntType && toT instanceof ir.IntType) {
+            return this.factory.cast(src, toT, expr);
+        }
+
+        assert(
+            false,
+            `Couldn't explicitly cast {0} of type {1} to {2}`,
+            expr,
+            this.typeOf(expr),
+            toT
+        );
+    }
+
+    mustImplicitlyCastTo(expr: ir.Expression, toT: ir.Type, src: BaseSrc): ir.Expression {
+        const res = this.implicitCastTo(expr, toT, src);
 
         assert(
             res !== undefined,
-            `Couldn't cast {0} of type {1} to {2}`,
+            `Couldn't implicitly cast {0} of type {1} to {2}`,
             expr,
             this.typeOf(expr),
             toT
@@ -1920,7 +2072,7 @@ export class ExpressionCompiler {
         return lhs;
     }
 
-    castTo(expr: ir.Expression, toT: ir.Type, src: BaseSrc): ir.Expression | undefined {
+    implicitCastTo(expr: ir.Expression, toT: ir.Type, src: BaseSrc): ir.Expression | undefined {
         const fromT = this.typeOf(expr);
 
         // Types equal - no cast needed
@@ -2084,7 +2236,9 @@ export class ExpressionCompiler {
                 const elExpr = expr.elements[i];
 
                 const castedElExpr =
-                    toElT === null || elExpr === null ? elExpr : this.castTo(elExpr, toElT, src);
+                    toElT === null || elExpr === null
+                        ? elExpr
+                        : this.implicitCastTo(elExpr, toElT, src);
 
                 if (castedElExpr === undefined) {
                     return undefined;

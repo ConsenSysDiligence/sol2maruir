@@ -26,7 +26,7 @@
         "minimist": "^1.2.8",
         "semver": "^7.3.8",
         "maru-ir2": "file:../maru-ir2",
-        "solc-typed-ast": "13.0.0",
+        "solc-typed-ast": "14.0.0",
         "web3-utils": "^1.8.2"
     },
     "devDependencies": {

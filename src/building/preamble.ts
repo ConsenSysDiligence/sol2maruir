@@ -5,27 +5,32 @@ var _exception_code_: u256 = 0_u256
 
 var _exception_bytes_: ArrWithLen<#exception; u8> *#exception = {
     arr: [],
-    len: 0_u256
+    len: 0_u256,
+    capacity: 0_u256
 }
 
 var _panic_signature: ArrWithLen<#exception; u8> *#exception = {
     arr: [80_u8, 97_u8, 110_u8, 105_u8, 99_u8, 40_u8, 117_u8, 105_u8, 110_u8, 116_u8, 50_u8, 53_u8, 54_u8, 41_u8],
-    len: 14_u256
+    len: 14_u256,
+    capacity: 14_u256
 }
 
 var _error_signature: ArrWithLen<#exception; u8> *#exception = {
     arr: [69_u8, 114_u8, 114_u8, 111_u8, 114_u8, 40_u8, 115_u8, 116_u8, 114_u8, 105_u8, 110_u8, 103_u8, 41_u8],
-    len: 14_u256
+    len: 14_u256,
+    capacity: 14_u256
 }
 
 var _uint256_str_: ArrWithLen<#exception; u8> *#exception = {
     arr: [117_u8, 105_u8, 110_u8, 116_u8, 50_u8, 53_u8, 54_u8],
-    len: 7_u256
+    len: 7_u256,
+    capacity: 7_u256
 }
 
 var _string_str_: ArrWithLen<#exception; u8> *#exception = {
     arr: [115_u8, 116_u8, 114_u8, 105_u8, 110_u8, 103_u8],
-    len: 7_u256
+    len: 7_u256,
+    capacity: 7_u256
 }
 
 
@@ -44,6 +49,7 @@ struct Message {
 
 struct ArrWithLen<M; T> {
     len: u256;
+    capacity: u256;
     arr: T[] *M;
 }
 
@@ -73,6 +79,7 @@ fun copy_u8arr<S, D>(src: ArrWithLen<S; u8> *S): ArrWithLen<D; u8> *D
 locals
     i: u256,
     len: u256,
+    cap: u256,
     arr: u8[] *S,
     arr1: u8[] *D,
     t: u8,
@@ -81,6 +88,7 @@ locals
     entry:
         i := 0_u256;
         load src.len in len;
+        load src.capacity in cap;
         load src.arr in arr;
 
         res := alloc ArrWithLen<D; u8> in D;
@@ -88,6 +96,7 @@ locals
 
         store arr1 in res.arr;
         store len in res.len;
+        store cap in res.capacity;
 
 
         jump header;
@@ -173,6 +182,110 @@ locals
         call sol_panic(0x32_u256);
 }
 
+fun sol_arr_internal_copy<M; ElT>(src: ElT[] *M, dst: ElT[] *M, count: u256)
+locals
+    i: u256,
+    t: ElT;
+{
+    entry:
+        i := 0_u256;
+        jump header;
+
+    header:
+        branch i < count body end;
+
+    body:
+        load src[i] in t;
+        store t in dst[i];
+        i := i + 1_u256;
+        jump header;
+
+    end:
+        return;
+}
+
+fun sol_arr_increase_capacity<M; ElT>(arr: ArrWithLen<M; ElT> *M)
+locals
+    len: u256,
+    capacity: u256,
+    newCapacity: u256,
+    arrPtr: ElT[] *M,
+    newArrPtr: ElT[] *M;
+{
+    entry:
+        load arr.capacity in capacity;
+        load arr.len in len;
+        newArrPtr := alloc ElT[capacity + 1_u256] in M;
+        load arr.arr in arrPtr;
+        call sol_arr_internal_copy<M; ElT>(arrPtr, newArrPtr, len);
+        store newArrPtr in arr.arr;
+        store capacity + 1_u256 in arr.capacity;
+        return;
+}
+
+fun sol_arr_push_04<M; ElT>(arr: ArrWithLen<M; ElT> *M, val: ElT): u256
+locals
+    len: u256,
+    capacity: u256,
+    arrPtr: ElT[] *M;
+{
+    entry:
+        load arr.len in len;
+        load arr.capacity in capacity;
+
+        branch len == capacity NotEnoughSpaceBB EnoughSpaceBB;
+
+    NotEnoughSpaceBB:
+        call sol_arr_increase_capacity<M; ElT>(arr);
+        jump EnoughSpaceBB;
+
+    EnoughSpaceBB:
+        load arr.arr in arrPtr;
+        store val in arrPtr[len];
+        store len + 1_u256 in arr.len;
+        return len + 1_u256;
+}
+
+fun sol_arr_push_06<M; ElT>(arr: ArrWithLen<M; ElT> *M, val: ElT): ElT
+locals
+    len: u256,
+    capacity: u256,
+    arrPtr: ElT[] *M;
+{
+    entry:
+        load arr.len in len;
+        load arr.capacity in capacity;
+
+        branch len == capacity NotEnoughSpaceBB EnoughSpaceBB;
+
+    NotEnoughSpaceBB:
+        call sol_arr_increase_capacity<M; ElT>(arr);
+        jump EnoughSpaceBB;
+
+    EnoughSpaceBB:
+        load arr.arr in arrPtr;
+        store val in arrPtr[len];
+        store len + 1_u256 in arr.len;
+        return val;
+}
+
+fun sol_arr_pop<M; ElT>(arr: ArrWithLen<M; ElT> *M)
+locals
+    len: u256,
+    arrPtr: ElT[] *M;
+{
+    entry:
+        load arr.len in len;
+        branch len == 0_u256 EmptyArr NonEmptyArr;
+
+    EmptyArr:
+        call sol_panic(0x31_u256);
+
+    NonEmptyArr:
+        store len - 1_u256 in arr.len;
+        return;
+}
+
 fun sol_revert(): never
 locals 
     panicBytes: ArrWithLen<#exception; u8> *#exception,
@@ -233,6 +346,7 @@ locals
         resPtr := alloc ArrWithLen<M; T> in M;
         store arrPtr in resPtr.arr;
         store size in resPtr.len;
+        store size in resPtr.capacity;
 
         return resPtr;
 }

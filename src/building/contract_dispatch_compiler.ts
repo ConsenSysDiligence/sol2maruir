@@ -188,7 +188,7 @@ export class ContractDispatchCompiler extends BaseFunctionCompiler {
 
             if (fallback.vParameters.vParameters.length === 1) {
                 args.push(
-                    this.exprCompiler.mustCastTo(
+                    this.exprCompiler.mustImplicitlyCastTo(
                         data,
                         u8ArrCDPtr,
                         new ASTSource(fallback.vParameters.vParameters[0])

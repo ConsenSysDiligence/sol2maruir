@@ -164,10 +164,11 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
                 const newArrPtr = this.cfgBuilder.getTmpId(dstArrPtrT);
 
                 const len = this.cfgBuilder.loadField(src, srcT, "len", noSrc);
+                const cap = this.cfgBuilder.loadField(src, srcT, "capacity", noSrc);
                 this.cfgBuilder.allocArray(
                     newArrPtr,
                     dstArrBaseT,
-                    len,
+                    cap,
                     factory.memIdentifier(noSrc, "dstM"),
                     noSrc
                 );
@@ -178,6 +179,7 @@ export class CopyFunCompiler extends BaseFunctionCompiler {
                     noSrc
                 );
                 this.cfgBuilder.storeField(dst, "len", len, noSrc);
+                this.cfgBuilder.storeField(dst, "capacity", cap, noSrc);
                 this.cfgBuilder.storeField(dst, "arr", newArrPtr, noSrc);
 
                 const srcArr = this.cfgBuilder.loadField(src, srcT, "arr", noSrc);

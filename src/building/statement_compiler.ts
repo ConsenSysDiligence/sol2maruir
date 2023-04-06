@@ -125,7 +125,7 @@ export class StatementCompiler {
             for (let i = 0; i < rets.length; i++) {
                 this.cfgBuilder.assign(
                     factory.identifier(noSrc, formals[i].name, formals[i].type),
-                    this.exprCompiler.mustCastTo(rets[i], formals[i].type, rets[i].src),
+                    this.exprCompiler.mustImplicitlyCastTo(rets[i], formals[i].type, rets[i].src),
                     src
                 );
             }
@@ -406,7 +406,11 @@ export class StatementCompiler {
                 const lhs = this.cfgBuilder.getVarId(decl, src);
                 const lhsT = this.cfgBuilder.getVarType(decl);
 
-                this.cfgBuilder.assign(lhs, this.exprCompiler.mustCastTo(rhs, lhsT, rhs.src), src);
+                this.cfgBuilder.assign(
+                    lhs,
+                    this.exprCompiler.mustImplicitlyCastTo(rhs, lhsT, rhs.src),
+                    src
+                );
             }
         }
     }
@@ -640,7 +644,9 @@ export class StatementCompiler {
             const decl = single(clause.vParameters.vParameters);
             const declSrc = new ASTSource(decl);
             const irDecl = builder.getVarId(decl, declSrc);
-            params.push(this.exprCompiler.mustCastTo(errorBytes, factory.typeOf(irDecl), declSrc));
+            params.push(
+                this.exprCompiler.mustImplicitlyCastTo(errorBytes, factory.typeOf(irDecl), declSrc)
+            );
         }
 
         this.compileTryClause(clause, params, unionBB);

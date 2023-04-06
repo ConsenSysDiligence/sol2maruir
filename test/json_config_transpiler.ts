@@ -244,6 +244,10 @@ export class JSONConfigTranspiler extends BaseFunctionCompiler {
                 ),
                 factory.structLiteral(ir.noSrc, [
                     ["len", factory.numberLiteral(ir.noSrc, BigInt(arr.values.length), 10, u256)],
+                    [
+                        "capacity",
+                        factory.numberLiteral(ir.noSrc, BigInt(arr.values.length), 10, u256)
+                    ],
                     ["arr", arr]
                 ]),
                 "_arg_"
@@ -367,7 +371,7 @@ export class JSONConfigTranspiler extends BaseFunctionCompiler {
                 // Add this argument
                 if (step.method !== "constructor") {
                     args.push(
-                        this.exprCompiler.mustCastTo(
+                        this.exprCompiler.mustImplicitlyCastTo(
                             this.compileJSArg(step.args[0]),
                             fun.parameters[0].type,
                             noSrc
@@ -386,7 +390,7 @@ export class JSONConfigTranspiler extends BaseFunctionCompiler {
                     ...step.args
                         .slice(1)
                         .map((jsArg: any, i: number) =>
-                            this.exprCompiler.mustCastTo(
+                            this.exprCompiler.mustImplicitlyCastTo(
                                 this.compileJSArg(jsArg),
                                 fun.parameters[i + 3].type,
                                 noSrc
