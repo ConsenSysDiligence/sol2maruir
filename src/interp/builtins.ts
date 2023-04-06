@@ -14,9 +14,6 @@ import {
 
 export type ContractRegistry = Map<bigint, [ir.Type, ir.PrimitiveValue]>;
 
-/**
- * @todo This is a hack. Fixgure out better way.
- */
 const RX_ARRAY = /\[(\d+)?\]$/;
 const RX_TUPLE = /^tuple\((.+)?\)$/;
 
