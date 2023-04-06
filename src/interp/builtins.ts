@@ -14,10 +14,6 @@ import {
 
 export type ContractRegistry = Map<bigint, [ir.Type, ir.PrimitiveValue]>;
 
-/**
- * @todo This is a hack. Fixgure out better way.
- */
-const infer = new sol.InferType(sol.LatestCompilerVersion);
 const RX_ARRAY = /\[(\d+)?\]$/;
 const RX_TUPLE = /^tuple\((.+)?\)$/;
 
@@ -40,7 +36,7 @@ function abiTypeStringToTypeNode(t: string): sol.TypeNode {
         return new sol.TupleType(elementTs);
     }
 
-    const elementaryT = infer.elementaryTypeNameStringToTypeNode(t);
+    const elementaryT = sol.InferType.elementaryTypeNameStringToTypeNode(t);
 
     sol.assert(elementaryT !== undefined, "Expected elementary type, got {0}", t);
 
@@ -81,7 +77,8 @@ export function defineArrStruct(
 
     const struct = new StructValue({
         arr: arrPtr,
-        len: BigInt(values.length)
+        len: BigInt(values.length),
+        capacity: BigInt(values.length)
     });
 
     const res = s.define(struct, inMem);
@@ -281,7 +278,8 @@ export function fromWeb3Value(
 
         const arrWithLenM = new StructValue({
             arr: irValsPtr,
-            len: BigInt(irVals.length)
+            len: BigInt(irVals.length),
+            capacity: BigInt(irVals.length)
         });
 
         return state.define(arrWithLenM, "memory");
@@ -306,7 +304,7 @@ export function fromWeb3Value(
             irStruct
         );
 
-        const entries: { [field: string]: ir.PrimitiveValue} = {};
+        const entries: { [field: string]: ir.PrimitiveValue } = {};
 
         for (let i = 0; i < type.elements.length; i++) {
             const [irFieldName, irFieldT] = irStruct.fields[i];

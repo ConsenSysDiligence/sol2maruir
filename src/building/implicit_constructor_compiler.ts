@@ -65,7 +65,7 @@ export class ImplicitConstructorCompiler extends BaseFunctionCompiler {
             this.cfgBuilder.storeField(
                 this.cfgBuilder.this(noSrc),
                 stateVar.name,
-                exprCompiler.castTo(
+                exprCompiler.implicitCastTo(
                     initialVal,
                     stateVarT,
                     new ASTSource(stateVar)
