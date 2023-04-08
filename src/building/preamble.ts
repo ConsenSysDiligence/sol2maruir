@@ -75,28 +75,27 @@ fun builtin_getExceptionBytes(): ArrWithLen<#exception; u8> *#exception {
         return _exception_bytes_;
 }
 
-fun copy_u8arr<S, D>(src: ArrWithLen<S; u8> *S): ArrWithLen<D; u8> *D
+fun sol_copy_arr_shallow<S, D; T>(src: ArrWithLen<S; T> *S): ArrWithLen<D; T> *D
 locals
     i: u256,
     len: u256,
     cap: u256,
-    arr: u8[] *S,
-    arr1: u8[] *D,
-    t: u8,
-    res: ArrWithLen<D; u8> *D;
+    arr: T[] *S,
+    arr1: T[] *D,
+    t: T,
+    res: ArrWithLen<D; T> *D;
 {
     entry:
         i := 0_u256;
         load src.len in len;
-        load src.capacity in cap;
         load src.arr in arr;
 
-        res := alloc ArrWithLen<D; u8> in D;
-        arr1 := alloc u8[len] in D;
+        res := alloc ArrWithLen<D; T> in D;
+        arr1 := alloc T[len] in D;
 
         store arr1 in res.arr;
         store len in res.len;
-        store cap in res.capacity;
+        store len in res.capacity;
 
 
         jump header;
@@ -112,6 +111,51 @@ locals
 
     exit:
         return res;
+}
+
+fun sol_arr_slice<S; T>(src: ArrWithLen<S; T> *S, start: u256, end: u256): ArrWithLen<S; T> *S
+locals
+    i: u256,
+    len: u256,
+    newLen: u256,
+    arr: T[] *S,
+    arr1: T[] *S,
+    t: T,
+    res: ArrWithLen<S; T> *S;
+{
+    entry:
+        branch start > end panicBB startLTEnd;
+
+    startLTEnd:
+        load src.len in len;
+        branch end > len panicBB endLTLen;
+
+    endLTLen:
+        i := start;
+        newLen := end - start;
+        res := alloc ArrWithLen<S; T> in S;
+        arr1 := alloc T[newLen] in S;
+
+        store arr1 in res.arr;
+        store newLen in res.len;
+        store newLen in res.capacity;
+        load src.arr in arr;
+        jump header;
+
+    header:
+        branch i < end body exit;
+
+    body:
+        load arr[i] in t;
+        store t in arr1[i - start];
+        i := i + 1_u256;
+        jump header;
+
+    exit:
+        return res;
+
+    panicBB:
+        call sol_panic(0x1_u256);
 }
 
 fun sol_assert(cond: bool) 
@@ -134,7 +178,7 @@ locals
 {
     entry:
         panicBytes := call builtin_abi_encodeWithSignature_1<#exception; u256>(_panic_signature, _uint256_str_, code);
-        panicBytesInExc := call copy_u8arr<#memory, #exception>(panicBytes);
+        panicBytesInExc := call sol_copy_arr_shallow<#memory, #exception; u8>(panicBytes);
         call builtin_setExceptionBytes(panicBytesInExc);
         abort;
 }
@@ -307,7 +351,7 @@ locals
 {
     entry:
         panicMemBytes := call builtin_abi_encodeWithSignature_1<#exception; ArrWithLen<M; u8> *M>(_error_signature, _string_str_, bytes);
-        panicBytes := call copy_u8arr<#memory, #exception>(panicMemBytes);
+        panicBytes := call sol_copy_arr_shallow<#memory, #exception; u8>(panicMemBytes);
         call builtin_setExceptionBytes(panicBytes);
         abort;
 }
@@ -543,7 +587,7 @@ locals succeeded: bool,
         return;
 
     fail:
-        panicBytesInExc := call copy_u8arr<#memory, #exception>(retData);
+        panicBytesInExc := call sol_copy_arr_shallow<#memory, #exception; u8>(retData);
         call builtin_setExceptionBytes(panicBytesInExc);
         abort;
 }
@@ -560,7 +604,7 @@ locals  res: ArrWithLen<#memory; u8> *#memory,
         return (!aborted, res);
 
     fail_bb:
-        res := call copy_u8arr<#exception, #memory>(_exception_bytes_);
+        res := call sol_copy_arr_shallow<#exception, #memory; u8>(_exception_bytes_);
         jump return_bb;
 
 }
@@ -586,7 +630,7 @@ locals res: ArrWithLen<#memory; u8> *#memory,
         return (!aborted, res);
 
     fail_bb:
-        res := call copy_u8arr<#exception, #memory>(_exception_bytes_);
+        res := call sol_copy_arr_shallow<#exception, #memory; u8>(_exception_bytes_);
         jump return_bb;
 
 }

@@ -6,7 +6,6 @@ import { UnitCompiler } from "../src";
 import { SolMaruirInterp } from "../src/interp";
 import { buildMaps, JSONConfigTranspiler } from "./json_config_transpiler";
 
-/*
 const files = [
     "test/samples/solidity/ABIEncoderV2_Structs.config.json",
     "test/samples/solidity/AbstractVirtualModifier.config.json",
@@ -19,6 +18,7 @@ const files = [
     "test/samples/solidity/ArrayLengthUnaryOp.config.json",
     "test/samples/solidity/ArrayLiteralWithConstantFolding.config.json",
     "test/samples/solidity/arrays.config.json",
+    "test/samples/solidity/arrays_06.config.json",
     "test/samples/solidity/ArrayTypesDesugaring.config.json",
     "test/samples/solidity/assignments.config.json",
     "test/samples/solidity/Balance.config.json",
@@ -167,11 +167,10 @@ const files = [
     "test/samples/solidity/VirtualModifiersVsOverriding.config.json",
     "test/samples/solidity/while_v04.config.json"
 ];
-        */
 
 describe("Interpreter tests", () => {
+    /*
     const files = [
-        /*
         "test/samples/solidity/calls.config.json",
         "test/samples/solidity/EncodingTest.config.json",
         "test/samples/solidity/ABIEncoderV2_Structs.config.json",
@@ -188,11 +187,11 @@ describe("Interpreter tests", () => {
         "test/samples/solidity/TryCatchShadowing.config.json",
         "test/samples/solidity/TryCatchState.config.json",
         "test/samples/solidity/TryCatchStateNested.config.json"
-        "test/samples/solidity/TryCatch08.config.json"
-        */
+        "test/samples/solidity/TryCatch08.config.json",
         "test/samples/solidity/lowlevel_calls_04.config.json",
         "test/samples/solidity/lowlevel_calls_08.config.json"
     ];
+        */
 
     for (const jsonFile of files) {
         it(jsonFile, async () => {
@@ -217,7 +216,7 @@ describe("Interpreter tests", () => {
                 throw e;
             }
 
-            const [methodMap, contractMap] = buildMaps(
+            const [methodMap, contractMap, buildMsgDataMap] = buildMaps(
                 transpiledDefs,
                 result.compilerVersion as string
             );
@@ -231,6 +230,7 @@ describe("Interpreter tests", () => {
                 config,
                 methodMap,
                 contractMap,
+                buildMsgDataMap,
                 units[0]
             );
 

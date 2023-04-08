@@ -38,7 +38,6 @@ import {
     u256,
     u32,
     u8,
-    u8ArrExcPtr,
     u8ArrMemPtr
 } from "./typing";
 
@@ -471,33 +470,6 @@ export class ExpressionCompiler {
         return resT;
     }
 
-    getBytesLit(bytes: string, src: ir.BaseSrc): ir.Identifier {
-        const val: bigint[] = [...Buffer.from(bytes, "hex")].map((x) => BigInt(x));
-
-        const name = this.cfgBuilder.globalUid.get(`_bytes_lit_`);
-
-        this.cfgBuilder.globalScope.define(
-            this.factory.globalVariable(
-                noSrc,
-                name,
-                u8ArrExcPtr,
-                this.factory.structLiteral(noSrc, [
-                    ["len", this.factory.numberLiteral(noSrc, BigInt(val.length), 10, u256)],
-                    ["capacity", this.factory.numberLiteral(noSrc, BigInt(val.length), 10, u256)],
-                    [
-                        "arr",
-                        this.factory.arrayLiteral(
-                            noSrc,
-                            val.map((v) => this.factory.numberLiteral(noSrc, v, 10, u8))
-                        )
-                    ]
-                ])
-            )
-        );
-
-        return this.factory.identifier(src, name, u8ArrExcPtr);
-    }
-
     compileLiteral(expr: sol.Literal): ir.Expression {
         const src = new ASTSource(expr);
 
@@ -530,7 +502,7 @@ export class ExpressionCompiler {
         }
 
         if (expr.kind === sol.LiteralKind.HexString) {
-            return this.getBytesLit(expr.hexValue, src);
+            return this.cfgBuilder.getBytesLit(expr.hexValue, src);
         }
 
         // Missing sol.LiteralKind.UnicodeString
@@ -1864,6 +1836,52 @@ export class ExpressionCompiler {
         );
     }
 
+    /**
+     * Compile an IndexRangeAccess expression.
+     *
+     * @todo (dimo) - the current implementation is a hack - as we are emitting a copy
+     * while the underlying implementation is a reference. Since currently slices are only allowed
+     * on immutable data, this won't result in correctness issues. However since we are inserting an extra copy
+     * that is not present in the real language, GasDOS analyses may flag a false positive here.
+     */
+    compileIndexRangeAccess(expr: sol.IndexRangeAccess): ir.Expression {
+        const factory = this.factory;
+        const builder = this.cfgBuilder;
+        const src = new ASTSource(expr);
+
+        const base = this.compile(expr.vBaseExpression);
+        const baseT = this.typeOf(base);
+
+        assert(
+            baseT instanceof ir.PointerType &&
+                baseT.toType instanceof ir.UserDefinedType &&
+                baseT.toType.name === "ArrWithLen",
+            `Expected ArrWithLen as base of {0} not {1}`,
+            expr,
+            baseT
+        );
+
+        const start = expr.vStartExpression
+            ? this.mustImplicitlyCastTo(this.compile(expr.vStartExpression), u256, src)
+            : factory.numberLiteral(noSrc, 0n, 10, u256);
+
+        const end = expr.vEndExpression
+            ? this.mustImplicitlyCastTo(this.compile(expr.vEndExpression), u256, src)
+            : builder.loadField(base, baseT, "len", noSrc);
+
+        const res = builder.getTmpId(baseT);
+        builder.call(
+            [res],
+            factory.funIdentifier("sol_arr_slice"),
+            [baseT.region],
+            baseT.toType.typeArgs,
+            [base, start, end],
+            src
+        );
+
+        return res;
+    }
+
     compileMemberAccess(expr: sol.MemberAccess): ir.Expression {
         const base = this.compile(expr.vExpression);
         const baseT = this.typeOf(base);
@@ -1972,6 +1990,10 @@ export class ExpressionCompiler {
 
         if (expr instanceof sol.IndexAccess) {
             return this.compileIndexAccess(expr);
+        }
+
+        if (expr instanceof sol.IndexRangeAccess) {
+            return this.compileIndexRangeAccess(expr);
         }
 
         if (expr instanceof sol.MemberAccess) {
