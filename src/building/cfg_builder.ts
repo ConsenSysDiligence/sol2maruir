@@ -618,6 +618,33 @@ export class CFGBuilder {
         return this.factory.identifier(src, name, u8ArrExcPtr);
     }
 
+    getBytesLit(bytes: string, src: ir.BaseSrc): ir.Identifier {
+        const val: bigint[] = [...Buffer.from(bytes, "hex")].map((x) => BigInt(x));
+
+        const name = this.globalUid.get(`_bytes_lit_`);
+
+        this.globalScope.define(
+            this.factory.globalVariable(
+                noSrc,
+                name,
+                u8ArrExcPtr,
+                this.factory.structLiteral(noSrc, [
+                    ["len", this.factory.numberLiteral(noSrc, BigInt(val.length), 10, u256)],
+                    ["capacity", this.factory.numberLiteral(noSrc, BigInt(val.length), 10, u256)],
+                    [
+                        "arr",
+                        this.factory.arrayLiteral(
+                            noSrc,
+                            val.map((v) => this.factory.numberLiteral(noSrc, v, 10, u8))
+                        )
+                    ]
+                ])
+            )
+        );
+
+        return this.factory.identifier(src, name, u8ArrExcPtr);
+    }
+
     getBalance(addr: ir.Expression, src: ir.BaseSrc): ir.Identifier {
         const balance = this.getTmpId(u256, src);
         this.call([balance], this.factory.funIdentifier("sol_get_balance"), [], [], [addr], src);

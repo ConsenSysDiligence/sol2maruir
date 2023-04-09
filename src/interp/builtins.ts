@@ -140,11 +140,17 @@ export function toWeb3Value(val: any, abiType: string | sol.TypeNode, s: ir.Stat
             typeof val
         );
 
-        return "0x" + bigIntToHex(val).padStart(40, "0");
+        const width = type instanceof sol.AddressType ? 40 : type.size * 2;
+
+        return "0x" + bigIntToHex(val).padStart(width, "0");
     }
 
     if (type instanceof sol.StringType) {
         return decodeString(s, val);
+    }
+
+    if (type instanceof sol.BytesType) {
+        return "0x" + decodeBytes(s, val);
     }
 
     if (type instanceof sol.ArrayType) {
