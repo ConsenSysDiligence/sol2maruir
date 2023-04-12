@@ -1818,9 +1818,13 @@ export class ExpressionCompiler {
 
     compileIndexAccess(expr: sol.IndexAccess): ir.Expression {
         assert(expr.vIndexExpression !== undefined, ``);
+        const factory = this.factory;
+        const builder = this.cfgBuilder;
+
         const base = this.compile(expr.vBaseExpression);
         const baseT = this.typeOf(base);
         const idx = this.compile(expr.vIndexExpression);
+        const idxT = this.typeOf(idx);
         const src = new ASTSource(expr);
 
         if (
@@ -1829,6 +1833,49 @@ export class ExpressionCompiler {
             baseT.toType.name === "ArrWithLen"
         ) {
             return this.solArrRead(base, idx, src);
+        }
+
+        if (baseT instanceof ir.IntType) {
+            const solT = baseT.md.get("sol_type");
+            assert(
+                typeof solT === "string",
+                `Missing solidity type metadata for {0} of type {1} in compiling of index access {2}`,
+                base,
+                baseT,
+                expr
+            );
+
+            let size;
+
+            if (solT == "byte") {
+                size = 1;
+            } else {
+                const m = solT.match(/bytes([0-9]*)/);
+                assert(m !== null, `Unexpected solidity type {0}`, solT);
+
+                size = Number(m[1]);
+            }
+
+            this.makeConditionalPanic(
+                factory.binaryOperation(
+                    src,
+                    idx,
+                    ">=",
+                    factory.numberLiteral(src, BigInt(size), 10, idxT),
+                    boolT
+                ),
+                0x1,
+                src
+            );
+
+            const res = builder.getTmpId(u8, src);
+            builder.assign(
+                res,
+                factory.cast(src, u8, factory.binaryOperation(src, base, ">>", idx, baseT)),
+                src
+            );
+
+            return res;
         }
 
         throw new Error(
