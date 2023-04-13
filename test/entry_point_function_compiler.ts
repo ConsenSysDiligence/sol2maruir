@@ -89,7 +89,7 @@ export class EntryPointFunctionCompiler extends BaseFunctionCompiler {
             [],
             [],
             [
-                this.exprCompiler.mustCastTo(
+                this.exprCompiler.mustImplicitlyCastTo(
                     factory.identifier(ir.noSrc, "__test__", thisT),
                     u160Addr,
                     ir.noSrc

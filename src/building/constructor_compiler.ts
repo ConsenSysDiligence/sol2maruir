@@ -166,7 +166,11 @@ export class ConstructorCompiler {
             for (let argIdx = 0; argIdx < rawArgs.length; argIdx++) {
                 const rawArg = rawArgs[argIdx];
                 const irArg = exprCompiler.compile(rawArg);
-                const castedIrArg = exprCompiler.mustCastTo(irArg, irFormalTs[argIdx], irArg.src);
+                const castedIrArg = exprCompiler.mustImplicitlyCastTo(
+                    irArg,
+                    irFormalTs[argIdx],
+                    irArg.src
+                );
 
                 constrArgs.push(castedIrArg);
             }

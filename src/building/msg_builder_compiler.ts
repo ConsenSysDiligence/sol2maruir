@@ -1,7 +1,7 @@
 import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
 import { BaseFunctionCompiler } from "./base_function_compiler";
-import { noType, transpileType, u8ArrMemPtr } from "./typing";
+import { noType, transpileType, u8, u8ArrMemPtr } from "./typing";
 import { noSrc } from "maru-ir2";
 import { getMsgBuilderName } from "./resolving";
 import { IRFactory } from "./factory";
@@ -108,10 +108,28 @@ export class MsgBuilderCompiler extends BaseFunctionCompiler {
 
         const resDecl = this.cfgBuilder.addIRRet("RET", u8ArrMemPtr, noSrc);
         if (solArgTs.length === 0) {
-            this.cfgBuilder.return([this.cfgBuilder.zeroValue(u8ArrMemPtr, noSrc)], noSrc);
+            const sigHash = this.cfgBuilder.getBytesLit(
+                this.cfgBuilder.infer.signatureHash(this.origDef),
+                noSrc
+            );
+
+            const sigHashInMem = this.cfgBuilder.getTmpId(u8ArrMemPtr, noSrc);
+            this.cfgBuilder.call(
+                [sigHashInMem],
+                factory.funIdentifier("sol_copy_arr_shallow"),
+                [factory.memConstant(noSrc, "exception"), factory.memConstant(noSrc, "memory")],
+                [u8],
+                [sigHash],
+                noSrc
+            );
+            this.cfgBuilder.return([sigHashInMem], noSrc);
         } else {
             // Add returns
             const res = factory.identifier(noSrc, resDecl.name, resDecl.type);
+            const sig = this.cfgBuilder.getStrLit(
+                this.cfgBuilder.infer.signature(this.origDef),
+                noSrc
+            );
 
             // @todo re-write this to use abi.encodeWithSelector, or just abi.encode
             // to avoid adding string literals for signatures.
@@ -127,10 +145,14 @@ export class MsgBuilderCompiler extends BaseFunctionCompiler {
             // Call abi.encode
             this.cfgBuilder.call(
                 [res],
-                factory.identifier(noSrc, `builtin_abi_encode_${solArgTs.length}`, noType),
-                [],
+                factory.identifier(
+                    noSrc,
+                    `builtin_abi_encodeWithSignature_${solArgTs.length}`,
+                    noType
+                ),
+                [factory.memConstant(noSrc, "exception")],
                 irArgTs,
-                [...callArgs],
+                [sig, ...callArgs],
                 noSrc
             );
 

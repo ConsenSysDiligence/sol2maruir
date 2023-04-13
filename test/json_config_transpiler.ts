@@ -20,7 +20,8 @@ import {
     noType,
     u160,
     u256,
-    u8
+    u8,
+    u8ArrMemPtr
 } from "../src/building/typing";
 import { ASTSource } from "../src/ir/source";
 import { BaseFunctionCompiler } from "../src/building/base_function_compiler";
@@ -29,8 +30,12 @@ import { ExpressionCompiler } from "../src/building/expression_compiler";
 export type MethodMap = Map<string, Map<string, ir.FunctionDefinition>>;
 export type ContractMap = Map<string, ir.StructDefinition>;
 
-export function buildMaps(defs: ir.Definition[], solVersion: string): [MethodMap, ContractMap] {
+export function buildMaps(
+    defs: ir.Definition[],
+    solVersion: string
+): [MethodMap, ContractMap, MethodMap] {
     const mMap = new Map<string, Map<string, ir.FunctionDefinition>>();
+    const buildMsgDataMap = new Map<string, Map<string, ir.FunctionDefinition>>();
     const cMap = new Map<string, ir.StructDefinition>();
 
     const infer = new InferType(solVersion);
@@ -62,6 +67,24 @@ export function buildMaps(defs: ir.Definition[], solVersion: string): [MethodMap
                 sig = def.name.includes("_constructor")
                     ? "constructor"
                     : infer.signature(def.src.nd);
+            } else if (def.name.endsWith("_build_msg_data")) {
+                const nameRX = /([a-zA-Z0-9]*)_([a-zA-Z0-9]*)_([a-f0-9]*)_build_msg_data/;
+                const m = def.name.match(nameRX);
+
+                if (m) {
+                    const contractName = m[1];
+                    const funName = m[2];
+
+                    if (!buildMsgDataMap.has(contractName)) {
+                        buildMsgDataMap.set(contractName, new Map());
+                    }
+
+                    (buildMsgDataMap.get(contractName) as Map<string, ir.FunctionDefinition>).set(
+                        funName,
+                        def
+                    );
+                }
+                continue;
             } else {
                 continue;
             }
@@ -75,7 +98,7 @@ export function buildMaps(defs: ir.Definition[], solVersion: string): [MethodMap
         }
     }
 
-    return [mMap, cMap];
+    return [mMap, cMap, buildMsgDataMap];
 }
 
 export class JSONConfigTranspiler extends BaseFunctionCompiler {
@@ -92,6 +115,7 @@ export class JSONConfigTranspiler extends BaseFunctionCompiler {
         private config: any,
         private methodMap: Map<string, Map<string, ir.FunctionDefinition>>,
         private contractMap: Map<string, ir.StructDefinition>,
+        private buildMsgDataMap: Map<string, Map<string, ir.FunctionDefinition>>,
         unit: sol.SourceUnit
     ) {
         super(factory, globalUid, globalScope, solVersion, abiVersion);
@@ -244,6 +268,10 @@ export class JSONConfigTranspiler extends BaseFunctionCompiler {
                 ),
                 factory.structLiteral(ir.noSrc, [
                     ["len", factory.numberLiteral(ir.noSrc, BigInt(arr.values.length), 10, u256)],
+                    [
+                        "capacity",
+                        factory.numberLiteral(ir.noSrc, BigInt(arr.values.length), 10, u256)
+                    ],
                     ["arr", arr]
                 ]),
                 "_arg_"
@@ -367,7 +395,7 @@ export class JSONConfigTranspiler extends BaseFunctionCompiler {
                 // Add this argument
                 if (step.method !== "constructor") {
                     args.push(
-                        this.exprCompiler.mustCastTo(
+                        this.exprCompiler.mustImplicitlyCastTo(
                             this.compileJSArg(step.args[0]),
                             fun.parameters[0].type,
                             noSrc
@@ -386,7 +414,7 @@ export class JSONConfigTranspiler extends BaseFunctionCompiler {
                     ...step.args
                         .slice(1)
                         .map((jsArg: any, i: number) =>
-                            this.exprCompiler.mustCastTo(
+                            this.exprCompiler.mustImplicitlyCastTo(
                                 this.compileJSArg(jsArg),
                                 fun.parameters[i + 3].type,
                                 noSrc
@@ -416,6 +444,32 @@ export class JSONConfigTranspiler extends BaseFunctionCompiler {
                 lhss.push(aborted);
 
                 const funName = fun.name;
+
+                if (step.method !== "constructor") {
+                    const msgDataTmp = builder.getTmpId(u8ArrMemPtr);
+                    const methodName = step.method.slice(0, step.method.indexOf("("));
+                    const buildMsgDataFun = this.buildMsgDataMap
+                        .get(step.definingContract)
+                        ?.get(methodName);
+
+                    assert(buildMsgDataFun !== undefined, `No fun for ${methodName}`);
+
+                    builder.call(
+                        [msgDataTmp],
+                        factory.funIdentifier(buildMsgDataFun?.name),
+                        [],
+                        [],
+                        args.slice(3),
+                        noSrc
+                    );
+
+                    builder.storeField(
+                        factory.identifier(ir.noSrc, "msg", msgPtrT),
+                        "data",
+                        msgDataTmp,
+                        noSrc
+                    );
+                }
 
                 builder.transCall(
                     lhss,

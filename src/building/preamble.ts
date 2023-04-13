@@ -5,27 +5,32 @@ var _exception_code_: u256 = 0_u256
 
 var _exception_bytes_: ArrWithLen<#exception; u8> *#exception = {
     arr: [],
-    len: 0_u256
+    len: 0_u256,
+    capacity: 0_u256
 }
 
 var _panic_signature: ArrWithLen<#exception; u8> *#exception = {
     arr: [80_u8, 97_u8, 110_u8, 105_u8, 99_u8, 40_u8, 117_u8, 105_u8, 110_u8, 116_u8, 50_u8, 53_u8, 54_u8, 41_u8],
-    len: 14_u256
+    len: 14_u256,
+    capacity: 14_u256
 }
 
 var _error_signature: ArrWithLen<#exception; u8> *#exception = {
     arr: [69_u8, 114_u8, 114_u8, 111_u8, 114_u8, 40_u8, 115_u8, 116_u8, 114_u8, 105_u8, 110_u8, 103_u8, 41_u8],
-    len: 14_u256
+    len: 14_u256,
+    capacity: 14_u256
 }
 
 var _uint256_str_: ArrWithLen<#exception; u8> *#exception = {
     arr: [117_u8, 105_u8, 110_u8, 116_u8, 50_u8, 53_u8, 54_u8],
-    len: 7_u256
+    len: 7_u256,
+    capacity: 7_u256
 }
 
 var _string_str_: ArrWithLen<#exception; u8> *#exception = {
     arr: [115_u8, 116_u8, 114_u8, 105_u8, 110_u8, 103_u8],
-    len: 7_u256
+    len: 7_u256,
+    capacity: 7_u256
 }
 
 
@@ -44,6 +49,7 @@ struct Message {
 
 struct ArrWithLen<M; T> {
     len: u256;
+    capacity: u256;
     arr: T[] *M;
 }
 
@@ -69,25 +75,27 @@ fun builtin_getExceptionBytes(): ArrWithLen<#exception; u8> *#exception {
         return _exception_bytes_;
 }
 
-fun copy_u8arr<S, D>(src: ArrWithLen<S; u8> *S): ArrWithLen<D; u8> *D
+fun sol_copy_arr_shallow<S, D; T>(src: ArrWithLen<S; T> *S): ArrWithLen<D; T> *D
 locals
     i: u256,
     len: u256,
-    arr: u8[] *S,
-    arr1: u8[] *D,
-    t: u8,
-    res: ArrWithLen<D; u8> *D;
+    cap: u256,
+    arr: T[] *S,
+    arr1: T[] *D,
+    t: T,
+    res: ArrWithLen<D; T> *D;
 {
     entry:
         i := 0_u256;
         load src.len in len;
         load src.arr in arr;
 
-        res := alloc ArrWithLen<D; u8> in D;
-        arr1 := alloc u8[len] in D;
+        res := alloc ArrWithLen<D; T> in D;
+        arr1 := alloc T[len] in D;
 
         store arr1 in res.arr;
         store len in res.len;
+        store len in res.capacity;
 
 
         jump header;
@@ -103,6 +111,51 @@ locals
 
     exit:
         return res;
+}
+
+fun sol_arr_slice<S; T>(src: ArrWithLen<S; T> *S, start: u256, end: u256): ArrWithLen<S; T> *S
+locals
+    i: u256,
+    len: u256,
+    newLen: u256,
+    arr: T[] *S,
+    arr1: T[] *S,
+    t: T,
+    res: ArrWithLen<S; T> *S;
+{
+    entry:
+        branch start > end panicBB startLTEnd;
+
+    startLTEnd:
+        load src.len in len;
+        branch end > len panicBB endLTLen;
+
+    endLTLen:
+        i := start;
+        newLen := end - start;
+        res := alloc ArrWithLen<S; T> in S;
+        arr1 := alloc T[newLen] in S;
+
+        store arr1 in res.arr;
+        store newLen in res.len;
+        store newLen in res.capacity;
+        load src.arr in arr;
+        jump header;
+
+    header:
+        branch i < end body exit;
+
+    body:
+        load arr[i] in t;
+        store t in arr1[i - start];
+        i := i + 1_u256;
+        jump header;
+
+    exit:
+        return res;
+
+    panicBB:
+        call sol_panic(0x1_u256);
 }
 
 fun sol_assert(cond: bool) 
@@ -125,7 +178,7 @@ locals
 {
     entry:
         panicBytes := call builtin_abi_encodeWithSignature_1<#exception; u256>(_panic_signature, _uint256_str_, code);
-        panicBytesInExc := call copy_u8arr<#memory, #exception>(panicBytes);
+        panicBytesInExc := call sol_copy_arr_shallow<#memory, #exception; u8>(panicBytes);
         call builtin_setExceptionBytes(panicBytesInExc);
         abort;
 }
@@ -173,6 +226,110 @@ locals
         call sol_panic(0x32_u256);
 }
 
+fun sol_arr_internal_copy<M; ElT>(src: ElT[] *M, dst: ElT[] *M, count: u256)
+locals
+    i: u256,
+    t: ElT;
+{
+    entry:
+        i := 0_u256;
+        jump header;
+
+    header:
+        branch i < count body end;
+
+    body:
+        load src[i] in t;
+        store t in dst[i];
+        i := i + 1_u256;
+        jump header;
+
+    end:
+        return;
+}
+
+fun sol_arr_increase_capacity<M; ElT>(arr: ArrWithLen<M; ElT> *M)
+locals
+    len: u256,
+    capacity: u256,
+    newCapacity: u256,
+    arrPtr: ElT[] *M,
+    newArrPtr: ElT[] *M;
+{
+    entry:
+        load arr.capacity in capacity;
+        load arr.len in len;
+        newArrPtr := alloc ElT[capacity + 1_u256] in M;
+        load arr.arr in arrPtr;
+        call sol_arr_internal_copy<M; ElT>(arrPtr, newArrPtr, len);
+        store newArrPtr in arr.arr;
+        store capacity + 1_u256 in arr.capacity;
+        return;
+}
+
+fun sol_arr_push_04<M; ElT>(arr: ArrWithLen<M; ElT> *M, val: ElT): u256
+locals
+    len: u256,
+    capacity: u256,
+    arrPtr: ElT[] *M;
+{
+    entry:
+        load arr.len in len;
+        load arr.capacity in capacity;
+
+        branch len == capacity NotEnoughSpaceBB EnoughSpaceBB;
+
+    NotEnoughSpaceBB:
+        call sol_arr_increase_capacity<M; ElT>(arr);
+        jump EnoughSpaceBB;
+
+    EnoughSpaceBB:
+        load arr.arr in arrPtr;
+        store val in arrPtr[len];
+        store len + 1_u256 in arr.len;
+        return len + 1_u256;
+}
+
+fun sol_arr_push_06<M; ElT>(arr: ArrWithLen<M; ElT> *M, val: ElT): ElT
+locals
+    len: u256,
+    capacity: u256,
+    arrPtr: ElT[] *M;
+{
+    entry:
+        load arr.len in len;
+        load arr.capacity in capacity;
+
+        branch len == capacity NotEnoughSpaceBB EnoughSpaceBB;
+
+    NotEnoughSpaceBB:
+        call sol_arr_increase_capacity<M; ElT>(arr);
+        jump EnoughSpaceBB;
+
+    EnoughSpaceBB:
+        load arr.arr in arrPtr;
+        store val in arrPtr[len];
+        store len + 1_u256 in arr.len;
+        return val;
+}
+
+fun sol_arr_pop<M; ElT>(arr: ArrWithLen<M; ElT> *M)
+locals
+    len: u256,
+    arrPtr: ElT[] *M;
+{
+    entry:
+        load arr.len in len;
+        branch len == 0_u256 EmptyArr NonEmptyArr;
+
+    EmptyArr:
+        call sol_panic(0x31_u256);
+
+    NonEmptyArr:
+        store len - 1_u256 in arr.len;
+        return;
+}
+
 fun sol_revert(): never
 locals 
     panicBytes: ArrWithLen<#exception; u8> *#exception,
@@ -194,7 +351,7 @@ locals
 {
     entry:
         panicMemBytes := call builtin_abi_encodeWithSignature_1<#exception; ArrWithLen<M; u8> *M>(_error_signature, _string_str_, bytes);
-        panicBytes := call copy_u8arr<#memory, #exception>(panicMemBytes);
+        panicBytes := call sol_copy_arr_shallow<#memory, #exception; u8>(panicMemBytes);
         call builtin_setExceptionBytes(panicBytes);
         abort;
 }
@@ -233,6 +390,7 @@ locals
         resPtr := alloc ArrWithLen<M; T> in M;
         store arrPtr in resPtr.arr;
         store size in resPtr.len;
+        store size in resPtr.capacity;
 
         return resPtr;
 }
@@ -429,7 +587,7 @@ locals succeeded: bool,
         return;
 
     fail:
-        panicBytesInExc := call copy_u8arr<#memory, #exception>(retData);
+        panicBytesInExc := call sol_copy_arr_shallow<#memory, #exception; u8>(retData);
         call builtin_setExceptionBytes(panicBytesInExc);
         abort;
 }
@@ -446,7 +604,7 @@ locals  res: ArrWithLen<#memory; u8> *#memory,
         return (!aborted, res);
 
     fail_bb:
-        res := call copy_u8arr<#exception, #memory>(_exception_bytes_);
+        res := call sol_copy_arr_shallow<#exception, #memory; u8>(_exception_bytes_);
         jump return_bb;
 
 }
@@ -472,7 +630,7 @@ locals res: ArrWithLen<#memory; u8> *#memory,
         return (!aborted, res);
 
     fail_bb:
-        res := call copy_u8arr<#exception, #memory>(_exception_bytes_);
+        res := call sol_copy_arr_shallow<#exception, #memory; u8>(_exception_bytes_);
         jump return_bb;
 
 }
@@ -522,11 +680,7 @@ locals senderBal: u256,
         return;
 }
 
-fun builtin_delegatecall05<M>(addr: u160, block: Block *#memory, msg: Message *#memory, data: ArrWithLen<M; u8> *M): (bool, ArrWithLen<#memory; u8> *#memory)
-fun builtin_delegatecall04<M>(addr: u160, block: Block *#memory, msg: Message *#memory, data: ArrWithLen<M; u8> *M): bool
-fun builtin_callcode04<M>(addr: u160, block: Block *#memory, msg: Message *#memory, data: ArrWithLen<M; u8> *M): bool
 fun builtin_balance(addr: u160): u256
-
 fun builtin_keccak256_05<M>(bytes: ArrWithLen<M; u8> *M): u256
 `;
 

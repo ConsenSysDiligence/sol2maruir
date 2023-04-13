@@ -94,7 +94,7 @@ export class FunctionCompiler extends BaseFunctionCompiler {
                 this.cfgBuilder.storeField(
                     this.cfgBuilder.this(noSrc),
                     stateVar.name,
-                    this.exprCompiler.mustCastTo(initialVal, stateVarT, initialVal.src),
+                    this.exprCompiler.mustImplicitlyCastTo(initialVal, stateVarT, initialVal.src),
                     noSrc
                 );
             }

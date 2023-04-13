@@ -14,10 +14,6 @@ import {
 
 export type ContractRegistry = Map<bigint, [ir.Type, ir.PrimitiveValue]>;
 
-/**
- * @todo This is a hack. Fixgure out better way.
- */
-const infer = new sol.InferType(sol.LatestCompilerVersion);
 const RX_ARRAY = /\[(\d+)?\]$/;
 const RX_TUPLE = /^tuple\((.+)?\)$/;
 
@@ -40,7 +36,7 @@ function abiTypeStringToTypeNode(t: string): sol.TypeNode {
         return new sol.TupleType(elementTs);
     }
 
-    const elementaryT = infer.elementaryTypeNameStringToTypeNode(t);
+    const elementaryT = sol.InferType.elementaryTypeNameStringToTypeNode(t);
 
     sol.assert(elementaryT !== undefined, "Expected elementary type, got {0}", t);
 
@@ -81,7 +77,8 @@ export function defineArrStruct(
 
     const struct = new StructValue({
         arr: arrPtr,
-        len: BigInt(values.length)
+        len: BigInt(values.length),
+        capacity: BigInt(values.length)
     });
 
     const res = s.define(struct, inMem);
@@ -126,7 +123,9 @@ export function toWeb3Value(val: any, abiType: string | sol.TypeNode, s: ir.Stat
     if (type instanceof sol.IntType) {
         assert(
             typeof val === "bigint",
-            `Expected bigint value for ABI type "${abiType}", got ${val} of type "${typeof val}"`
+            `Expected bigint value for ABI type "${ir.pp(
+                abiType
+            )}", got ${val} of type "${typeof val}"`
         );
 
         return val;
@@ -141,11 +140,17 @@ export function toWeb3Value(val: any, abiType: string | sol.TypeNode, s: ir.Stat
             typeof val
         );
 
-        return "0x" + bigIntToHex(val).padStart(40, "0");
+        const width = type instanceof sol.AddressType ? 40 : type.size * 2;
+
+        return "0x" + bigIntToHex(val).padStart(width, "0");
     }
 
     if (type instanceof sol.StringType) {
         return decodeString(s, val);
+    }
+
+    if (type instanceof sol.BytesType) {
+        return "0x" + decodeBytes(s, val);
     }
 
     if (type instanceof sol.ArrayType) {
@@ -177,13 +182,9 @@ export function toWeb3Value(val: any, abiType: string | sol.TypeNode, s: ir.Stat
     if (type instanceof sol.TupleType) {
         const struct = s.deref(val);
 
-        if (struct instanceof Array || struct instanceof Map) {
-            assert(false, `Expected a struct not {0}`, struct);
-        }
+        assert(struct instanceof ir.StructValue, `Expected a struct not {0} of type`, struct);
 
-        // console.error(struct);
-
-        const vals = [...Object.entries(struct).map((p) => p[1])];
+        const vals = [...struct.values()];
         const res = [];
 
         for (let i = 0; i < type.elements.length; i++) {
@@ -283,7 +284,8 @@ export function fromWeb3Value(
 
         const arrWithLenM = new StructValue({
             arr: irValsPtr,
-            len: BigInt(irVals.length)
+            len: BigInt(irVals.length),
+            capacity: BigInt(irVals.length)
         });
 
         return state.define(arrWithLenM, "memory");
@@ -308,7 +310,7 @@ export function fromWeb3Value(
             irStruct
         );
 
-        const structMap = new Map();
+        const entries: { [field: string]: ir.PrimitiveValue } = {};
 
         for (let i = 0; i < type.elements.length; i++) {
             const [irFieldName, irFieldT] = irStruct.fields[i];
@@ -320,10 +322,10 @@ export function fromWeb3Value(
                 scope
             );
 
-            structMap.set(irFieldName, irEl);
+            entries[irFieldName] = irEl;
         }
 
-        return state.define(structMap, "memory");
+        return state.define(new ir.StructValue(entries), "memory");
     }
 
     throw new Error(`NYI toWeb3Value of ABI type ${abiType}`);

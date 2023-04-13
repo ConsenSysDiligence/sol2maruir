@@ -78,7 +78,9 @@ export class UnitCompiler {
         for (const [contract, methodOverrideMap] of overrideMap) {
             const abiVersion = this.detectAbiEncoderVersion(contract.vScope);
 
-            this.globalDefine(this.compileContractDispatch(contract, abiVersion));
+            if (!contract.abstract) {
+                this.globalDefine(this.compileContractDispatch(contract, abiVersion));
+            }
 
             for (const [methodOrVar, overridingImpls] of methodOverrideMap) {
                 this.globalDefine(

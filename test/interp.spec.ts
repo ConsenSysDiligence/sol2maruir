@@ -1,5 +1,5 @@
 import expect from "expect";
-import * as fse from "fs-extra";
+// import * as fse from "fs-extra";
 import * as ir from "maru-ir2";
 import * as sol from "solc-typed-ast";
 import { UnitCompiler } from "../src";
@@ -110,16 +110,20 @@ describe("Interpreter tests", () => {
 
             console.error(`Success: ${sample}`);
 
-            const config = sample.replace(".config.sol", ".config.json");
+            /**
+             * @todo Uncomment following lines to remove original samples
+             * and their JSON configs on successful run.
+             */
+            // const config = sample.replace(".config.sol", ".config.json");
 
-            if (await fse.exists(config)) {
-                const json = await fse.readJson(config, { encoding: "utf-8" });
+            // if (await fse.exists(config)) {
+            //     const json = await fse.readJson(config, { encoding: "utf-8" });
 
-                await fse.remove(json.file);
-                await fse.remove(config);
-            } else {
-                console.error(`Config file "${config}" already removed`);
-            }
+            //     await fse.remove(json.file);
+            //     await fse.remove(config);
+            // } else {
+            //     console.error(`Config file "${config}" already removed`);
+            // }
         });
     }
 });

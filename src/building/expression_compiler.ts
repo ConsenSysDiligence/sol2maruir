@@ -38,7 +38,6 @@ import {
     u256,
     u32,
     u8,
-    u8ArrExcPtr,
     u8ArrMemPtr
 } from "./typing";
 
@@ -153,6 +152,25 @@ export class ExpressionCompiler {
     }
 
     /**
+     * Return true if the solidity LHS expression is a storage location, and is NOT a storage pointer.
+     * This is used to determine if a Solidity Storage->Storage assignment needs a copy.
+     */
+    isSolLHSNonPtrStorage(lhs: sol.Expression): boolean {
+        // Storage pointer - no need for copy
+        if (
+            lhs instanceof sol.Identifier &&
+            lhs.vReferencedDeclaration instanceof sol.VariableDeclaration &&
+            lhs.vReferencedDeclaration.parent instanceof sol.VariableDeclarationStatement
+        ) {
+            return false;
+        }
+
+        const lhsSolT = this.cfgBuilder.infer.typeOf(lhs);
+
+        return lhsSolT instanceof sol.PointerType && lhsSolT.location === sol.DataLocation.Storage;
+    }
+
+    /**
      * Assign a rhs _compiled_ expression to a solidity lhs. This handles several cases:
      *
      * 1. Assignment to a solidity local/return - normal assignment
@@ -181,7 +199,14 @@ export class ExpressionCompiler {
 
         const lhsT = transpileType(this.cfgBuilder.infer.typeOf(lhs), this.factory);
 
-        let castedRHS = this.mustCastTo(rhs, lhsT, rhs.src);
+        let castedRHS = this.mustImplicitlyCastTo(rhs, lhsT, rhs.src);
+
+        // Assignments from storage to storage require a copy in all cases where
+        // the LHS is not a storage pointer. If the RHS is not in storage, then
+        // the copy is done implicitly by mustCastTo. Otherwise insert the copy here
+        if (this.isSolLHSNonPtrStorage(lhs) && this.isStoragePtrExpr(rhs)) {
+            castedRHS = this.copy(castedRHS);
+        }
 
         if (lhs instanceof sol.Identifier) {
             const def = lhs.vReferencedDeclaration;
@@ -211,18 +236,16 @@ export class ExpressionCompiler {
             const base = this.compile(lhs.vExpression);
             const baseIrT = this.typeOf(base);
 
-            // Assignments from storage to storage require a copy. In other
-            // cases the copy is done implicitly by mustCastTo. Note that we
-            // purposefully check rhs below and not castedRHS
-            if (this.isStoragePtrExpr(rhs) && this.isStoragePtrExpr(base)) {
-                castedRHS = this.copy(castedRHS);
-            }
-
             if (baseIrT instanceof ir.PointerType && baseIrT.toType instanceof ir.UserDefinedType) {
                 const def = this.cfgBuilder.globalScope.getTypeDecl(baseIrT.toType);
 
                 if (def instanceof ir.StructDefinition) {
-                    this.cfgBuilder.storeField(base, lhs.memberName, castedRHS, assignSrc);
+                    const member =
+                        lhs.memberName === "length" && def.name === "ArrWithLen"
+                            ? "len"
+                            : lhs.memberName;
+
+                    this.cfgBuilder.storeField(base, member, castedRHS, assignSrc);
 
                     return rhs;
                 }
@@ -236,19 +259,48 @@ export class ExpressionCompiler {
             const idx = this.compile(lhs.vIndexExpression);
             const baseIrT = this.typeOf(base);
 
-            if (this.isStoragePtrExpr(rhs) && this.isStoragePtrExpr(base)) {
-                rhs = this.copy(rhs);
-            }
-
             if (
                 baseIrT instanceof ir.PointerType &&
                 baseIrT.toType instanceof ir.UserDefinedType &&
                 baseIrT.toType.name === "ArrWithLen"
             ) {
-                this.solArrWrite(base, idx, rhs, assignSrc);
+                this.solArrWrite(base, idx, castedRHS, assignSrc);
 
                 return rhs;
             }
+        }
+
+        if (
+            lhs instanceof sol.FunctionCall &&
+            lhs.vExpression instanceof sol.MemberAccess &&
+            lhs.vExpression.memberName === "push"
+        ) {
+            const base = this.compile(lhs.vExpression.vExpression);
+            const baseT = this.typeOf(base);
+            const lhsSrc = new ASTSource(lhs);
+
+            assert(
+                baseT instanceof ir.PointerType &&
+                    baseT.toType instanceof ir.UserDefinedType &&
+                    baseT.toType.name === "ArrWithLen",
+                `Expected storage array not {0} of type {1} in lhs {2}`,
+                lhs.vExpression.vExpression,
+                baseT,
+                lhs
+            );
+
+            const elT = baseT.toType.typeArgs[0];
+            const castedRHS = this.mustImplicitlyCastTo(rhs, elT, noSrc);
+
+            const len = this.cfgBuilder.loadField(base, baseT, "len", lhsSrc);
+
+            // Compile the push
+            this.compile(lhs);
+
+            // Assign at the last element
+            this.solArrWrite(base, len, castedRHS, assignSrc);
+
+            return castedRHS;
         }
 
         if (rhs instanceof IRTuple2) {
@@ -308,7 +360,7 @@ export class ExpressionCompiler {
             this.factory.funIdentifier("sol_arr_read"),
             [arrPtrT.region],
             [elT],
-            [arrPtr, this.mustCastTo(idx, u256, idx.src)],
+            [arrPtr, this.mustImplicitlyCastTo(idx, u256, idx.src)],
             src
         );
 
@@ -335,7 +387,7 @@ export class ExpressionCompiler {
             this.factory.funIdentifier("sol_arr_write"),
             [arrPtrT.region],
             [arrPtrT.toType.typeArgs[0]],
-            [arrPtr, this.mustCastTo(idx, u256, idx.src), val],
+            [arrPtr, this.mustImplicitlyCastTo(idx, u256, idx.src), val],
             src
         );
     }
@@ -353,19 +405,16 @@ export class ExpressionCompiler {
 
         const rhsIRT = this.factory.typeOf(rhs);
 
-        // Perform any implicit casts from the rhs to the lhs (e.g. u8 to u16)
-        const castedRHS = this.castTo(rhs, lhsIRT, src);
-
-        assert(castedRHS !== undefined, "Cannot assign {0} to {1}", rhsIRT, lhsIRT);
-
-        rhs = castedRHS;
-
         // Handle +=,-=, ...
         if (expr.operator !== "=") {
+            // Perform any implicit casts from the rhs to the lhs (e.g. u8 to u16)
+            const castedRHS = this.implicitCastTo(rhs, lhsIRT, src);
+
+            assert(castedRHS !== undefined, "Cannot assign {0} to {1}", rhsIRT, lhsIRT);
             rhs = this.makeBinaryOperation(
                 this.compile(expr.vLeftHandSide),
                 expr.operator.slice(0, -1) as ir.BinaryOperator,
-                rhs,
+                castedRHS,
                 this.isArithmeticChecked(expr),
                 src
             );
@@ -421,32 +470,6 @@ export class ExpressionCompiler {
         return resT;
     }
 
-    getBytesLit(bytes: string, src: ir.BaseSrc): ir.Identifier {
-        const val: bigint[] = [...Buffer.from(bytes, "hex")].map((x) => BigInt(x));
-
-        const name = this.cfgBuilder.globalUid.get(`_bytes_lit_`);
-
-        this.cfgBuilder.globalScope.define(
-            this.factory.globalVariable(
-                noSrc,
-                name,
-                u8ArrExcPtr,
-                this.factory.structLiteral(noSrc, [
-                    ["len", this.factory.numberLiteral(noSrc, BigInt(val.length), 10, u256)],
-                    [
-                        "arr",
-                        this.factory.arrayLiteral(
-                            noSrc,
-                            val.map((v) => this.factory.numberLiteral(noSrc, v, 10, u8))
-                        )
-                    ]
-                ])
-            )
-        );
-
-        return this.factory.identifier(src, name, u8ArrExcPtr);
-    }
-
     compileLiteral(expr: sol.Literal): ir.Expression {
         const src = new ASTSource(expr);
 
@@ -479,7 +502,7 @@ export class ExpressionCompiler {
         }
 
         if (expr.kind === sol.LiteralKind.HexString) {
-            return this.getBytesLit(expr.hexValue, src);
+            return this.cfgBuilder.getBytesLit(expr.hexValue, src);
         }
 
         // Missing sol.LiteralKind.UnicodeString
@@ -606,7 +629,7 @@ export class ExpressionCompiler {
     }
 
     compileConstExpr(expr: sol.Expression): ir.Expression {
-        const val = sol.evalConstantExpr(expr);
+        const val = sol.evalConstantExpr(expr, this.cfgBuilder.infer);
         const src = new ASTSource(expr);
 
         if (typeof val === "boolean") {
@@ -727,7 +750,7 @@ export class ExpressionCompiler {
         );
 
         for (let i = 0; i < els.length; i++) {
-            const castedEl = this.mustCastTo(els[i], elT, els[i].src);
+            const castedEl = this.mustImplicitlyCastTo(els[i], elT, els[i].src);
             this.solArrWrite(
                 res,
                 this.factory.numberLiteral(noSrc, BigInt(i), 10, u256),
@@ -989,7 +1012,11 @@ export class ExpressionCompiler {
         if (expr.vFunctionName === "send" || expr.vFunctionName === "transfer") {
             const calledOn = expr.vExpression;
             const solAmount = single(expr.vArguments);
-            const amount = this.mustCastTo(this.compile(solAmount), u256, new ASTSource(solAmount));
+            const amount = this.mustImplicitlyCastTo(
+                this.compile(solAmount),
+                u256,
+                new ASTSource(solAmount)
+            );
 
             assert(
                 calledOn instanceof sol.MemberAccess,
@@ -998,7 +1025,7 @@ export class ExpressionCompiler {
                 calledOn
             );
 
-            const sendAddr = this.mustCastTo(this.cfgBuilder.this(noSrc), u160, noSrc);
+            const sendAddr = this.mustImplicitlyCastTo(this.cfgBuilder.this(noSrc), u160, noSrc);
             const recvAddr = this.compile(calledOn.vExpression);
             const rets =
                 expr.vFunctionName === "send" ? [this.cfgBuilder.getTmpId(boolT, exprSrc)] : [];
@@ -1015,11 +1042,7 @@ export class ExpressionCompiler {
             return rets.length === 1 ? rets[0] : new IRTuple2(noSrc, []);
         }
 
-        if (
-            expr.vFunctionName === "call" ||
-            expr.vFunctionName === "staticcall" ||
-            expr.vFunctionName === "callcode"
-        ) {
+        if (expr.vFunctionName === "call" || expr.vFunctionName === "staticcall") {
             /**
              * @todo This function family uses variadic arguments in Solidity 0.4.
              * Args are processed with ABI ecnoding routines.
@@ -1027,7 +1050,13 @@ export class ExpressionCompiler {
              * @see https://docs.soliditylang.org/en/latest/050-breaking-changes.html#semantic-and-syntactic-changes
              */
             const [calledOn, , valueMod] = this.stripCallOptions(expr.vExpression);
-            const callBytes = single(expr.vArguments.map((arg) => this.compile(arg)));
+            let callBytes;
+
+            if (expr.vArguments.length === 0) {
+                callBytes = builder.zeroValue(u8ArrMemPtr, noSrc);
+            } else {
+                callBytes = single(expr.vArguments.map((arg) => this.compile(arg)));
+            }
             const callBytesT = this.typeOf(callBytes);
 
             assert(
@@ -1050,7 +1079,7 @@ export class ExpressionCompiler {
 
             let builtinName: string;
 
-            if (gte(this.cfgBuilder.solVersion, "0.5.0") && expr.vFunctionName !== "callcode") {
+            if (gte(this.cfgBuilder.solVersion, "0.5.0")) {
                 rets.push(this.cfgBuilder.getTmpId(u8ArrMemPtr));
 
                 builtinName = `sol_${expr.vFunctionName}05`;
@@ -1067,7 +1096,7 @@ export class ExpressionCompiler {
                 noSrc
             );
 
-            const thisAddr = this.mustCastTo(this.cfgBuilder.this(noSrc), u160, noSrc);
+            const thisAddr = this.mustImplicitlyCastTo(this.cfgBuilder.this(noSrc), u160, noSrc);
             const selector = this.cfgBuilder.getSelectorFromData(callBytes, true);
 
             this.cfgBuilder.storeField(msgPtrArg, "sender", thisAddr, noSrc);
@@ -1075,13 +1104,17 @@ export class ExpressionCompiler {
             this.cfgBuilder.storeField(
                 msgPtrArg,
                 "data",
-                this.mustCastTo(callBytes, u8ArrMemPtr, noSrc),
+                this.mustImplicitlyCastTo(callBytes, u8ArrMemPtr, noSrc),
                 noSrc
             );
 
             const value =
                 valueMod !== undefined
-                    ? this.mustCastTo(this.compile(valueMod), u256, new ASTSource(valueMod))
+                    ? this.mustImplicitlyCastTo(
+                          this.compile(valueMod),
+                          u256,
+                          new ASTSource(valueMod)
+                      )
                     : factory.numberLiteral(noSrc, 0n, 10, u256);
 
             this.cfgBuilder.storeField(msgPtrArg, "value", value, noSrc);
@@ -1166,6 +1199,75 @@ export class ExpressionCompiler {
             return res;
         }
 
+        if (
+            expr.vExpression instanceof sol.MemberAccess &&
+            expr.vExpression.memberName === "push"
+        ) {
+            const arr = this.compile(expr.vExpression.vExpression);
+            const arrT = this.typeOf(arr);
+
+            assert(
+                arrT instanceof ir.PointerType &&
+                    arrT.toType instanceof ir.UserDefinedType &&
+                    arrT.toType.name === "ArrWithLen",
+                `Expected push to be called on an arr not {0}`,
+                arrT
+            );
+
+            const elT = arrT.toType.typeArgs[0];
+            let irNewEl: ir.Expression;
+
+            if (expr.vArguments.length > 0) {
+                const solNewEl = single(expr.vArguments);
+                irNewEl = this.mustImplicitlyCastTo(
+                    this.compile(solNewEl),
+                    elT,
+                    new ASTSource(solNewEl)
+                );
+            } else {
+                irNewEl = builder.zeroValue(elT, noSrc);
+            }
+
+            const funName = lt(builder.solVersion, "0.6.0") ? "sol_arr_push_04" : "sol_arr_push_06";
+            const retT = lt(builder.solVersion, "0.6.0") ? u256 : elT;
+            const res = builder.getTmpId(retT, exprSrc);
+
+            this.cfgBuilder.call(
+                [res],
+                this.factory.identifier(calleeSrc, funName, noType),
+                [arrT.region],
+                [elT],
+                [arr, irNewEl],
+                exprSrc
+            );
+
+            return res;
+        }
+
+        if (expr.vExpression instanceof sol.MemberAccess && expr.vExpression.memberName === "pop") {
+            const arr = this.compile(expr.vExpression.vExpression);
+            const arrT = this.typeOf(arr);
+
+            assert(
+                arrT instanceof ir.PointerType &&
+                    arrT.toType instanceof ir.UserDefinedType &&
+                    arrT.toType.name === "ArrWithLen",
+                `Expected push to be called on an arr not {0}`,
+                arrT
+            );
+
+            this.cfgBuilder.call(
+                [],
+                this.factory.identifier(calleeSrc, "sol_arr_pop", noType),
+                [arrT.region],
+                [arrT.toType.typeArgs[0]],
+                [arr],
+                exprSrc
+            );
+
+            return new IRTuple2(noSrc, []);
+        }
+
         throw new Error(`NYI compileBuiltinFunctionCall(${expr.vFunctionName})`);
     }
 
@@ -1191,7 +1293,7 @@ export class ExpressionCompiler {
             );
 
             const irSize = this.compile(expr.vArguments[0]);
-            const size = this.mustCastTo(irSize, u256, irSize.src);
+            const size = this.mustImplicitlyCastTo(irSize, u256, irSize.src);
             const elT = newIrT.toType.typeArgs[0];
             builder.call(
                 [resId],
@@ -1238,14 +1340,18 @@ export class ExpressionCompiler {
 
             for (let i = 0; i < expr.vArguments.length; i++) {
                 const irArg = this.compile(expr.vArguments[i]);
-                args.push(this.mustCastTo(irArg, irFormalTs[i], irArg.src));
+                args.push(this.mustImplicitlyCastTo(irArg, irFormalTs[i], irArg.src));
             }
 
             // Make a new Message struct for the constructor call
             const data = builder.getTmpId(u8ArrMemPtr, noSrc);
             const value =
                 valueMod !== undefined
-                    ? this.mustCastTo(this.compile(valueMod), u256, new ASTSource(valueMod))
+                    ? this.mustImplicitlyCastTo(
+                          this.compile(valueMod),
+                          u256,
+                          new ASTSource(valueMod)
+                      )
                     : factory.numberLiteral(noSrc, 0n, 10, u256);
 
             builder.call(
@@ -1257,7 +1363,7 @@ export class ExpressionCompiler {
                 src
             );
             const msgPtr = builder.makeMsgPtr(
-                this.mustCastTo(builder.this(noSrc), u160Addr, noSrc),
+                this.mustImplicitlyCastTo(builder.this(noSrc), u160Addr, noSrc),
                 value,
                 data,
                 factory.numberLiteral(noSrc, 0n, 10, u32)
@@ -1435,7 +1541,7 @@ export class ExpressionCompiler {
 
                     const baseIRExpr = this.compile(base);
 
-                    thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));
+                    thisExpr = this.mustImplicitlyCastTo(baseIRExpr, u160, new ASTSource(base));
                 } else if (def instanceof sol.VariableDeclaration) {
                     sol.assert(
                         def.stateVariable && def.vScope instanceof ContractDefinition,
@@ -1445,7 +1551,7 @@ export class ExpressionCompiler {
                     irFun = getMethodDispatchName(def.vScope, def, this.cfgBuilder.infer);
                     const baseIRExpr = this.compile(base);
 
-                    thisExpr = this.mustCastTo(baseIRExpr, u160, new ASTSource(base));
+                    thisExpr = this.mustImplicitlyCastTo(baseIRExpr, u160, new ASTSource(base));
                 } else {
                     assert(false, `Unexpected declaration ${sol.pp(def)} for ${sol.pp(expr)}`);
                 }
@@ -1527,7 +1633,7 @@ export class ExpressionCompiler {
         for (let i = 0; i < expr.vArguments.length; i++) {
             const irArg = this.compile(expr.vArguments[i]);
             const formalIRT = transpileType(argTs[i], factory);
-            args.push(this.mustCastTo(irArg, formalIRT, irArg.src));
+            args.push(this.mustImplicitlyCastTo(irArg, formalIRT, irArg.src));
         }
 
         let msgPtrArg: ir.Identifier;
@@ -1560,12 +1666,16 @@ export class ExpressionCompiler {
 
             const value =
                 valueMod !== undefined
-                    ? this.mustCastTo(this.compile(valueMod), u256, new ASTSource(valueMod))
+                    ? this.mustImplicitlyCastTo(
+                          this.compile(valueMod),
+                          u256,
+                          new ASTSource(valueMod)
+                      )
                     : factory.numberLiteral(noSrc, 0n, 10, u256);
 
             // @todo implement value
             msgPtrArg = builder.makeMsgPtr(
-                this.mustCastTo(builder.this(noSrc), u160, noSrc),
+                this.mustImplicitlyCastTo(builder.this(noSrc), u160, noSrc),
                 value,
                 msgData,
                 sigHash,
@@ -1640,7 +1750,7 @@ export class ExpressionCompiler {
         for (let i = 0; i < concreteFields.length; i++) {
             const [fieldName, fieldT] = concreteFields[i];
             const initVal = this.compile(expr.vArguments[i]);
-            const castedInitVal = this.mustCastTo(initVal, fieldT, initVal.src);
+            const castedInitVal = this.mustImplicitlyCastTo(initVal, fieldT, initVal.src);
 
             this.cfgBuilder.storeField(res, fieldName, castedInitVal, new ASTSource(expr));
         }
@@ -1672,7 +1782,11 @@ export class ExpressionCompiler {
             );
         }
 
-        return this.mustCastTo(this.compile(expr.vArguments[0]), toT, new ASTSource(expr));
+        return this.mustExplicitlyCastTo(
+            this.compile(expr.vArguments[0]),
+            toT,
+            new ASTSource(expr)
+        );
     }
 
     compileConditional(expr: sol.Conditional): ir.Expression {
@@ -1722,6 +1836,52 @@ export class ExpressionCompiler {
         );
     }
 
+    /**
+     * Compile an IndexRangeAccess expression.
+     *
+     * @todo (dimo) - the current implementation is a hack - as we are emitting a copy
+     * while the underlying implementation is a reference. Since currently slices are only allowed
+     * on immutable data, this won't result in correctness issues. However since we are inserting an extra copy
+     * that is not present in the real language, GasDOS analyses may flag a false positive here.
+     */
+    compileIndexRangeAccess(expr: sol.IndexRangeAccess): ir.Expression {
+        const factory = this.factory;
+        const builder = this.cfgBuilder;
+        const src = new ASTSource(expr);
+
+        const base = this.compile(expr.vBaseExpression);
+        const baseT = this.typeOf(base);
+
+        assert(
+            baseT instanceof ir.PointerType &&
+                baseT.toType instanceof ir.UserDefinedType &&
+                baseT.toType.name === "ArrWithLen",
+            `Expected ArrWithLen as base of {0} not {1}`,
+            expr,
+            baseT
+        );
+
+        const start = expr.vStartExpression
+            ? this.mustImplicitlyCastTo(this.compile(expr.vStartExpression), u256, src)
+            : factory.numberLiteral(noSrc, 0n, 10, u256);
+
+        const end = expr.vEndExpression
+            ? this.mustImplicitlyCastTo(this.compile(expr.vEndExpression), u256, src)
+            : builder.loadField(base, baseT, "len", noSrc);
+
+        const res = builder.getTmpId(baseT);
+        builder.call(
+            [res],
+            factory.funIdentifier("sol_arr_slice"),
+            [baseT.region],
+            baseT.toType.typeArgs,
+            [base, start, end],
+            src
+        );
+
+        return res;
+    }
+
     compileMemberAccess(expr: sol.MemberAccess): ir.Expression {
         const base = this.compile(expr.vExpression);
         const baseT = this.typeOf(base);
@@ -1764,7 +1924,7 @@ export class ExpressionCompiler {
                         baseT
                     );
 
-                    addrExpr = this.mustCastTo(base, u160, src);
+                    addrExpr = this.mustImplicitlyCastTo(base, u160, src);
                 }
 
                 return this.cfgBuilder.getBalance(addrExpr, src);
@@ -1832,6 +1992,10 @@ export class ExpressionCompiler {
             return this.compileIndexAccess(expr);
         }
 
+        if (expr instanceof sol.IndexRangeAccess) {
+            return this.compileIndexRangeAccess(expr);
+        }
+
         if (expr instanceof sol.MemberAccess) {
             return this.compileMemberAccess(expr);
         }
@@ -1858,14 +2022,14 @@ export class ExpressionCompiler {
         }
 
         // Try casting e1->e2
-        const e1Casted = this.castTo(irE1, irE2T, new ASTSource(e1));
+        const e1Casted = this.implicitCastTo(irE1, irE2T, new ASTSource(e1));
 
         if (e1Casted) {
             return [e1Casted, irE2, irE2T];
         }
 
         // Try casting e2->e1
-        const e2Casted = this.castTo(irE2, irE1T, new ASTSource(e2));
+        const e2Casted = this.implicitCastTo(irE2, irE1T, new ASTSource(e2));
 
         if (e2Casted) {
             return [irE1, e2Casted, irE1T];
@@ -1876,12 +2040,36 @@ export class ExpressionCompiler {
         );
     }
 
-    mustCastTo(expr: ir.Expression, toT: ir.Type, src: BaseSrc): ir.Expression {
-        const res = this.castTo(expr, toT, src);
+    mustExplicitlyCastTo(expr: ir.Expression, toT: ir.Type, src: BaseSrc): ir.Expression {
+        // First try implict cast
+        const res = this.implicitCastTo(expr, toT, src);
+
+        if (res !== undefined) {
+            return res;
+        }
+
+        // Next implement explicit casts
+        const exprT = this.typeOf(expr);
+
+        if (exprT instanceof ir.IntType && toT instanceof ir.IntType) {
+            return this.factory.cast(src, toT, expr);
+        }
+
+        assert(
+            false,
+            `Couldn't explicitly cast {0} of type {1} to {2}`,
+            expr,
+            this.typeOf(expr),
+            toT
+        );
+    }
+
+    mustImplicitlyCastTo(expr: ir.Expression, toT: ir.Type, src: BaseSrc): ir.Expression {
+        const res = this.implicitCastTo(expr, toT, src);
 
         assert(
             res !== undefined,
-            `Couldn't cast {0} of type {1} to {2}`,
+            `Couldn't implicitly cast {0} of type {1} to {2}`,
             expr,
             this.typeOf(expr),
             toT
@@ -1906,7 +2094,7 @@ export class ExpressionCompiler {
         return lhs;
     }
 
-    castTo(expr: ir.Expression, toT: ir.Type, src: BaseSrc): ir.Expression | undefined {
+    implicitCastTo(expr: ir.Expression, toT: ir.Type, src: BaseSrc): ir.Expression | undefined {
         const fromT = this.typeOf(expr);
 
         // Types equal - no cast needed
@@ -2070,7 +2258,9 @@ export class ExpressionCompiler {
                 const elExpr = expr.elements[i];
 
                 const castedElExpr =
-                    toElT === null || elExpr === null ? elExpr : this.castTo(elExpr, toElT, src);
+                    toElT === null || elExpr === null
+                        ? elExpr
+                        : this.implicitCastTo(elExpr, toElT, src);
 
                 if (castedElExpr === undefined) {
                     return undefined;
@@ -2086,29 +2276,6 @@ export class ExpressionCompiler {
     }
 
     private getCopyFun(fromT: ir.Type, toT: ir.Type): ir.Identifier {
-        const name = CopyFunCompiler.getCopyName(fromT, toT);
-        const decl = this.cfgBuilder.globalScope.get(name);
-
-        if (decl !== undefined) {
-            assert(decl instanceof ir.FunctionDefinition, ``);
-
-            return this.factory.identifier(noSrc, name, noType);
-        }
-
-        const compiler = new CopyFunCompiler(
-            this.factory,
-            this.cfgBuilder.globalScope,
-            this.cfgBuilder.globalUid,
-            this.cfgBuilder.solVersion,
-            this.abiEncodeVersion,
-            fromT,
-            toT
-        );
-
-        const fun = compiler.compile();
-
-        this.cfgBuilder.globalScope.define(fun);
-
-        return this.factory.identifier(noSrc, name, noType);
+        return this.cfgBuilder.getCopyFun(fromT, toT, this.abiEncodeVersion);
     }
 }
