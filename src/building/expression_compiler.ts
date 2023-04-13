@@ -28,6 +28,7 @@ import {
 import {
     boolT,
     convertToMem,
+    i256,
     isAddressType,
     msgPtrT,
     msgT,
@@ -597,6 +598,18 @@ export class ExpressionCompiler {
         let lExp = this.compile(expr.vLeftExpression);
         let rExp = this.compile(expr.vRightExpression);
         const src = new ASTSource(expr);
+
+        if (expr.operator === "**") {
+            const lSoLT = this.cfgBuilder.infer.typeOf(expr.vLeftExpression);
+            if (lSoLT instanceof sol.IntLiteralType) {
+                const signed = lSoLT.literal !== undefined ? lSoLT.literal < 0n : false;
+                lExp = this.factory.cast(
+                    new ASTSource(expr.vLeftExpression),
+                    signed ? i256 : u256,
+                    lExp
+                );
+            }
+        }
 
         /// Power and bitshifts are the only binary operators
         /// where we don't insist that the left and right sub-expressions
@@ -1283,7 +1296,10 @@ export class ExpressionCompiler {
         const src = new ASTSource(expr);
 
         // New array
-        if (newE.vTypeName instanceof sol.ArrayTypeName) {
+        if (
+            newE.vTypeName instanceof sol.ArrayTypeName ||
+            (newE.vTypeName instanceof sol.ElementaryTypeName && newE.vTypeName.name === "bytes")
+        ) {
             resId = builder.getTmpId(newIrT);
             assert(
                 newIrT instanceof ir.PointerType &&
@@ -1292,15 +1308,19 @@ export class ExpressionCompiler {
                 ``
             );
 
-            const irSize = this.compile(expr.vArguments[0]);
-            const size = this.mustImplicitlyCastTo(irSize, u256, irSize.src);
+            const irSize = this.mustImplicitlyCastTo(
+                this.compile(expr.vArguments[0]),
+                u256,
+                new ASTSource(expr.vArguments[0])
+            );
+
             const elT = newIrT.toType.typeArgs[0];
             builder.call(
                 [resId],
                 factory.identifier(noSrc, "new_array", noType),
                 [factory.memConstant(noSrc, "memory")],
                 [elT],
-                [size],
+                [irSize],
                 src
             );
 
@@ -2228,6 +2248,7 @@ export class ExpressionCompiler {
         if (
             fromT instanceof ir.IntType &&
             toT instanceof ir.IntType &&
+            toT.md.has("sol_type") &&
             toT.md.get("sol_type").startsWith("enum ")
         ) {
             return this.factory.cast(src, toT, expr);
