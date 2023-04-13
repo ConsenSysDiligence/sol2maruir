@@ -1,3 +1,5 @@
+pragma solidity 0.7.6;
+
 contract Test {
     uint[3] public arr;
 
@@ -38,10 +40,10 @@ contract Test {
 contract __IRTest__ {
     function main() public {
         Test __this__ = new Test();
-        __testCase212__(__this__);
+        __testCase213__(__this__);
     }
 
-    function __testCase212__(Test __this__) internal {
+    function __testCase213__(Test __this__) internal {
         __this__.verify();
     }
 }

@@ -1,3 +1,5 @@
+pragma solidity 0.8.19;
+
 contract ArrayLiterals {
     uint[] internal arr;
     uint8[] internal arr1;
@@ -14,12 +16,11 @@ contract ArrayLiterals {
 contract __IRTest__ {
     function main() public {
         ArrayLiterals __this__ = new ArrayLiterals();
-        __testCase78__(__this__);
+        __testCase79__(__this__);
     }
 
-    function __testCase78__(ArrayLiterals __this__) internal {
-        uint256 expect_78_0 = (uint256(20008));
-        uint256 ret_78_0 = __this__.foo();
-        assert(ret_78_0 == expect_78_0);
+    function __testCase79__(ArrayLiterals __this__) internal {
+        uint256 ret_79_0 = __this__.foo();
+        assert(ret_79_0 == uint256(20008));
     }
 }

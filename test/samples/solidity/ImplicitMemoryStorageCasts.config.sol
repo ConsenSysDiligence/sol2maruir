@@ -40,10 +40,10 @@ contract ImplicitMemoryStorageCasts {
 contract __IRTest__ {
     function main() public {
         ImplicitMemoryStorageCasts __this__ = new ImplicitMemoryStorageCasts();
-        __testCase256__(__this__);
+        __testCase257__(__this__);
     }
 
-    function __testCase256__(ImplicitMemoryStorageCasts __this__) internal {
+    function __testCase257__(ImplicitMemoryStorageCasts __this__) internal {
         __this__.main();
     }
 }

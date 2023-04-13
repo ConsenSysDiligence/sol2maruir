@@ -53,26 +53,24 @@ contract __IRTest__ {
     function main() public {
         Arrays __this__ = new Arrays();
         __testCase310__(__this__);
-        __testCase355__(__this__);
-        __testCase369__(__this__);
+        __testCase373__(__this__);
+        __testCase387__(__this__);
     }
 
     function __testCase310__(Arrays __this__) internal {
-        uint256[] memory expect_310_0 = new uint[](2);
-
-        expect_310_0[0] = uint256(1);
-        expect_310_0[1] = uint256(2);
-
+        uint256[] memory arr_lit_6;
+        arr_lit_6 = new uint256[](2);
+        arr_lit_6[0] = uint256(1);
+        arr_lit_6[1] = uint256(2);
         uint256[] memory ret_310_0 = __this__.arrays();
-
-        assert(keccak256(abi.encodePacked(ret_310_0)) == keccak256(abi.encodePacked(expect_310_0)));
+        assert(keccak256(abi.encodePacked(ret_310_0)) == keccak256(abi.encodePacked(arr_lit_6)));
     }
 
-    function __testCase355__(Arrays __this__) internal {
+    function __testCase373__(Arrays __this__) internal {
         __this__.tupleInlineArrayAssignment();
     }
 
-    function __testCase369__(Arrays __this__) internal {
+    function __testCase387__(Arrays __this__) internal {
         __this__.arrayLenModifiers();
     }
 }

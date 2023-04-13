@@ -172,92 +172,81 @@ contract __IRTest__ {
     function main() public {
         Calls __this__ = new Calls();
         __testCase840__(__this__);
-        __testCase875__(__this__);
-        __testCase923__(__this__);
-        __testCase965__(__this__);
-        __testCase995__(__this__);
-        __testCase1038__(__this__);
-        __testCase1080__(__this__);
-        __testCase1109__(__this__);
-        __testCase1138__(__this__);
-        __testCase1180__(__this__);
-        __testCase1209__(__this__);
-        __testCase1223__(__this__);
+        __testCase871__(__this__);
+        __testCase913__(__this__);
+        __testCase949__(__this__);
+        __testCase975__(__this__);
+        __testCase1012__(__this__);
+        __testCase1048__(__this__);
+        __testCase1073__(__this__);
+        __testCase1098__(__this__);
+        __testCase1134__(__this__);
+        __testCase1159__(__this__);
+        __testCase1173__(__this__);
     }
 
     function __testCase840__(Calls __this__) internal {
-        uint256 expect_840_0 = (uint256(1));
         uint256 ret_840_0 = __this__.multipleReturn();
-        assert(ret_840_0 == expect_840_0);
+        assert(ret_840_0 == uint256(1));
     }
 
-    function __testCase875__(Calls __this__) internal {
-        (uint256 expect_875_0, uint256 expect_875_1) = (uint256(42), uint256(43));
-        (uint256 ret_875_0, uint256 ret_875_1) = __this__.sort2(uint256(42), uint256(43));
-        assert(ret_875_0 == expect_875_0);
-        assert(ret_875_1 == expect_875_1);
+    function __testCase871__(Calls __this__) internal {
+        (uint256 ret_871_0, uint256 ret_871_1) = __this__.sort2(uint256(42), uint256(43));
+        assert(ret_871_0 == uint256(42));
+        assert(ret_871_1 == uint256(43));
     }
 
-    function __testCase923__(Calls __this__) internal {
-        (uint256 expect_923_0, uint256 expect_923_1) = (uint256(42), uint256(43));
-        (uint256 ret_923_0, uint256 ret_923_1) = __this__.sort2(uint256(43), uint256(42));
-        assert(ret_923_0 == expect_923_0);
-        assert(ret_923_1 == expect_923_1);
+    function __testCase913__(Calls __this__) internal {
+        (uint256 ret_913_0, uint256 ret_913_1) = __this__.sort2(uint256(43), uint256(42));
+        assert(ret_913_0 == uint256(42));
+        assert(ret_913_1 == uint256(43));
     }
 
-    function __testCase965__(Calls __this__) internal {
-        uint256 expect_965_0 = (uint256(1));
-        uint256 ret_965_0 = __this__.returnNoExplicitReturn();
-        assert(ret_965_0 == expect_965_0);
+    function __testCase949__(Calls __this__) internal {
+        uint256 ret_949_0 = __this__.returnNoExplicitReturn();
+        assert(ret_949_0 == uint256(1));
     }
 
-    function __testCase995__(Calls __this__) internal {
-        (uint256 expect_995_0, uint256 expect_995_1) = (uint256(2), uint256(3));
-        (uint256 ret_995_0, uint256 ret_995_1) = __this__.returnMixedNamedUnamed(true);
-        assert(ret_995_0 == expect_995_0);
-        assert(ret_995_1 == expect_995_1);
+    function __testCase975__(Calls __this__) internal {
+        (uint256 ret_975_0, uint256 ret_975_1) = __this__.returnMixedNamedUnamed(true);
+        assert(ret_975_0 == uint256(2));
+        assert(ret_975_1 == uint256(3));
     }
 
-    function __testCase1038__(Calls __this__) internal {
-        (uint256 expect_1038_0, uint256 expect_1038_1) = (uint256(0), uint256(11));
-        (uint256 ret_1038_0, uint256 ret_1038_1) = __this__.returnMixedNamedUnamed(false);
-        assert(ret_1038_0 == expect_1038_0);
-        assert(ret_1038_1 == expect_1038_1);
+    function __testCase1012__(Calls __this__) internal {
+        (uint256 ret_1012_0, uint256 ret_1012_1) = __this__.returnMixedNamedUnamed(false);
+        assert(ret_1012_0 == uint256(0));
+        assert(ret_1012_1 == uint256(11));
     }
 
-    function __testCase1080__(Calls __this__) internal {
-        uint256 expect_1080_0 = (uint256(1));
-        uint256 ret_1080_0 = __this__.returnOverwrite();
-        assert(ret_1080_0 == expect_1080_0);
+    function __testCase1048__(Calls __this__) internal {
+        uint256 ret_1048_0 = __this__.returnOverwrite();
+        assert(ret_1048_0 == uint256(1));
     }
 
-    function __testCase1109__(Calls __this__) internal {
-        uint256 expect_1109_0 = (uint256(0));
-        uint256 ret_1109_0 = __this__.returnAssignBeforeBreak1();
-        assert(ret_1109_0 == expect_1109_0);
+    function __testCase1073__(Calls __this__) internal {
+        uint256 ret_1073_0 = __this__.returnAssignBeforeBreak1();
+        assert(ret_1073_0 == uint256(0));
     }
 
-    function __testCase1138__(Calls __this__) internal {
-        (uint256 expect_1138_0, uint256 expect_1138_1) = (uint256(5), uint256(0));
-        (uint256 ret_1138_0, uint256 ret_1138_1) = __this__.returnAssignBeforeBreak2();
-        assert(ret_1138_0 == expect_1138_0);
-        assert(ret_1138_1 == expect_1138_1);
+    function __testCase1098__(Calls __this__) internal {
+        (uint256 ret_1098_0, uint256 ret_1098_1) = __this__.returnAssignBeforeBreak2();
+        assert(ret_1098_0 == uint256(5));
+        assert(ret_1098_1 == uint256(0));
     }
 
-    function __testCase1180__(Calls __this__) internal {
-        uint256 expect_1180_0 = (uint256(1));
-        uint256 ret_1180_0 = __this__.returnBreakBeforeAssign();
-        assert(ret_1180_0 == expect_1180_0);
+    function __testCase1134__(Calls __this__) internal {
+        uint256 ret_1134_0 = __this__.returnBreakBeforeAssign();
+        assert(ret_1134_0 == uint256(1));
     }
 
-    function __testCase1209__(Calls __this__) internal {
+    function __testCase1159__(Calls __this__) internal {
         __this__.returnTuplesFromFunction();
     }
 
-    function __testCase1223__(Calls __this__) internal {
-        (uint256[3] memory expect_1223_0, uint256[3] memory expect_1223_1) = ([uint256(1), uint256(2), uint256(3)], [uint256(4), uint256(2), uint256(3)]);
-        (uint256[3] memory ret_1223_0, uint256[3] memory ret_1223_1) = __this__.returnTuplesFromFunctionCall();
-        assert(keccak256(abi.encodePacked(ret_1223_0)) == keccak256(abi.encodePacked(expect_1223_0)));
-        assert(keccak256(abi.encodePacked(ret_1223_1)) == keccak256(abi.encodePacked(expect_1223_1)));
+    function __testCase1173__(Calls __this__) internal {
+        (uint256[3] memory ret_1173_0, uint256[3] memory ret_1173_1) = __this__.returnTuplesFromFunctionCall();
+        assert(keccak256(abi.encodePacked(ret_1173_0)) == keccak256(abi.encodePacked([uint256(1), uint256(2), uint256(3)])));
+        assert(keccak256(abi.encodePacked(ret_1173_1)) == keccak256(abi.encodePacked([uint256(4), uint256(2), uint256(3)])));
     }
 }

@@ -117,10 +117,10 @@ contract __IRTest__ {
         __testCase531__(__this__);
         __testCase545__(__this__);
         __testCase562__(__this__);
-        __testCase594__(__this__);
-        __testCase626__(__this__);
-        __testCase655__(__this__);
-        __testCase678__(__this__);
+        __testCase590__(__this__);
+        __testCase618__(__this__);
+        __testCase643__(__this__);
+        __testCase666__(__this__);
     }
 
     function __testCase531__(Misc __this__) internal {
@@ -132,30 +132,26 @@ contract __IRTest__ {
     }
 
     function __testCase562__(Misc __this__) internal {
-        uint256 expect_562_0 = (uint256(6));
         uint256 ret_562_0 = __this__.divisionBy(uint256(1));
-        assert(ret_562_0 == expect_562_0);
+        assert(ret_562_0 == uint256(6));
     }
 
-    function __testCase594__(Misc __this__) internal {
-        uint256 expect_594_0 = (uint256(1));
-        uint256 ret_594_0 = __this__.divisionBy(uint256(5));
-        assert(ret_594_0 == expect_594_0);
+    function __testCase590__(Misc __this__) internal {
+        uint256 ret_590_0 = __this__.divisionBy(uint256(5));
+        assert(ret_590_0 == uint256(1));
     }
 
-    function __testCase626__(Misc __this__) internal {
-        uint256 expect_626_0 = (uint256(1));
-        uint256 ret_626_0 = __this__.modBy(uint256(3));
-        assert(ret_626_0 == expect_626_0);
+    function __testCase618__(Misc __this__) internal {
+        uint256 ret_618_0 = __this__.modBy(uint256(3));
+        assert(ret_618_0 == uint256(1));
     }
 
-    function __testCase655__(Misc __this__) internal {
+    function __testCase643__(Misc __this__) internal {
         __this__.expressionNoAssignment();
     }
 
-    function __testCase678__(Misc __this__) internal {
-        uint256 expect_678_0 = (uint256(64));
-        uint256 ret_678_0 = __this__.expAssoc(uint256(2), uint256(3), uint256(2));
-        assert(ret_678_0 == expect_678_0);
+    function __testCase666__(Misc __this__) internal {
+        uint256 ret_666_0 = __this__.expAssoc(uint256(2), uint256(3), uint256(2));
+        assert(ret_666_0 == uint256(64));
     }
 }

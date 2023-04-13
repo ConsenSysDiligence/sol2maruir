@@ -26,10 +26,10 @@ contract EncodingTest {
 contract __IRTest__ {
     function main() public {
         EncodingTest __this__ = new EncodingTest();
-        __testCase142__(__this__);
+        __testCase143__(__this__);
     }
 
-    function __testCase142__(EncodingTest __this__) internal {
+    function __testCase143__(EncodingTest __this__) internal {
         __this__.test();
     }
 }

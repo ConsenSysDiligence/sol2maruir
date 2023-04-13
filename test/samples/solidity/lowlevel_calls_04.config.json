@@ -13,6 +13,20 @@
             }
         },
         {
+            "act": "call",
+            "definingContract": "Test",
+            "mdc": "Test",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Test",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
             "act": "define",
             "type": "Test",
             "location": "storage",
@@ -24,6 +38,20 @@
             }
         },
         {
+            "act": "call",
+            "definingContract": "Test",
+            "mdc": "Test",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "Test",
+                    "name": "this1"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
             "act": "define",
             "type": "RejectFallback",
             "location": "storage",
@@ -33,6 +61,20 @@
                 "type": "address",
                 "value": "0x0000000000000000000000000000000000000101"
             }
+        },
+        {
+            "act": "call",
+            "definingContract": "RejectFallback",
+            "mdc": "RejectFallback",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "RejectFallback",
+                    "name": "rf"
+                }
+            ],
+            "expectedReturns": []
         },
         {
             "act": "define",
@@ -47,14 +89,14 @@
         },
         {
             "act": "call",
-            "definingContract": "Test",
-            "mdc": "Test",
+            "definingContract": "RejectNoFuns",
+            "mdc": "RejectNoFuns",
             "method": "constructor",
             "args": [
                 {
                     "kind": "object",
-                    "type": "Test",
-                    "name": "this"
+                    "type": "RejectNoFuns",
+                    "name": "rnf"
                 }
             ],
             "expectedReturns": []
@@ -77,7 +119,7 @@
             "act": "call",
             "definingContract": "Test",
             "mdc": "Test",
-            "method": "callTests(address)",
+            "method": "transfer(address)",
             "args": [
                 {
                     "kind": "object",
@@ -85,9 +127,9 @@
                     "name": "this"
                 },
                 {
-                    "kind": "object",
-                    "type": "Test",
-                    "name": "this1"
+                    "kind": "literal",
+                    "type": "address",
+                    "value": "0x0000000000000000000000000000000000000101"
                 }
             ],
             "expectedReturns": []
@@ -125,29 +167,10 @@
                 {
                     "kind": "literal",
                     "type": "address",
-                    "value": "0x0000000000000000000000000000000000000101"
-                }
-            ],
-            "expectedAssertFail": true
-        },
-        {
-            "act": "call",
-            "definingContract": "Test",
-            "mdc": "Test",
-            "method": "transfer(address)",
-            "args": [
-                {
-                    "kind": "object",
-                    "type": "Test",
-                    "name": "this"
-                },
-                {
-                    "kind": "literal",
-                    "type": "address",
                     "value": "0x0000000000000000000000000000000000000102"
                 }
             ],
-            "expectedAssertFail": true
+            "expectedReturns": []
         }
     ]
 }

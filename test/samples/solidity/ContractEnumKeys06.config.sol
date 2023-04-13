@@ -12,7 +12,7 @@ interface C {}
 
 contract E is C {}
 
-contract ContractMappingKeys06 {
+contract ContractEnumKeys06 {
     mapping(A => int) internal mA;
     mapping(B => int) internal mB;
     mapping(C => int) internal mC;
@@ -45,11 +45,11 @@ contract ContractMappingKeys06 {
 
 contract __IRTest__ {
     function main() public {
-        ContractMappingKeys06 __this__ = new ContractMappingKeys06();
+        ContractEnumKeys06 __this__ = new ContractEnumKeys06();
         __testCase200__(__this__);
     }
 
-    function __testCase200__(ContractMappingKeys06 __this__) internal {
+    function __testCase200__(ContractEnumKeys06 __this__) internal {
         __this__.main();
     }
 }

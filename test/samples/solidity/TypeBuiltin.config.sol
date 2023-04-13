@@ -17,7 +17,5 @@ contract TypeBuiltin {
 }
 
 contract __IRTest__ {
-    function main() public {
-        // Just verify that it compiles properly
-    }
+    function main() public {}
 }

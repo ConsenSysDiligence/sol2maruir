@@ -54,59 +54,54 @@ contract __IRTest__ {
     function main() public {
         DoubleUnderscore __this__ = new DoubleUnderscore();
         __testCase154__(__this__);
-        __testCase183__(__this__);
-        __testCase198__(__this__);
-        __testCase227__(__this__);
-        __testCase242__(__this__);
-        __testCase271__(__this__);
-        __testCase286__(__this__);
-        __testCase315__(__this__);
-        __testCase330__(__this__);
+        __testCase179__(__this__);
+        __testCase194__(__this__);
+        __testCase219__(__this__);
+        __testCase234__(__this__);
+        __testCase259__(__this__);
+        __testCase274__(__this__);
+        __testCase299__(__this__);
+        __testCase314__(__this__);
     }
 
     function __testCase154__(DoubleUnderscore __this__) internal {
-        uint256 expect_154_0 = (uint256(1));
         uint256 ret_154_0 = __this__.singleMod(true);
-        assert(ret_154_0 == expect_154_0);
+        assert(ret_154_0 == uint256(1));
     }
 
-    function __testCase183__(DoubleUnderscore __this__) internal {
+    function __testCase179__(DoubleUnderscore __this__) internal {
         __this__.reset();
     }
 
-    function __testCase198__(DoubleUnderscore __this__) internal {
-        uint256 expect_198_0 = (uint256(2));
-        uint256 ret_198_0 = __this__.singleMod(false);
-        assert(ret_198_0 == expect_198_0);
+    function __testCase194__(DoubleUnderscore __this__) internal {
+        uint256 ret_194_0 = __this__.singleMod(false);
+        assert(ret_194_0 == uint256(2));
     }
 
-    function __testCase227__(DoubleUnderscore __this__) internal {
+    function __testCase219__(DoubleUnderscore __this__) internal {
         __this__.reset();
     }
 
-    function __testCase242__(DoubleUnderscore __this__) internal {
-        uint256 expect_242_0 = (uint256(2));
-        uint256 ret_242_0 = __this__.doubleMod(true);
-        assert(ret_242_0 == expect_242_0);
+    function __testCase234__(DoubleUnderscore __this__) internal {
+        uint256 ret_234_0 = __this__.doubleMod(true);
+        assert(ret_234_0 == uint256(2));
     }
 
-    function __testCase271__(DoubleUnderscore __this__) internal {
+    function __testCase259__(DoubleUnderscore __this__) internal {
         __this__.reset();
     }
 
-    function __testCase286__(DoubleUnderscore __this__) internal {
-        uint256 expect_286_0 = (uint256(4));
-        uint256 ret_286_0 = __this__.doubleMod(false);
-        assert(ret_286_0 == expect_286_0);
+    function __testCase274__(DoubleUnderscore __this__) internal {
+        uint256 ret_274_0 = __this__.doubleMod(false);
+        assert(ret_274_0 == uint256(4));
     }
 
-    function __testCase315__(DoubleUnderscore __this__) internal {
+    function __testCase299__(DoubleUnderscore __this__) internal {
         __this__.reset();
     }
 
-    function __testCase330__(DoubleUnderscore __this__) internal {
-        uint256 expect_330_0 = (uint256(10));
-        uint256 ret_330_0 = __this__.twoMods(false);
-        assert(ret_330_0 == expect_330_0);
+    function __testCase314__(DoubleUnderscore __this__) internal {
+        uint256 ret_314_0 = __this__.twoMods(false);
+        assert(ret_314_0 == uint256(10));
     }
 }

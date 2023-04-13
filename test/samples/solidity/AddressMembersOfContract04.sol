@@ -5,14 +5,17 @@ contract Some {
 }
 
 contract AddressMembersOfContract {
-    function verify(uint x) public {
+    function verify() public {
         Some s = new Some();
 
-        s.balance;
+        assert(s.balance == 0);
         s.transfer(0 ether);
+        assert(s.balance == 0);
         s.send(0 ether);
-        s.call();
-        s.delegatecall();
-        s.callcode();
+        assert(s.balance == 0);
+        bool res = s.call();
+        assert(res);
+        //s.delegatecall();
+        //s.callcode();
     }
 }

@@ -1,3 +1,5 @@
+pragma solidity 0.7.6;
+
 contract StorageRefArg {
     uint[] internal a;
     uint[] internal b;
@@ -20,25 +22,22 @@ contract StorageRefArg {
 contract __IRTest__ {
     function main() public {
         StorageRefArg __this__ = new StorageRefArg();
-        __testCase89__(__this__);
+        __testCase90__(__this__);
     }
 
-    function __testCase89__(StorageRefArg __this__) internal {
-        uint256[] memory expect_89_0 = new uint256[](3);
-
-        expect_89_0[0] = uint256(1);
-        expect_89_0[1] = uint256(2);
-        expect_89_0[2] = uint256(3);
-
-        uint256[] memory expect_89_1 = new uint256[](3);
-
-        expect_89_1[0] = uint256(42);
-        expect_89_1[1] = uint256(5);
-        expect_89_1[2] = uint256(6);
-
-        (uint256[] memory ret_89_0, uint256[] memory ret_89_1) = __this__.main();
-
-        assert(keccak256(abi.encodePacked(ret_89_0)) == keccak256(abi.encodePacked(expect_89_0)));
-        assert(keccak256(abi.encodePacked(ret_89_1)) == keccak256(abi.encodePacked(expect_89_1)));
+    function __testCase90__(StorageRefArg __this__) internal {
+        uint256[] memory arr_lit_4;
+        arr_lit_4 = new uint256[](3);
+        arr_lit_4[0] = uint256(1);
+        arr_lit_4[1] = uint256(2);
+        arr_lit_4[2] = uint256(3);
+        uint256[] memory arr_lit_5;
+        arr_lit_5 = new uint256[](3);
+        arr_lit_5[0] = uint256(42);
+        arr_lit_5[1] = uint256(5);
+        arr_lit_5[2] = uint256(6);
+        (uint256[] memory ret_90_0, uint256[] memory ret_90_1) = __this__.main();
+        assert(keccak256(abi.encodePacked(ret_90_0)) == keccak256(abi.encodePacked(arr_lit_4)));
+        assert(keccak256(abi.encodePacked(ret_90_1)) == keccak256(abi.encodePacked(arr_lit_5)));
     }
 }

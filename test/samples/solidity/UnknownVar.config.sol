@@ -1,39 +1,30 @@
 pragma solidity ^0.4.24;
 
 contract A {
-    int a;
+    int internal a;
 
-    constructor (int _a) public {
+    constructor(int _a) public {
         a = _a;
     }
-
 }
 
 contract B is A {
-    int b;
+    int internal b;
 
-    constructor (int _a, int _b) A(_a) public {
+    constructor(int _a, int _b) public A(_a) {
         b = _b;
     }
 }
 
 contract UnknownVar is B {
-    int c;
+    int internal c;
 
-    constructor (int _a, int _b, int _c) B(_a + _b, _b) public {
+    constructor(int _a, int _b, int _c) public B(_a + _b,_b) {
         c = _c;
     }
-    
+
     function getA() public returns (int) {
         return a;
-    }
-}
-
-contract OtherCase {
-    function test() view public {
-        require(addr != 0x0);
-
-        address addr = msg.sender;
     }
 }
 
@@ -44,8 +35,7 @@ contract __IRTest__ {
     }
 
     function __testCase90__(UnknownVar __this__) internal {
-        int256 expect_90_0 = (int256(7));
         int256 ret_90_0 = __this__.getA();
-        assert(ret_90_0 == expect_90_0);
+        assert(ret_90_0 == int256(7));
     }
 }

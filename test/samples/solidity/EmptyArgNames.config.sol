@@ -13,8 +13,7 @@ contract __IRTest__ {
     }
 
     function __testCase34__(EmptyArgNames __this__) internal {
-        uint256 expect_34_0 = (uint256(42));
         uint256 ret_34_0 = __this__.main(uint256(1), uint256(2));
-        assert(ret_34_0 == expect_34_0);
+        assert(ret_34_0 == uint256(42));
     }
 }

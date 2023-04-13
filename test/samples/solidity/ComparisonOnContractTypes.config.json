@@ -5,28 +5,6 @@
     "steps": [
         {
             "act": "define",
-            "type": "Some",
-            "location": "storage",
-            "address": {
-                "kind": "literal",
-                "type": "address",
-                "value": "0x0000000000000000000000000000000000000000"
-            },
-            "name": "some"
-        },
-        {
-            "act": "define",
-            "type": "Token",
-            "location": "storage",
-            "address": {
-                "kind": "literal",
-                "type": "address",
-                "value": "0x0000000000000000000000000000000000000001"
-            },
-            "name": "token"
-        },
-        {
-            "act": "define",
             "type": "Test",
             "location": "storage",
             "name": "this"

@@ -128,100 +128,88 @@ contract __IRTest__ {
     function main() public {
         AliasingAndCopying __this__ = new AliasingAndCopying();
         __testCase614__(__this__);
-        __testCase698__(__this__);
-        __testCase782__(__this__);
-        __testCase866__(__this__);
-        __testCase950__(__this__);
-        __testCase1034__(__this__);
+        __testCase692__(__this__);
+        __testCase770__(__this__);
+        __testCase848__(__this__);
+        __testCase926__(__this__);
+        __testCase1004__(__this__);
+        __testCase1082__(__this__);
         __testCase1118__(__this__);
-        __testCase1160__(__this__);
-        __testCase1202__(__this__);
-        __testCase1244__(__this__);
-        __testCase1286__(__this__);
-        __testCase1328__(__this__);
+        __testCase1154__(__this__);
+        __testCase1190__(__this__);
+        __testCase1226__(__this__);
+        __testCase1262__(__this__);
     }
 
     function __testCase614__(AliasingAndCopying __this__) internal {
-        (uint256[3] memory expect_614_0, uint256[3] memory expect_614_1) = ([uint256(1), uint256(2), uint256(3)], [uint256(4), uint256(2), uint256(3)]);
         (uint256[3] memory ret_614_0, uint256[3] memory ret_614_1) = __this__.arrayStorageToMemory();
-        assert(keccak256(abi.encodePacked(ret_614_0)) == keccak256(abi.encodePacked(expect_614_0)));
-        assert(keccak256(abi.encodePacked(ret_614_1)) == keccak256(abi.encodePacked(expect_614_1)));
+        assert(keccak256(abi.encodePacked(ret_614_0)) == keccak256(abi.encodePacked([uint256(1), uint256(2), uint256(3)])));
+        assert(keccak256(abi.encodePacked(ret_614_1)) == keccak256(abi.encodePacked([uint256(4), uint256(2), uint256(3)])));
     }
 
-    function __testCase698__(AliasingAndCopying __this__) internal {
-        (uint256[3] memory expect_698_0, uint256[3] memory expect_698_1) = ([uint256(4), uint256(2), uint256(3)], [uint256(1), uint256(2), uint256(3)]);
-        (uint256[3] memory ret_698_0, uint256[3] memory ret_698_1) = __this__.arrayMemoryToStorage();
-        assert(keccak256(abi.encodePacked(ret_698_0)) == keccak256(abi.encodePacked(expect_698_0)));
-        assert(keccak256(abi.encodePacked(ret_698_1)) == keccak256(abi.encodePacked(expect_698_1)));
+    function __testCase692__(AliasingAndCopying __this__) internal {
+        (uint256[3] memory ret_692_0, uint256[3] memory ret_692_1) = __this__.arrayMemoryToStorage();
+        assert(keccak256(abi.encodePacked(ret_692_0)) == keccak256(abi.encodePacked([uint256(4), uint256(2), uint256(3)])));
+        assert(keccak256(abi.encodePacked(ret_692_1)) == keccak256(abi.encodePacked([uint256(1), uint256(2), uint256(3)])));
     }
 
-    function __testCase782__(AliasingAndCopying __this__) internal {
-        (uint256[3] memory expect_782_0, uint256[3] memory expect_782_1) = ([uint256(4), uint256(2), uint256(3)], [uint256(4), uint256(2), uint256(3)]);
-        (uint256[3] memory ret_782_0, uint256[3] memory ret_782_1) = __this__.arrayMemoryToMemory();
-        assert(keccak256(abi.encodePacked(ret_782_0)) == keccak256(abi.encodePacked(expect_782_0)));
-        assert(keccak256(abi.encodePacked(ret_782_1)) == keccak256(abi.encodePacked(expect_782_1)));
+    function __testCase770__(AliasingAndCopying __this__) internal {
+        (uint256[3] memory ret_770_0, uint256[3] memory ret_770_1) = __this__.arrayMemoryToMemory();
+        assert(keccak256(abi.encodePacked(ret_770_0)) == keccak256(abi.encodePacked([uint256(4), uint256(2), uint256(3)])));
+        assert(keccak256(abi.encodePacked(ret_770_1)) == keccak256(abi.encodePacked([uint256(4), uint256(2), uint256(3)])));
     }
 
-    function __testCase866__(AliasingAndCopying __this__) internal {
-        (uint256[3] memory expect_866_0, uint256[3] memory expect_866_1) = ([uint256(1), uint256(2), uint256(3)], [uint256(4), uint256(2), uint256(3)]);
-        (uint256[3] memory ret_866_0, uint256[3] memory ret_866_1) = __this__.arrayStorageToStorage();
-        assert(keccak256(abi.encodePacked(ret_866_0)) == keccak256(abi.encodePacked(expect_866_0)));
-        assert(keccak256(abi.encodePacked(ret_866_1)) == keccak256(abi.encodePacked(expect_866_1)));
+    function __testCase848__(AliasingAndCopying __this__) internal {
+        (uint256[3] memory ret_848_0, uint256[3] memory ret_848_1) = __this__.arrayStorageToStorage();
+        assert(keccak256(abi.encodePacked(ret_848_0)) == keccak256(abi.encodePacked([uint256(1), uint256(2), uint256(3)])));
+        assert(keccak256(abi.encodePacked(ret_848_1)) == keccak256(abi.encodePacked([uint256(4), uint256(2), uint256(3)])));
     }
 
-    function __testCase950__(AliasingAndCopying __this__) internal {
-        (uint256[3] memory expect_950_0, uint256[3] memory expect_950_1) = ([uint256(42), uint256(4), uint256(4)], [uint256(42), uint256(4), uint256(4)]);
-        (uint256[3] memory ret_950_0, uint256[3] memory ret_950_1) = __this__.twoDimArrayMemoryToMemory();
-        assert(keccak256(abi.encodePacked(ret_950_0)) == keccak256(abi.encodePacked(expect_950_0)));
-        assert(keccak256(abi.encodePacked(ret_950_1)) == keccak256(abi.encodePacked(expect_950_1)));
+    function __testCase926__(AliasingAndCopying __this__) internal {
+        (uint256[3] memory ret_926_0, uint256[3] memory ret_926_1) = __this__.twoDimArrayMemoryToMemory();
+        assert(keccak256(abi.encodePacked(ret_926_0)) == keccak256(abi.encodePacked([uint256(42), uint256(4), uint256(4)])));
+        assert(keccak256(abi.encodePacked(ret_926_1)) == keccak256(abi.encodePacked([uint256(42), uint256(4), uint256(4)])));
     }
 
-    function __testCase1034__(AliasingAndCopying __this__) internal {
-        (uint256[3] memory expect_1034_0, uint256[3] memory expect_1034_1) = ([uint256(42), uint256(4), uint256(4)], [uint256(4), uint256(4), uint256(4)]);
-        (uint256[3] memory ret_1034_0, uint256[3] memory ret_1034_1) = __this__.twoDimArrayStorageToStorage();
-        assert(keccak256(abi.encodePacked(ret_1034_0)) == keccak256(abi.encodePacked(expect_1034_0)));
-        assert(keccak256(abi.encodePacked(ret_1034_1)) == keccak256(abi.encodePacked(expect_1034_1)));
+    function __testCase1004__(AliasingAndCopying __this__) internal {
+        (uint256[3] memory ret_1004_0, uint256[3] memory ret_1004_1) = __this__.twoDimArrayStorageToStorage();
+        assert(keccak256(abi.encodePacked(ret_1004_0)) == keccak256(abi.encodePacked([uint256(42), uint256(4), uint256(4)])));
+        assert(keccak256(abi.encodePacked(ret_1004_1)) == keccak256(abi.encodePacked([uint256(4), uint256(4), uint256(4)])));
+    }
+
+    function __testCase1082__(AliasingAndCopying __this__) internal {
+        (uint256 ret_1082_0, uint256 ret_1082_1) = __this__.structStorageToStorage();
+        assert(ret_1082_0 == uint256(5));
+        assert(ret_1082_1 == uint256(5));
     }
 
     function __testCase1118__(AliasingAndCopying __this__) internal {
-        (uint256 expect_1118_0, uint256 expect_1118_1) = (uint256(5), uint256(5));
-        (uint256 ret_1118_0, uint256 ret_1118_1) = __this__.structStorageToStorage();
-        assert(ret_1118_0 == expect_1118_0);
-        assert(ret_1118_1 == expect_1118_1);
+        (uint256 ret_1118_0, uint256 ret_1118_1) = __this__.structStorageToMemory();
+        assert(ret_1118_0 == uint256(5));
+        assert(ret_1118_1 == uint256(1));
     }
 
-    function __testCase1160__(AliasingAndCopying __this__) internal {
-        (uint256 expect_1160_0, uint256 expect_1160_1) = (uint256(5), uint256(1));
-        (uint256 ret_1160_0, uint256 ret_1160_1) = __this__.structStorageToMemory();
-        assert(ret_1160_0 == expect_1160_0);
-        assert(ret_1160_1 == expect_1160_1);
+    function __testCase1154__(AliasingAndCopying __this__) internal {
+        (uint256 ret_1154_0, uint256 ret_1154_1) = __this__.structMemoryToStorage();
+        assert(ret_1154_0 == uint256(5));
+        assert(ret_1154_1 == uint256(1));
     }
 
-    function __testCase1202__(AliasingAndCopying __this__) internal {
-        (uint256 expect_1202_0, uint256 expect_1202_1) = (uint256(5), uint256(1));
-        (uint256 ret_1202_0, uint256 ret_1202_1) = __this__.structMemoryToStorage();
-        assert(ret_1202_0 == expect_1202_0);
-        assert(ret_1202_1 == expect_1202_1);
+    function __testCase1190__(AliasingAndCopying __this__) internal {
+        (uint256 ret_1190_0, uint256 ret_1190_1) = __this__.structMemoryToMemory();
+        assert(ret_1190_0 == uint256(5));
+        assert(ret_1190_1 == uint256(5));
     }
 
-    function __testCase1244__(AliasingAndCopying __this__) internal {
-        (uint256 expect_1244_0, uint256 expect_1244_1) = (uint256(5), uint256(5));
-        (uint256 ret_1244_0, uint256 ret_1244_1) = __this__.structMemoryToMemory();
-        assert(ret_1244_0 == expect_1244_0);
-        assert(ret_1244_1 == expect_1244_1);
+    function __testCase1226__(AliasingAndCopying __this__) internal {
+        (uint256 ret_1226_0, uint256 ret_1226_1) = __this__.copyNestedStruct();
+        assert(ret_1226_0 == uint256(6));
+        assert(ret_1226_1 == uint256(4));
     }
 
-    function __testCase1286__(AliasingAndCopying __this__) internal {
-        (uint256 expect_1286_0, uint256 expect_1286_1) = (uint256(6), uint256(4));
-        (uint256 ret_1286_0, uint256 ret_1286_1) = __this__.copyNestedStruct();
-        assert(ret_1286_0 == expect_1286_0);
-        assert(ret_1286_1 == expect_1286_1);
-    }
-
-    function __testCase1328__(AliasingAndCopying __this__) internal {
-        (int256 expect_1328_0, int256 expect_1328_1) = (int256(1), int256(2));
-        (int256 ret_1328_0, int256 ret_1328_1) = __this__.structOperations();
-        assert(ret_1328_0 == expect_1328_0);
-        assert(ret_1328_1 == expect_1328_1);
+    function __testCase1262__(AliasingAndCopying __this__) internal {
+        (int256 ret_1262_0, int256 ret_1262_1) = __this__.structOperations();
+        assert(ret_1262_0 == int256(1));
+        assert(ret_1262_1 == int256(2));
     }
 }

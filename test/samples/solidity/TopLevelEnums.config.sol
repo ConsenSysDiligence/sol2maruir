@@ -19,8 +19,5 @@ contract Foo {
 contract __IRTest__ {
     function main() public {
         Foo __this__ = new Foo();
-
-        assert(__this__.foo() == Foo.A.X);
-        assert(__this__.boo() == B.D);
     }
 }

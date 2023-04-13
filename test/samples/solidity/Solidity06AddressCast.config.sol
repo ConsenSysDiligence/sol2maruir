@@ -15,8 +15,7 @@ contract __IRTest__ {
     }
 
     function __testCase34__(Foo __this__) internal {
-        address expect_34_0 = (address(0x0));
         address ret_34_0 = __this__.main();
-        assert(ret_34_0 == expect_34_0);
+        assert(ret_34_0 == address(0x0));
     }
 }

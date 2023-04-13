@@ -1,3 +1,5 @@
+pragma solidity 0.8.6;
+
 contract Some {
     uint public a;
 }
@@ -23,10 +25,10 @@ contract Test {
 contract __IRTest__ {
     function main() public {
         Test __this__ = new Test();
-        __testCase103__(__this__);
+        __testCase94__(__this__);
     }
 
-    function __testCase103__(Test __this__) internal {
+    function __testCase94__(Test __this__) internal {
         __this__.verify();
     }
 }

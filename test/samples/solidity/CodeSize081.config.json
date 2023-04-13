@@ -2,10 +2,44 @@
     "file": "./test/samples/solidity/CodeSize081.sol",
     "steps": [
         {
-            "act": "validateBySnapshot",
+            "act": "define",
+            "type": "CodeSize",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
             "definingContract": "CodeSize",
+            "mdc": "CodeSize",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "CodeSize",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "CodeSize",
+            "mdc": "CodeSize",
             "method": "f()",
-            "dotFile": "test/samples/dot/CodeSize081_f_26121ff0.dot"
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "CodeSize",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": [
+                {
+                    "kind": "literal",
+                    "type": "uint256",
+                    "value": "204"
+                }
+            ]
         }
     ]
 }

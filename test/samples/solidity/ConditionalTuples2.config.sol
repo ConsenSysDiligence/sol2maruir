@@ -62,10 +62,10 @@ contract ConditionalTuples2 {
 contract __IRTest__ {
     function main() public {
         ConditionalTuples2 __this__ = new ConditionalTuples2();
-        __testCase475__(__this__);
+        __testCase476__(__this__);
     }
 
-    function __testCase475__(ConditionalTuples2 __this__) internal {
+    function __testCase476__(ConditionalTuples2 __this__) internal {
         __this__.main();
     }
 }

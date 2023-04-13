@@ -1,3 +1,5 @@
+pragma solidity 0.7.6;
+
 contract CalldataArgPassing {
     function callee(string calldata s) external {
         assert(keccak256(abi.encodePacked(s)) == keccak256(abi.encodePacked("abcd")));
@@ -12,10 +14,10 @@ contract CalldataArgPassing {
 contract __IRTest__ {
     function main() public {
         CalldataArgPassing __this__ = new CalldataArgPassing();
-        __testCase51__(__this__);
+        __testCase52__(__this__);
     }
 
-    function __testCase51__(CalldataArgPassing __this__) internal {
+    function __testCase52__(CalldataArgPassing __this__) internal {
         __this__.main();
     }
 }

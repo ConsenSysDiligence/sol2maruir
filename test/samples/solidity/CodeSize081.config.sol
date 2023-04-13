@@ -9,7 +9,11 @@ contract CodeSize {
 contract __IRTest__ {
     function main() public {
         CodeSize __this__ = new CodeSize();
+        __testCase29__(__this__);
+    }
 
-        assert(__this__.f() == 204);
+    function __testCase29__(CodeSize __this__) internal {
+        uint256 ret_29_0 = __this__.f();
+        assert(ret_29_0 == uint256(204));
     }
 }
