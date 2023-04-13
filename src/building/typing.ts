@@ -17,6 +17,7 @@ export const u160Addr = new ir.IntType(noSrc, 160, false);
 u160Addr.md.set("sol_type", "address");
 
 export const u256 = new ir.IntType(noSrc, 256, false);
+export const i256 = new ir.IntType(noSrc, 256, true);
 export const u8ArrExc = new ir.UserDefinedType(
     noSrc,
     "ArrWithLen",

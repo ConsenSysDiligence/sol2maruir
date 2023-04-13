@@ -465,7 +465,7 @@ export function builtin_encodeWithSignature(s: ir.State, frame: ir.BuiltinFrame)
 
     const signature = decodeString(s, sigPtr);
 
-    // console.error(`Signature: ${signature} abi types: ${pp(abiTypes)} arg: ${pp(argVals)}`);
+    // console.error(`Signature: ${signature} abi types: ${ir.pp(abiTypes)} arg: ${ir.pp(argVals)}`);
     const result = encodeWithSignature(signature, abiTypes, ...argVals);
     // console.error(result.toString("hex"));
 

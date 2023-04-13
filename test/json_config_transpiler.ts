@@ -229,6 +229,7 @@ export class JSONConfigTranspiler extends BaseFunctionCompiler {
                 ),
                 factory.structLiteral(ir.noSrc, [
                     ["len", factory.numberLiteral(ir.noSrc, BigInt(values.length), 10, u256)],
+                    ["capacity", factory.numberLiteral(ir.noSrc, BigInt(values.length), 10, u256)],
                     [
                         "arr",
                         factory.arrayLiteral(

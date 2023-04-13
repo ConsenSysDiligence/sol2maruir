@@ -28,6 +28,7 @@ import {
 import {
     boolT,
     convertToMem,
+    i256,
     isAddressType,
     msgPtrT,
     msgT,
@@ -597,6 +598,18 @@ export class ExpressionCompiler {
         let lExp = this.compile(expr.vLeftExpression);
         let rExp = this.compile(expr.vRightExpression);
         const src = new ASTSource(expr);
+
+        if (expr.operator === "**") {
+            const lSoLT = this.cfgBuilder.infer.typeOf(expr.vLeftExpression);
+            if (lSoLT instanceof sol.IntLiteralType) {
+                const signed = lSoLT.literal !== undefined ? lSoLT.literal < 0n : false;
+                lExp = this.factory.cast(
+                    new ASTSource(expr.vLeftExpression),
+                    signed ? i256 : u256,
+                    lExp
+                );
+            }
+        }
 
         /// Power and bitshifts are the only binary operators
         /// where we don't insist that the left and right sub-expressions
@@ -1283,7 +1296,10 @@ export class ExpressionCompiler {
         const src = new ASTSource(expr);
 
         // New array
-        if (newE.vTypeName instanceof sol.ArrayTypeName) {
+        if (
+            newE.vTypeName instanceof sol.ArrayTypeName ||
+            (newE.vTypeName instanceof sol.ElementaryTypeName && newE.vTypeName.name === "bytes")
+        ) {
             resId = builder.getTmpId(newIrT);
             assert(
                 newIrT instanceof ir.PointerType &&
@@ -1292,19 +1308,23 @@ export class ExpressionCompiler {
                 ``
             );
 
-            const irSize = this.compile(expr.vArguments[0]);
-            const size = this.mustImplicitlyCastTo(irSize, u256, irSize.src);
+            const irSize = this.mustImplicitlyCastTo(
+                this.compile(expr.vArguments[0]),
+                u256,
+                new ASTSource(expr.vArguments[0])
+            );
+
             const elT = newIrT.toType.typeArgs[0];
             builder.call(
                 [resId],
                 factory.identifier(noSrc, "new_array", noType),
                 [factory.memConstant(noSrc, "memory")],
                 [elT],
-                [size],
+                [irSize],
                 src
             );
 
-            if (irSize instanceof ir.NumberLiteral) {
+            if (irSize instanceof ir.NumberLiteral && irSize.value < 32n) {
                 // Fixed size allocation
                 for (let i = 0n; i < irSize.value; i++) {
                     this.solArrWrite(
@@ -1759,6 +1779,8 @@ export class ExpressionCompiler {
     }
 
     compileTypeConversion(expr: sol.FunctionCall): ir.Expression {
+        const factory = this.factory;
+        const src = new ASTSource(expr);
         const calleeT = this.cfgBuilder.infer.typeOf(expr.vExpression);
 
         assert(
@@ -1770,23 +1792,56 @@ export class ExpressionCompiler {
 
         assert(expr.vArguments.length === 1, ``);
 
-        let toT = transpileType(calleeT.type, this.factory);
+        let toT = transpileType(calleeT.type, factory);
 
         // Cast to string/bytes. Wrap in a pointer type around it
         if (toT instanceof ir.UserDefinedType) {
             assert(toT.name === "ArrWithLen", `Unexpected cast to user defined type {0}`, toT);
-            toT = this.factory.pointerType(
+            toT = factory.pointerType(
                 new ASTSource(expr.vExpression),
                 toT,
-                this.factory.memConstant(ir.noSrc, "memory")
+                factory.memConstant(ir.noSrc, "memory")
             );
         }
 
-        return this.mustExplicitlyCastTo(
-            this.compile(expr.vArguments[0]),
-            toT,
-            new ASTSource(expr)
-        );
+        const irExpr = this.compile(expr.vArguments[0]);
+        const fromT = this.typeOf(irExpr);
+
+        // When casting ints to enums, emit a check for overflow
+        if (
+            fromT instanceof ir.IntType &&
+            calleeT.type instanceof sol.UserDefinedType &&
+            calleeT.type.definition instanceof sol.EnumDefinition
+        ) {
+            const oob = factory.binaryOperation(
+                src,
+                factory.binaryOperation(
+                    src,
+                    irExpr,
+                    ">=",
+                    factory.numberLiteral(
+                        src,
+                        BigInt(calleeT.type.definition.vMembers.length),
+                        10,
+                        fromT
+                    ),
+                    boolT
+                ),
+                "||",
+                factory.binaryOperation(
+                    src,
+                    irExpr,
+                    "<",
+                    factory.numberLiteral(src, 0n, 10, fromT),
+                    boolT
+                ),
+                boolT
+            );
+
+            this.makeConditionalPanic(oob, 0x21, src);
+        }
+
+        return this.mustExplicitlyCastTo(irExpr, toT, src);
     }
 
     compileConditional(expr: sol.Conditional): ir.Expression {
@@ -1818,9 +1873,13 @@ export class ExpressionCompiler {
 
     compileIndexAccess(expr: sol.IndexAccess): ir.Expression {
         assert(expr.vIndexExpression !== undefined, ``);
+        const factory = this.factory;
+        const builder = this.cfgBuilder;
+
         const base = this.compile(expr.vBaseExpression);
         const baseT = this.typeOf(base);
         const idx = this.compile(expr.vIndexExpression);
+        const idxT = this.typeOf(idx);
         const src = new ASTSource(expr);
 
         if (
@@ -1829,6 +1888,64 @@ export class ExpressionCompiler {
             baseT.toType.name === "ArrWithLen"
         ) {
             return this.solArrRead(base, idx, src);
+        }
+
+        // Indexing into fixed bytes
+        if (baseT instanceof ir.IntType) {
+            const solT = baseT.md.get("sol_type");
+            assert(
+                typeof solT === "string",
+                `Missing solidity type metadata for {0} of type {1} in compiling of index access {2}`,
+                base,
+                baseT,
+                expr
+            );
+
+            let size;
+
+            if (solT == "byte") {
+                size = 1;
+            } else {
+                const m = solT.match(/bytes([0-9]*)/);
+                assert(m !== null, `Unexpected solidity type {0}`, solT);
+
+                size = Number(m[1]);
+            }
+
+            this.makeConditionalPanic(
+                factory.binaryOperation(
+                    src,
+                    idx,
+                    ">=",
+                    factory.numberLiteral(src, BigInt(size), 10, idxT),
+                    boolT
+                ),
+                0x32,
+                src
+            );
+
+            const res = builder.getTmpId(u8, src);
+            const shiftBy = factory.binaryOperation(
+                src,
+                factory.binaryOperation(
+                    src,
+                    factory.numberLiteral(src, BigInt(size - 1), 10, idxT),
+                    "-",
+                    idx,
+                    idxT
+                ),
+                "*",
+                factory.numberLiteral(src, 8n, 10, idxT),
+                idxT
+            );
+
+            builder.assign(
+                res,
+                factory.cast(src, u8, factory.binaryOperation(src, base, ">>", shiftBy, baseT)),
+                src
+            );
+
+            return res;
         }
 
         throw new Error(
@@ -2131,6 +2248,7 @@ export class ExpressionCompiler {
         if (
             fromT instanceof ir.IntType &&
             toT instanceof ir.IntType &&
+            toT.md.has("sol_type") &&
             toT.md.get("sol_type").startsWith("enum ")
         ) {
             return this.factory.cast(src, toT, expr);
@@ -2178,7 +2296,17 @@ export class ExpressionCompiler {
                 const size = (def.initialValue as ir.StructLiteral).field("len");
 
                 if (size instanceof ir.NumberLiteral && size.value < BigInt(toT.nbits / 8)) {
-                    throw new Error("NYI casting string literals to fixed bytes");
+                    let res = 0n;
+                    const bytes = (def.initialValue as ir.StructLiteral).field(
+                        "arr"
+                    ) as ir.ArrayLiteral;
+
+                    for (let i = 0; i < bytes.values.length; i++) {
+                        const byte = bytes.values[i] as ir.NumberLiteral;
+                        res += byte.value << BigInt(toT.nbits - (i + 1) * 8);
+                    }
+
+                    return this.factory.numberLiteral(src, res, 10, toT);
                 }
             }
         }
