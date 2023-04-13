@@ -422,6 +422,8 @@ export class StatementCompiler {
     compileRevert(stmt: sol.RevertStatement): void {
         const decl = stmt.errorCall.vReferencedDeclaration;
         const factory = this.cfgBuilder.factory;
+        const stmtSrc = new ASTSource(stmt);
+        const callSrc = new ASTSource(stmt.errorCall);
 
         assert(
             decl instanceof ErrorDefinition,
@@ -431,38 +433,54 @@ export class StatementCompiler {
         );
 
         const sig = this.cfgBuilder.infer.signature(decl);
+        const errorT = this.cfgBuilder.infer.errDefToType(decl);
         const sigStr = this.cfgBuilder.getStrLit(sig, noSrc);
         const args: ir.Expression[] = [];
+        const argTs: ir.Type[] = [];
 
-        for (const arg of stmt.errorCall.vArguments) {
-            const solArgT = this.cfgBuilder.infer.typeOf(arg);
+        for (let i = 0; i < stmt.errorCall.vArguments.length; i++) {
+            const arg = stmt.errorCall.vArguments[i];
+            const solArgT = errorT.parameters[i];
+            const irArgT = transpileType(solArgT, factory);
+
             args.push(this.cfgBuilder.getStrLit(abiTypeToCanonicalName(solArgT), noSrc));
-            args.push(this.exprCompiler.compile(arg));
+            args.push(
+                this.exprCompiler.mustImplicitlyCastTo(
+                    this.exprCompiler.compile(arg),
+                    irArgT,
+                    new ASTSource(arg)
+                )
+            );
+            argTs.push(irArgT);
         }
 
-        const argTs = args.map((arg) => this.exprCompiler.typeOf(arg));
-
-        const errBytes = this.cfgBuilder.getTmpId(u8ArrMemPtr);
-        const funName = `builtin_abi_encodeWithSignature_${args.length}`;
+        const errBytes = this.cfgBuilder.getTmpId(u8ArrMemPtr, callSrc);
+        const funName = `builtin_abi_encodeWithSignature_${errorT.parameters.length}`;
         // Call builtin_abi_encodeWithSignature_N
         this.cfgBuilder.call(
             [errBytes],
             factory.identifier(noSrc, funName, noType),
-            [factory.memConstant(noSrc, "memory")],
+            [factory.memConstant(noSrc, "exception")],
             argTs,
             [sigStr, ...args],
-            new ASTSource(stmt.errorCall)
+            callSrc
         );
 
-        // Call sol_revert_08(bytes)
+        // Set the exception bytes
         this.cfgBuilder.call(
             [],
-            this.cfgBuilder.factory.identifier(new ASTSource(stmt), "sol_revert_08", noType),
-            [factory.memConstant(noSrc, "memory")],
+            this.cfgBuilder.factory.identifier(
+                new ASTSource(stmt),
+                "builtin_setExceptionBytes",
+                noType
+            ),
             [],
-            [errBytes],
-            new ASTSource(stmt)
+            [],
+            [this.exprCompiler.mustImplicitlyCastTo(errBytes, u8ArrExcPtr, callSrc)],
+            stmtSrc
         );
+
+        this.cfgBuilder.abort(stmtSrc);
     }
 
     /**
