@@ -58,8 +58,13 @@ contract __IRTest__ {
     }
 
     function __testCase310__(Arrays __this__) internal {
-        uint256[] memory expect_310_0 = ([uint256(1), uint256(2)]);
+        uint256[] memory expect_310_0 = new uint[](2);
+
+        expect_310_0[0] = uint256(1);
+        expect_310_0[1] = uint256(2);
+
         uint256[] memory ret_310_0 = __this__.arrays();
+
         assert(keccak256(abi.encodePacked(ret_310_0)) == keccak256(abi.encodePacked(expect_310_0)));
     }
 
