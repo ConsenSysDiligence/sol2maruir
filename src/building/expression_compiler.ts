@@ -1304,7 +1304,7 @@ export class ExpressionCompiler {
                 src
             );
 
-            if (irSize instanceof ir.NumberLiteral) {
+            if (irSize instanceof ir.NumberLiteral && irSize.value < 32n) {
                 // Fixed size allocation
                 for (let i = 0n; i < irSize.value; i++) {
                     this.solArrWrite(
@@ -1759,6 +1759,8 @@ export class ExpressionCompiler {
     }
 
     compileTypeConversion(expr: sol.FunctionCall): ir.Expression {
+        const factory = this.factory;
+        const src = new ASTSource(expr);
         const calleeT = this.cfgBuilder.infer.typeOf(expr.vExpression);
 
         assert(
@@ -1770,23 +1772,56 @@ export class ExpressionCompiler {
 
         assert(expr.vArguments.length === 1, ``);
 
-        let toT = transpileType(calleeT.type, this.factory);
+        let toT = transpileType(calleeT.type, factory);
 
         // Cast to string/bytes. Wrap in a pointer type around it
         if (toT instanceof ir.UserDefinedType) {
             assert(toT.name === "ArrWithLen", `Unexpected cast to user defined type {0}`, toT);
-            toT = this.factory.pointerType(
+            toT = factory.pointerType(
                 new ASTSource(expr.vExpression),
                 toT,
-                this.factory.memConstant(ir.noSrc, "memory")
+                factory.memConstant(ir.noSrc, "memory")
             );
         }
 
-        return this.mustExplicitlyCastTo(
-            this.compile(expr.vArguments[0]),
-            toT,
-            new ASTSource(expr)
-        );
+        const irExpr = this.compile(expr.vArguments[0]);
+        const fromT = this.typeOf(irExpr);
+
+        // When casting ints to enums, emit a check for overflow
+        if (
+            fromT instanceof ir.IntType &&
+            calleeT.type instanceof sol.UserDefinedType &&
+            calleeT.type.definition instanceof sol.EnumDefinition
+        ) {
+            const oob = factory.binaryOperation(
+                src,
+                factory.binaryOperation(
+                    src,
+                    irExpr,
+                    ">=",
+                    factory.numberLiteral(
+                        src,
+                        BigInt(calleeT.type.definition.vMembers.length),
+                        10,
+                        fromT
+                    ),
+                    boolT
+                ),
+                "||",
+                factory.binaryOperation(
+                    src,
+                    irExpr,
+                    "<",
+                    factory.numberLiteral(src, 0n, 10, fromT),
+                    boolT
+                ),
+                boolT
+            );
+
+            this.makeConditionalPanic(oob, 0x21, src);
+        }
+
+        return this.mustExplicitlyCastTo(irExpr, toT, src);
     }
 
     compileConditional(expr: sol.Conditional): ir.Expression {
@@ -1835,6 +1870,7 @@ export class ExpressionCompiler {
             return this.solArrRead(base, idx, src);
         }
 
+        // Indexing into fixed bytes
         if (baseT instanceof ir.IntType) {
             const solT = baseT.md.get("sol_type");
             assert(
@@ -1864,7 +1900,7 @@ export class ExpressionCompiler {
                     factory.numberLiteral(src, BigInt(size), 10, idxT),
                     boolT
                 ),
-                0x1,
+                0x32,
                 src
             );
 

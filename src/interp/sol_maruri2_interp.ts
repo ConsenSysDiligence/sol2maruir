@@ -2,6 +2,7 @@ import {
     BuiltinFrame,
     BuiltinFun,
     FunctionDefinition,
+    Identifier,
     InterpError,
     LiteralEvaluator,
     PointerVal,
@@ -12,7 +13,8 @@ import {
     runProgram,
     State,
     StatementExecutor,
-    Typing
+    Typing,
+    walk
 } from "maru-ir2";
 import { assert } from "solc-typed-ast";
 import {
@@ -307,10 +309,28 @@ export class SolMaruirInterp {
         // for (let step = flow.next(); !step.done; step = flow.next());
 
         for (const stmt of flow) {
+            const ids = new Set<string>();
+
+            walk(stmt, (nd) => {
+                if (nd instanceof Identifier) {
+                    ids.add(nd.name);
+                }
+            });
+
+            const storeStr =
+                "{" +
+                [...ids]
+                    .map(
+                        (name) =>
+                            `${name}: ${pp(state.curMachFrame.store.get(name) as PrimitiveValue)}`
+                    )
+                    .join(",") +
+                "}";
+
             console.error(
                 `${state.curMachFrame.fun.name}:${state.curMachFrame.curBB.label}:${
                     state.curMachFrame.curBBInd
-                } ${stmt.pp()} store ${pp(state.curMachFrame.store)}`
+                } ${stmt.pp()} store ${storeStr}`
             );
         }
 
