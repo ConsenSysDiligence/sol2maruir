@@ -92,7 +92,7 @@ describe("Interpreter tests", () => {
             //     encoding: "utf8"
             // });
 
-            const interp = new SolMaruirInterp(defs, entryFunc, true);
+            const interp = new SolMaruirInterp(defs, true);
 
             interp.run(entryFunc, false);
 
