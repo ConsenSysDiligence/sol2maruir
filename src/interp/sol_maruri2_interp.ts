@@ -39,7 +39,7 @@ export class SolMaruirInterp {
     contractRegistry: ContractRegistry;
     nAddresses = 0;
 
-    constructor(defs: Program, main: FunctionDefinition, rootTrans: boolean) {
+    constructor(defs: Program, rootTrans: boolean) {
         this.defs = defs;
         this.resolving = new Resolving(defs);
         this.typing = new Typing(defs, this.resolving);
