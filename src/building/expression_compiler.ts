@@ -1869,9 +1869,23 @@ export class ExpressionCompiler {
             );
 
             const res = builder.getTmpId(u8, src);
+            const shiftBy = factory.binaryOperation(
+                src,
+                factory.binaryOperation(
+                    src,
+                    factory.numberLiteral(src, BigInt(size - 1), 10, idxT),
+                    "-",
+                    idx,
+                    idxT
+                ),
+                "*",
+                factory.numberLiteral(src, 8n, 10, idxT),
+                idxT
+            );
+
             builder.assign(
                 res,
-                factory.cast(src, u8, factory.binaryOperation(src, base, ">>", idx, baseT)),
+                factory.cast(src, u8, factory.binaryOperation(src, base, ">>", shiftBy, baseT)),
                 src
             );
 
@@ -2225,7 +2239,17 @@ export class ExpressionCompiler {
                 const size = (def.initialValue as ir.StructLiteral).field("len");
 
                 if (size instanceof ir.NumberLiteral && size.value < BigInt(toT.nbits / 8)) {
-                    throw new Error("NYI casting string literals to fixed bytes");
+                    let res = 0n;
+                    const bytes = (def.initialValue as ir.StructLiteral).field(
+                        "arr"
+                    ) as ir.ArrayLiteral;
+
+                    for (let i = 0; i < bytes.values.length; i++) {
+                        const byte = bytes.values[i] as ir.NumberLiteral;
+                        res += byte.value << BigInt(toT.nbits - (i + 1) * 8);
+                    }
+
+                    return this.factory.numberLiteral(src, res, 10, toT);
                 }
             }
         }
