@@ -14,7 +14,6 @@ import {
     StatementExecutor,
     Typing
 } from "maru-ir2";
-import { assert } from "solc-typed-ast";
 import {
     builtin_bin_op_overflows,
     builtin_decode,
@@ -35,13 +34,12 @@ export class SolMaruirInterp {
     resolving: Resolving;
     typing: Typing;
     state: State;
-    main: FunctionDefinition;
     litEvaluator: LiteralEvaluator;
     stmtExec: StatementExecutor;
     contractRegistry: ContractRegistry;
     nAddresses = 0;
 
-    constructor(defs: Program, rootTrans: boolean) {
+    constructor(defs: Program, main: FunctionDefinition, rootTrans: boolean) {
         this.defs = defs;
         this.resolving = new Resolving(defs);
         this.typing = new Typing(defs, this.resolving);
@@ -51,20 +49,6 @@ export class SolMaruirInterp {
 
         this.litEvaluator = new LiteralEvaluator(this.resolving, this.state);
         this.stmtExec = new StatementExecutor(this.resolving, this.typing, this.state);
-
-        const entryPoint = defs.find(
-            (def): def is FunctionDefinition =>
-                def instanceof FunctionDefinition && def.name === "main"
-        );
-
-        assert(entryPoint !== undefined, "Unable to detect main() function");
-
-        assert(
-            entryPoint.parameters.length === 0,
-            "Entry point function main() should not have any arguments"
-        );
-
-        this.main = entryPoint;
     }
 
     private getBuiltinsMap(): Map<string, BuiltinFun> {
@@ -291,27 +275,21 @@ export class SolMaruirInterp {
         ]);
     }
 
-    run(): [boolean, PrimitiveValue[] | undefined] {
+    run(fn: FunctionDefinition, withOutput: boolean): [boolean, PrimitiveValue[] | undefined] {
         const state = this.state;
 
-        const flow = runProgram(
-            this.litEvaluator,
-            this.stmtExec,
-            this.defs,
-            state,
-            this.main,
-            [],
-            true
-        );
+        const flow = runProgram(this.litEvaluator, this.stmtExec, this.defs, state, fn, [], true);
 
-        // for (let step = flow.next(); !step.done; step = flow.next());
-
-        for (const stmt of flow) {
-            console.error(
-                `${state.curMachFrame.fun.name}:${state.curMachFrame.curBB.label}:${
-                    state.curMachFrame.curBBInd
-                } ${stmt.pp()} store ${pp(state.curMachFrame.store)}`
-            );
+        if (withOutput) {
+            for (const stmt of flow) {
+                console.error(
+                    `${state.curMachFrame.fun.name}:${state.curMachFrame.curBB.label}:${
+                        state.curMachFrame.curBBInd
+                    } ${stmt.pp()} store ${pp(state.curMachFrame.store)}`
+                );
+            }
+        } else {
+            for (let step = flow.next(); !step.done; step = flow.next());
         }
 
         return [state.failed, state.externalReturns];
