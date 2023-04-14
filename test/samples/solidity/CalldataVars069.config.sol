@@ -22,49 +22,39 @@ contract Test {
 contract __IRTest__ {
     function main() public {
         Test __this__ = new Test();
-        __testCase86__(__this__);
-        __testCase137__(__this__);
-        __testCase169__(__this__);
-        __testCase201__(__this__);
+        __testCase113__(__this__);
+        __testCase187__(__this__);
+        __testCase215__(__this__);
+        __testCase243__(__this__);
     }
 
-    /**
-     * This func has significant changes
-     * due to in Solidity there is no way
-     * to allocate local calldata variable
-     */
-    function __testCase86__(Test __this__) internal {
-        uint256[] memory expect_86_0 = new uint256[](3);
-
-        expect_86_0[0] = uint256(1);
-        expect_86_0[1] = uint256(2);
-        expect_86_0[2] = uint256(3);
-
-        uint256[] memory input = new uint256[](3);
-
-        input[0] = uint256(1);
-        input[1] = uint256(2);
-        input[2] = uint256(3);
-
-        uint256[] memory ret_86_0 = __this__.addValues(input);
-        assert(keccak256(abi.encodePacked(ret_86_0)) == keccak256(abi.encodePacked(expect_86_0)));
+    function __testCase113__(Test __this__) internal {
+        uint256[] memory arr_lit_2;
+        arr_lit_2 = new uint256[](3);
+        arr_lit_2[0] = uint256(1);
+        arr_lit_2[1] = uint256(2);
+        arr_lit_2[2] = uint256(3);
+        uint256[] memory arr_lit_3;
+        arr_lit_3 = new uint256[](3);
+        arr_lit_3[0] = uint256(1);
+        arr_lit_3[1] = uint256(2);
+        arr_lit_3[2] = uint256(3);
+        uint256[] memory ret_113_0 = __this__.addValues(arr_lit_2);
+        assert(keccak256(abi.encodePacked(ret_113_0)) == keccak256(abi.encodePacked(arr_lit_3)));
     }
 
-    function __testCase137__(Test __this__) internal {
-        uint256 expect_137_0 = (uint256(1));
-        uint256 ret_137_0 = __this__.values(uint256(0));
-        assert(ret_137_0 == expect_137_0);
+    function __testCase187__(Test __this__) internal {
+        uint256 ret_187_0 = __this__.values(uint256(0));
+        assert(ret_187_0 == uint256(1));
     }
 
-    function __testCase169__(Test __this__) internal {
-        uint256 expect_169_0 = (uint256(2));
-        uint256 ret_169_0 = __this__.values(uint256(1));
-        assert(ret_169_0 == expect_169_0);
+    function __testCase215__(Test __this__) internal {
+        uint256 ret_215_0 = __this__.values(uint256(1));
+        assert(ret_215_0 == uint256(2));
     }
 
-    function __testCase201__(Test __this__) internal {
-        uint256 expect_201_0 = (uint256(3));
-        uint256 ret_201_0 = __this__.values(uint256(2));
-        assert(ret_201_0 == expect_201_0);
+    function __testCase243__(Test __this__) internal {
+        uint256 ret_243_0 = __this__.values(uint256(2));
+        assert(ret_243_0 == uint256(3));
     }
 }

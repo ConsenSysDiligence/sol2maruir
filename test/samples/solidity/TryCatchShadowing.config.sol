@@ -8,7 +8,6 @@ contract TryCatchShadowing {
         if (fail) {
             require(false, "nooo");
         }
-
         return x;
     }
 
@@ -18,9 +17,9 @@ contract TryCatchShadowing {
         try this.modifyAndMaybeFail(2, false) returns (uint t) {
             x = x + t;
         } catch {
-            assert(false); // Shouldn't get here
+            assert(false);
         }
-        assert(x == 4 && t == 10);
+        assert((x == 4) && (t == 10));
     }
 }
 

@@ -20,18 +20,16 @@ contract __IRTest__ {
     function main() public {
         LibraryUsage __this__ = new LibraryUsage();
         __testCase195__(__this__);
-        __testCase227__(__this__);
+        __testCase223__(__this__);
     }
 
     function __testCase195__(LibraryUsage __this__) internal {
-        uint256 expect_195_0 = (uint256(10));
         uint256 ret_195_0 = __this__.libraryUsing(uint256(10));
-        assert(ret_195_0 == expect_195_0);
+        assert(ret_195_0 == uint256(10));
     }
 
-    function __testCase227__(LibraryUsage __this__) internal {
-        uint256 expect_227_0 = (uint256(10));
-        uint256 ret_227_0 = __this__.libraryCall(uint256(10));
-        assert(ret_227_0 == expect_227_0);
+    function __testCase223__(LibraryUsage __this__) internal {
+        uint256 ret_223_0 = __this__.libraryCall(uint256(10));
+        assert(ret_223_0 == uint256(10));
     }
 }

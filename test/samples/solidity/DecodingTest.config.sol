@@ -56,10 +56,10 @@ contract DecodingTest {
 contract __IRTest__ {
     function main() public {
         DecodingTest __this__ = new DecodingTest();
-        __testCase311__(__this__);
+        __testCase312__(__this__);
     }
 
-    function __testCase311__(DecodingTest __this__) internal {
+    function __testCase312__(DecodingTest __this__) internal {
         __this__.test();
     }
 }

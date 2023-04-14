@@ -5,21 +5,25 @@ contract Some {
 }
 
 contract AddressMembersOfContract {
-    function verify(uint x) public {
+    function verify() public {
         Some s = new Some();
-        s.balance;
+        assert(s.balance == 0);
         s.transfer(0 ether);
+        assert(s.balance == 0);
         s.send(0 ether);
-        s.call();
-        s.delegatecall();
-        s.callcode();
+        assert(s.balance == 0);
+        bool res = s.call();
+        assert(res);
     }
 }
 
 contract __IRTest__ {
     function main() public {
         AddressMembersOfContract __this__ = new AddressMembersOfContract();
+        __testCase74__(__this__);
+    }
 
-        __this__.verify(0);
+    function __testCase74__(AddressMembersOfContract __this__) internal {
+        __this__.verify();
     }
 }

@@ -1,3 +1,5 @@
+pragma solidity 0.7.6;
+
 contract Base {
     uint internal x = 0;
 
@@ -38,10 +40,10 @@ contract Test {
 contract __IRTest__ {
     function main() public {
         Test __this__ = new Test();
-        __testCase107__(__this__);
+        __testCase108__(__this__);
     }
 
-    function __testCase107__(Test __this__) internal {
+    function __testCase108__(Test __this__) internal {
         __this__.main();
     }
 }

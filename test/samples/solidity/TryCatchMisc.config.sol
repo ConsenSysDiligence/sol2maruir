@@ -15,20 +15,17 @@ contract TryCatchMisc {
     function argException() public returns (uint) {
         uint x = 1;
         uint y = 0;
-        
-        try this.echo(x/y) returns (uint t) {
+        try this.echo(x / y) returns (uint t) {
             return t;
         } catch {
             return 0;
         }
     }
 
-
     function successException() public returns (uint) {
         uint y = 0;
-        
         try this.echo(1) returns (uint t) {
-            return t/y;
+            return t / y;
         } catch {
             return 0;
         }
@@ -37,73 +34,55 @@ contract TryCatchMisc {
     function catchException() public returns (uint) {
         uint x = 1;
         uint y = 0;
-        
         try this.fail(1) returns (uint t) {
             return 0;
         } catch {
-            return x/y;
+            return x / y;
         }
     }
 
     function main1() public {
         try this.argException() returns (uint) {
-            assert(false); // shouldn't succeed
+            assert(false);
         } catch Error(string memory m) {
-            assert(false); // shouldn't have a high-level exception
-        } catch (bytes memory err) {
-            // Should get here.
-        }
+            assert(false);
+        } catch (bytes memory err) {}
     }
-    
+
     function main2() public {
         try this.successException() returns (uint) {
-            assert(false); // shouldn't succeed
+            assert(false);
         } catch Error(string memory m) {
-            assert(false); // shouldn't have a high-level exception
-        } catch (bytes memory err) {
-            // Should get here.
-        }
-
+            assert(false);
+        } catch (bytes memory err) {}
     }
-    
+
     function main3() public {
         try this.catchException() returns (uint) {
-            assert(false); // shouldn't succeed
+            assert(false);
         } catch Error(string memory m) {
-            assert(false); // shouldn't have a high-level exception
-        } catch (bytes memory err) {
-            // Should get here.
-        }
+            assert(false);
+        } catch (bytes memory err) {}
     }
 
     function throwMsg(string memory m) public {
         require(false, m);
     }
-    
+
     function main4() public {
-        try this.throwMsg('foo') {
-            //
-        } catch Error(string memory y) {
-            try this.throwMsg('bar') {
-                //
-            } catch Error(string memory x) {
-                assert(keccak256(abi.encode(x)) == keccak256(abi.encode('bar')));
+        try this.throwMsg("foo") {} catch Error(string memory y) {
+            try this.throwMsg("bar") {} catch Error(string memory x) {
+                assert(keccak256(abi.encode(x)) == keccak256(abi.encode("bar")));
             }
-            assert(keccak256(abi.encode(y)) == keccak256(abi.encode('foo')));
+            assert(keccak256(abi.encode(y)) == keccak256(abi.encode("foo")));
         }
     }
-    
+
     function main5() public returns (string memory) {
         string memory a = "abcd";
         bytes memory b = bytes(a);
-        
-        // b aliases a
-        try this.throwMsg("oops") {
-        } catch {
-        }
-        
-        b[0] = 0x7a; // z 
-        
+        try this.throwMsg("oops") {} catch {}
+        b[0] = 0x7a;
         return a;
     }
 }
@@ -120,8 +99,7 @@ contract __IRTest__ {
     }
 
     function __testCase346__(TryCatchMisc __this__) internal {
-        string memory expect_346_0 = ("zbcd");
         string memory ret_346_0 = __this__.main5();
-        assert(keccak256(abi.encodePacked(ret_346_0)) == keccak256(abi.encodePacked(expect_346_0)));
+        assert(keccak256(abi.encodePacked(ret_346_0)) == keccak256(abi.encodePacked("zbcd")));
     }
 }

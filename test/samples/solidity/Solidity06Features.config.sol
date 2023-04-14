@@ -1,8 +1,6 @@
 pragma solidity ^0.6.0;
 
-enum GlobalEnum {
-    A, B, C
-}
+enum GlobalEnum { A, B, C }
 
 struct GlobalStruct {
     int a;
@@ -15,13 +13,11 @@ contract NegativeExponentiation {
         int base_i256 = -3;
         uint16 power_u16 = 3;
         int expected_result_i256 = -27;
-        assert(base_i256 ** power_u16 == expected_result_i256);
-
-        // Exponentiation with truncation
+        assert((base_i256 ** power_u16) == expected_result_i256);
         int8 base_i8 = -7;
         uint power_u256 = 3;
         int8 expected_result_i8 = -87;
-        assert(base_i8 ** power_u256 == expected_result_i8);
+        assert((base_i8 ** power_u256) == expected_result_i8);
     }
 }
 
@@ -34,7 +30,9 @@ contract Empty {}
 contract SampleBase is SampleAbstract {
     function abstractFunc(address a) override(SampleAbstract) internal returns (address payable) {
         return payable(a);
-    }    function testSlices() public pure {
+    }
+
+    function testSlices() public pure {
         (uint a, uint b) = abi.decode(msg.data[0:4], (uint, uint));
         (uint c, uint d) = abi.decode(msg.data[:4], (uint, uint));
         (uint e, uint f) = abi.decode(msg.data[4:], (uint, uint));
@@ -48,16 +46,13 @@ contract SampleBase is SampleAbstract {
         } catch {
             int b = 2;
         }
-        
         try new Empty() returns (Empty x) {
             int a = 1;
-        } catch Error(string memory reason) {
-            // 
-        } catch (bytes memory lowLevelData) {
-            // 
-        }
+        } catch Error(string memory reason) {} catch (bytes memory lowLevelData) {}
     }
+
     receive() external payable {}
+
     fallback() external {}
 }
 

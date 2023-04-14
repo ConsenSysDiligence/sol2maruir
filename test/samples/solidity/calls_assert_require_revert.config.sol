@@ -171,27 +171,53 @@ contract Calls {
 contract __IRTest__ {
     function main() public {
         Calls __this__ = new Calls();
-        __testCase843__(__this__);
-        __testCase871__(__this__);
-        __testCase896__(__this__);
-        __testCase910__(__this__);
+        __testCase846__(__this__);
+        __testCase877__(__this__);
+        __testCase926__(__this__);
+        __testCase957__(__this__);
+        __testCase1006__(__this__);
+        __testCase1037__(__this__);
     }
 
-    function __testCase843__(Calls __this__) internal {
-        int32 ret_843_0 = __this__.sqrt(int32(25));
-        assert(ret_843_0 == int32(5));
+    function __testCase846__(Calls __this__) internal {
+        uint256 ret_846_0 = __this__.requireCall(uint256(1), uint256(2));
+        assert(ret_846_0 == uint256(4));
     }
 
-    function __testCase871__(Calls __this__) internal {
-        int32 ret_871_0 = __this__.sqrt(int32(35));
-        assert(ret_871_0 == int32(5));
+    function __testCase877__(Calls __this__) internal {
+        bool res;
+        bytes memory retData;
+        bytes memory data;
+        data = abi.encodeWithSignature("requireCall(uint256,uint256)", uint256(0), uint256(1));
+        res = address(__this__).call(data);
+        assert(!res);
     }
 
-    function __testCase896__(Calls __this__) internal {
-        __this__.complexExpressionsNesting();
+    function __testCase926__(Calls __this__) internal {
+        uint256 ret_926_0 = __this__.assertCall(uint256(1), uint256(2));
+        assert(ret_926_0 == uint256(4));
     }
 
-    function __testCase910__(Calls __this__) internal {
-        __this__.functionCallInExpression();
+    function __testCase957__(Calls __this__) internal {
+        bool res;
+        bytes memory retData;
+        bytes memory data;
+        data = abi.encodeWithSignature("assertCall(uint256,uint256)", uint256(0), uint256(1));
+        res = address(__this__).call(data);
+        assert(!res);
+    }
+
+    function __testCase1006__(Calls __this__) internal {
+        uint256 ret_1006_0 = __this__.revertCall(uint256(1), uint256(2));
+        assert(ret_1006_0 == uint256(4));
+    }
+
+    function __testCase1037__(Calls __this__) internal {
+        bool res;
+        bytes memory retData;
+        bytes memory data;
+        data = abi.encodeWithSignature("revertCall(uint256,uint256)", uint256(0), uint256(1));
+        res = address(__this__).call(data);
+        assert(!res);
     }
 }

@@ -13,7 +13,8 @@ contract VarHolder {
 
 contract TryCatchState {
     uint256 public x;
-    VarHolder v;
+    VarHolder internal v;
+
     constructor() public {
         v = new VarHolder();
     }
@@ -30,7 +31,7 @@ contract TryCatchState {
         try this.modifyAndMaybeFail(2, false) {
             x = x + 1;
         } catch {
-            assert(false); // Shouldn't get here
+            assert(false);
         }
         assert(x == 3);
     }
@@ -49,12 +50,10 @@ contract TryCatchState {
         v.modifyAndMaybeFail(1, false);
         assert(v.x() == 1);
         x = 1;
-        try v.modifyAndMaybeFail(2, false) {
-            //
-        } catch {
-            assert(false); // Shouldn't get here
+        try v.modifyAndMaybeFail(2, false) {} catch {
+            assert(false);
         }
-        assert(v.x() == 2 && x == 1);
+        assert((v.x() == 2) && (x == 1));
     }
 
     function revertingModifyOther() public {
@@ -66,7 +65,7 @@ contract TryCatchState {
         } catch {
             x = x + 100;
         }
-        assert(v.x() == 1 && x == 101);
+        assert((v.x() == 1) && (x == 101));
     }
 }
 

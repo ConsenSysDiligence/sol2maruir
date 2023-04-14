@@ -22,10 +22,10 @@ contract Test {
 contract __IRTest__ {
     function main() public {
         Test __this__ = new Test();
-        __testCase85__(__this__);
+        __testCase86__(__this__);
     }
 
-    function __testCase85__(Test __this__) internal {
+    function __testCase86__(Test __this__) internal {
         __this__.verify();
     }
 }

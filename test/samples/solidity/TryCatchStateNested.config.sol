@@ -2,7 +2,7 @@ pragma solidity ^0.6.0;
 
 contract Caller {
     uint256 public x;
-    Callee c;
+    Callee internal c;
 
     constructor(Callee arg) public {
         c = arg;
@@ -37,9 +37,9 @@ contract Callee {
 }
 
 contract TryCatchStateNested {
-    Caller a;
-    Callee b;
-    uint256 z;
+    Caller internal a;
+    Callee internal b;
+    uint256 internal z;
 
     constructor() public {
         b = new Callee();
@@ -50,34 +50,26 @@ contract TryCatchStateNested {
         z = 10;
         a.setX(20);
         b.setY(30);
-
-        // b's call will succceed and a's call will fail afterwards
         try a.callAndMaybeFail(100, false, true) {
-            z = 1000; // shouldn't get here
+            z = 1000;
         } catch {
-            z = z + 1; // should get here
+            z = z + 1;
         }
-
         assert(z == 11);
-        // The changes to a.x and b.y should be reverted
         assert(a.x() == 20);
         assert(b.y() == 30);
     }
-    
+
     function calleeFail() public {
         z = 10;
         a.setX(20);
         b.setY(30);
-
-        // b's call will succceed and a's call will fail afterwards
         try a.callAndMaybeFail(100, true, false) {
-            z = 1000; // shouldn't get here
+            z = 1000;
         } catch {
-            z = z + 1; // should get here
+            z = z + 1;
         }
-
         assert(z == 11);
-        // The changes to a.x and b.y should be reverted
         assert(a.x() == 20);
         assert(b.y() == 30);
     }

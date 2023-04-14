@@ -1,3 +1,5 @@
+pragma solidity 0.8.19;
+
 contract NumPong {
     address internal daddy;
     uint public myNum;
@@ -66,12 +68,11 @@ contract Dispatch {
 contract __IRTest__ {
     function main() public {
         Dispatch __this__ = new Dispatch();
-        __testCase295__(__this__);
+        __testCase296__(__this__);
     }
 
-    function __testCase295__(Dispatch __this__) internal {
-        uint256 expect_295_0 = (uint256(179));
-        uint256 ret_295_0 = __this__.main();
-        assert(ret_295_0 == expect_295_0);
+    function __testCase296__(Dispatch __this__) internal {
+        uint256 ret_296_0 = __this__.main();
+        assert(ret_296_0 == uint256(179));
     }
 }

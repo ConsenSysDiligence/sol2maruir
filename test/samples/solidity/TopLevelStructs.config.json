@@ -56,7 +56,7 @@
             "expectedReturns": [
                 {
                     "kind": "literal",
-                    "type": "byte",
+                    "type": "bytes1",
                     "value": [
                         "66"
                     ]

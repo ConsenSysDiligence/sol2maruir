@@ -1,3 +1,5 @@
+pragma solidity 0.7.6;
+
 contract ConditionalTuples {
     struct Some {
         uint a;
@@ -50,10 +52,10 @@ contract ConditionalTuples {
 contract __IRTest__ {
     function main() public {
         ConditionalTuples __this__ = new ConditionalTuples();
-        __testCase323__(__this__);
+        __testCase324__(__this__);
     }
 
-    function __testCase323__(ConditionalTuples __this__) internal {
+    function __testCase324__(ConditionalTuples __this__) internal {
         __this__.main();
     }
 }

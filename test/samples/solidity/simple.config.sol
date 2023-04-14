@@ -20,8 +20,7 @@ contract __IRTest__ {
     }
 
     function __testCase45__(A __this__) internal {
-        uint256 expect_45_0 = (uint256(2));
         uint256 ret_45_0 = __this__.inc();
-        assert(ret_45_0 == expect_45_0);
+        assert(ret_45_0 == uint256(2));
     }
 }

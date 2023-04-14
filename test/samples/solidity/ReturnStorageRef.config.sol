@@ -34,10 +34,10 @@ contract ReturnStorageRef {
 contract __IRTest__ {
     function main() public {
         ReturnStorageRef __this__ = new ReturnStorageRef();
-        __testCase187__(__this__);
+        __testCase188__(__this__);
     }
 
-    function __testCase187__(ReturnStorageRef __this__) internal {
+    function __testCase188__(ReturnStorageRef __this__) internal {
         __this__.main();
     }
 }

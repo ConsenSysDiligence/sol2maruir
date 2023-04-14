@@ -1,9 +1,10 @@
+import { assert } from "console";
 import fse from "fs-extra";
 import path from "path";
-import { gte } from "semver";
+import { gte, lt } from "semver";
 import * as sol from "solc-typed-ast";
 
-function searchRecursive(targetPath: string, filter: (entry: string) => boolean): string[] {
+export function searchRecursive(targetPath: string, filter: (entry: string) => boolean): string[] {
     const stat = fse.statSync(targetPath);
     const results: string[] = [];
 
@@ -64,41 +65,169 @@ function createTestCaseContract(
     return [contract, main];
 }
 
+let ctr = 0;
+
 function makeArg(
     factory: sol.ASTNodeFactory,
     instances: Map<string, sol.VariableDeclaration>,
     arg: any
-): sol.Expression {
+): [sol.Expression, sol.Statement[]] {
     if (arg.kind === "literal") {
         if (
             arg.type.startsWith("int") ||
             arg.type.startsWith("uint") ||
-            arg.type.startsWith("address") ||
-            arg.type.startsWith("byte")
+            arg.type.startsWith("address")
         ) {
-            return factory.makeFunctionCall(
+            return [
+                factory.makeFunctionCall(
+                    "<missing>",
+                    sol.FunctionCallKind.TypeConversion,
+                    factory.makeElementaryTypeNameExpression("<missing>", arg.type),
+                    [
+                        factory.makeLiteral(
+                            "<missing>",
+                            sol.LiteralKind.Number,
+                            "",
+                            String(arg.value)
+                        )
+                    ]
+                ),
+                []
+            ];
+        }
+
+        if (arg.type.startsWith("byte")) {
+            const nBytes = arg.type === "byte" ? 1 : Number(arg.type.slice(5));
+            const uintT = factory.makeElementaryTypeNameExpression(
                 "<missing>",
-                sol.FunctionCallKind.TypeConversion,
-                factory.makeElementaryTypeNameExpression("<missing>", arg.type),
-                [factory.makeLiteral("<missing>", sol.LiteralKind.Number, "", String(arg.value))]
+                `uint${nBytes * 8}`
             );
+
+            return [
+                factory.makeFunctionCall(
+                    "<missing>",
+                    sol.FunctionCallKind.TypeConversion,
+                    factory.makeElementaryTypeNameExpression("<missing>", arg.type),
+                    [
+                        factory.makeFunctionCall(
+                            "<missing>",
+                            sol.FunctionCallKind.TypeConversion,
+                            uintT,
+                            [
+                                factory.makeLiteral(
+                                    "<missing>",
+                                    sol.LiteralKind.Number,
+                                    "0x" + BigInt(arg.value[0]).toString(16),
+                                    "0x" + BigInt(arg.value[0]).toString(16)
+                                )
+                            ]
+                        )
+                    ]
+                ),
+                []
+            ];
         }
 
         if (arg.type.startsWith("bool")) {
-            return factory.makeLiteral("<missing>", sol.LiteralKind.Bool, "", String(arg.value));
+            return [
+                factory.makeLiteral("<missing>", sol.LiteralKind.Bool, "", String(arg.value)),
+                []
+            ];
         }
     }
 
     if (arg.kind === "string") {
-        return factory.makeLiteral("<missing>", sol.LiteralKind.String, "", String(arg.value));
+        return [
+            factory.makeLiteral("<missing>", sol.LiteralKind.String, "", String(arg.value)),
+            []
+        ];
     }
 
     if (arg.kind === "array") {
-        return factory.makeTupleExpression(
-            "<missing>",
-            true,
-            arg.elements.map((element: any) => makeArg(factory, instances, element))
+        const elements: sol.Expression[] = [];
+        const stmts: sol.Statement[] = [];
+
+        for (const element of arg.elements) {
+            const [el, elStmts] = makeArg(factory, instances, element);
+
+            elements.push(el);
+            stmts.push(...elStmts);
+        }
+
+        if (arg.sized) {
+            return [factory.makeTupleExpression("<missing>", true, elements), stmts];
+        }
+
+        const litName = `arr_lit_${ctr++}`;
+
+        stmts.push(
+            factory.makeVariableDeclarationStatement(
+                [],
+                [
+                    factory.makeVariableDeclaration(
+                        false,
+                        false,
+                        litName,
+                        -1,
+                        false,
+                        sol.DataLocation.Memory,
+                        sol.StateVariableVisibility.Default,
+                        sol.Mutability.Mutable,
+                        "",
+                        undefined,
+                        factory.makeArrayTypeName(
+                            "",
+                            factory.makeElementaryTypeName(arg.type, arg.type)
+                        )
+                    )
+                ]
+            ),
+            factory.makeExpressionStatement(
+                factory.makeAssignment(
+                    "",
+                    "=",
+                    factory.makeIdentifier("", litName, -1),
+                    factory.makeFunctionCall(
+                        "",
+                        sol.FunctionCallKind.FunctionCall,
+                        factory.makeNewExpression(
+                            "",
+                            factory.makeArrayTypeName(
+                                "",
+                                factory.makeElementaryTypeName(arg.type, arg.type)
+                            )
+                        ),
+                        [
+                            factory.makeLiteral(
+                                "",
+                                sol.LiteralKind.Number,
+                                "",
+                                String(elements.length)
+                            )
+                        ]
+                    )
+                )
+            )
         );
+
+        for (let i = 0; i < elements.length; i++) {
+            stmts.push(
+                factory.makeExpressionStatement(
+                    factory.makeAssignment(
+                        "",
+                        "=",
+                        factory.makeIndexAccess(
+                            "",
+                            factory.makeIdentifier("", litName, -1),
+                            factory.makeLiteral("", sol.LiteralKind.Number, "", String(i))
+                        ),
+                        elements[i]
+                    )
+                )
+            );
+        }
+
+        return [factory.makeIdentifier("", litName, -1), stmts];
     }
 
     if (arg.kind === "bytes") {
@@ -107,7 +236,7 @@ function makeArg(
                 ? arg.elements.map((element: any) => element.replace("0x", "")).join("")
                 : arg.elements;
 
-        return factory.makeLiteral("<missing>", sol.LiteralKind.HexString, bytes, "");
+        return [factory.makeLiteral("<missing>", sol.LiteralKind.HexString, bytes, ""), []];
     }
 
     if (arg.kind === "object") {
@@ -115,7 +244,7 @@ function makeArg(
 
         sol.assert(instance !== undefined, "Unable to find associated var for {0}", arg.name);
 
-        return factory.makeIdentifierFor(instance);
+        return [factory.makeIdentifierFor(instance), []];
     }
 
     throw new Error(
@@ -175,6 +304,28 @@ function resolveCallee(
     throw new Error(`Unable to resolve "${name}" of "${mdc}" to anything`);
 }
 
+function composeTypeForRet(factory: sol.ASTNodeFactory, ret: any): sol.TypeName {
+    let type: sol.TypeName;
+
+    if (ret.kind === "literal") {
+        type = factory.makeElementaryTypeName(ret.type, ret.type);
+    } else if (ret.kind === "string" || ret.kind === "bytes") {
+        type = factory.makeElementaryTypeName("<missing>", ret.kind);
+    } else if (ret.kind === "array") {
+        type = factory.makeArrayTypeName(
+            "<missing>",
+            factory.makeElementaryTypeName("<missing>", ret.type),
+            ret.sized
+                ? factory.makeLiteral("<missing>", sol.LiteralKind.Number, "", String(ret.size))
+                : undefined
+        );
+    } else {
+        throw new Error(`Unsupported ret kind "${ret.kind}"`);
+    }
+
+    return type;
+}
+
 function composeVarForRet(
     factory: sol.ASTNodeFactory,
     name: string,
@@ -187,10 +338,16 @@ function composeVarForRet(
         loc = sol.DataLocation.Default;
         type = factory.makeElementaryTypeName(ret.type, ret.type);
     } else if (ret.kind === "string" || ret.kind === "bytes") {
-        loc = ret.location ? (ret.location as sol.DataLocation) : sol.DataLocation.Memory;
+        loc =
+            ret.location && ret.location !== sol.DataLocation.CallData
+                ? (ret.location as sol.DataLocation)
+                : sol.DataLocation.Memory;
         type = factory.makeElementaryTypeName("<missing>", ret.kind);
     } else if (ret.kind === "array") {
-        loc = ret.location ? (ret.location as sol.DataLocation) : sol.DataLocation.Memory;
+        loc =
+            ret.location && ret.location !== sol.DataLocation.CallData
+                ? (ret.location as sol.DataLocation)
+                : sol.DataLocation.Memory;
         type = factory.makeArrayTypeName(
             "<missing>",
             factory.makeElementaryTypeName("<missing>", ret.type),
@@ -217,56 +374,219 @@ function composeVarForRet(
     );
 }
 
+function composeFailCheck(
+    factory: sol.ASTNodeFactory,
+    instances: Map<string, sol.VariableDeclaration>,
+    inference: sol.InferType,
+    call: sol.FunctionCall,
+    step: any
+): [sol.Statement[], boolean] {
+    const isError = step.expectedRequireFail || step.expectedExplicitRevert;
+
+    if (gte(inference.version, "0.6.0")) {
+        return [
+            [
+                factory.makeTryStatement(call, [
+                    factory.makeTryCatchClause(
+                        "",
+                        factory.makeBlock([
+                            factory.makeExpressionStatement(
+                                factory.makeFunctionCall(
+                                    "<missing>",
+                                    sol.FunctionCallKind.FunctionCall,
+                                    factory.makeIdentifier("<missing>", "assert", -1),
+                                    [
+                                        factory.makeLiteral(
+                                            "<missing>",
+                                            sol.LiteralKind.Bool,
+                                            "",
+                                            "false"
+                                        )
+                                    ]
+                                )
+                            )
+                        ])
+                    ),
+                    factory.makeTryCatchClause(
+                        "Error",
+                        factory.makeBlock([
+                            factory.makeExpressionStatement(
+                                factory.makeFunctionCall(
+                                    "<missing>",
+                                    sol.FunctionCallKind.FunctionCall,
+                                    factory.makeIdentifier("<missing>", "assert", -1),
+                                    [
+                                        factory.makeLiteral(
+                                            "<missing>",
+                                            sol.LiteralKind.Bool,
+                                            "",
+                                            isError ? "true" : "false"
+                                        )
+                                    ]
+                                )
+                            )
+                        ]),
+                        factory.makeParameterList([
+                            factory.makeVariableDeclaration(
+                                false,
+                                false,
+                                "reason",
+                                0,
+                                false,
+                                sol.DataLocation.Memory,
+                                sol.StateVariableVisibility.Default,
+                                sol.Mutability.Mutable,
+                                "<missing>",
+                                undefined,
+                                factory.makeElementaryTypeName("<missing>", "string")
+                            )
+                        ])
+                    ),
+                    factory.makeTryCatchClause(
+                        "",
+                        factory.makeBlock([
+                            factory.makeExpressionStatement(
+                                factory.makeFunctionCall(
+                                    "<missing>",
+                                    sol.FunctionCallKind.FunctionCall,
+                                    factory.makeIdentifier("<missing>", "assert", -1),
+                                    [
+                                        factory.makeLiteral(
+                                            "<missing>",
+                                            sol.LiteralKind.Bool,
+                                            "",
+                                            isError ? "false" : "true"
+                                        )
+                                    ]
+                                )
+                            )
+                        ])
+                    )
+                ])
+            ],
+            false
+        ];
+    }
+
+    /**
+     * In <0.6.0 emit a:
+     *
+     * data = abi.encodeWithSignature(sig, ...args);
+     * res = address(__this__).call(data);
+     * assert(!res);
+     */
+    return [
+        [
+            factory.makeExpressionStatement(
+                factory.makeAssignment(
+                    "<missing>",
+                    "=",
+                    factory.makeIdentifier("<missing>", "data", -1),
+                    factory.makeFunctionCall(
+                        "<mssing>",
+                        sol.FunctionCallKind.FunctionCall,
+                        factory.makeMemberAccess(
+                            "",
+                            factory.makeIdentifier("", "abi", -1),
+                            "encodeWithSignature",
+                            -1
+                        ),
+                        [
+                            factory.makeLiteral(
+                                "",
+                                sol.LiteralKind.String,
+                                "",
+                                inference.signature(
+                                    call.vReferencedDeclaration as sol.FunctionDefinition
+                                )
+                            ),
+                            ...call.vArguments
+                        ]
+                    )
+                )
+            ),
+            factory.makeExpressionStatement(
+                factory.makeAssignment(
+                    "",
+                    "=",
+                    lt(inference.version, "0.5.0")
+                        ? factory.makeIdentifier("", "res", -1)
+                        : factory.makeTupleExpression("", false, [
+                              factory.makeIdentifier("", "res", -1),
+                              factory.makeIdentifier("", "retData", -1)
+                          ]),
+                    factory.makeFunctionCall(
+                        "",
+                        sol.FunctionCallKind.FunctionCall,
+                        factory.makeMemberAccess(
+                            "",
+                            factory.makeFunctionCall(
+                                "",
+                                sol.FunctionCallKind.TypeConversion,
+                                factory.makeElementaryTypeNameExpression("", "address"),
+                                [factory.makeIdentifier("", "__this__", -1)]
+                            ),
+                            "call",
+                            -1
+                        ),
+                        [factory.makeIdentifier("", "data", -1)]
+                    )
+                )
+            ),
+            factory.makeExpressionStatement(
+                factory.makeFunctionCall(
+                    "",
+                    sol.FunctionCallKind.FunctionCall,
+                    factory.makeIdentifier("", "assert", -1),
+                    [
+                        factory.makeUnaryOperation(
+                            "",
+                            true,
+                            "!",
+                            factory.makeIdentifier("", "res", -1)
+                        )
+                    ]
+                )
+            )
+        ],
+        true
+    ];
+}
+
 function composeStepCheck(
     factory: sol.ASTNodeFactory,
     instances: Map<string, sol.VariableDeclaration>,
     inference: sol.InferType,
     call: sol.FunctionCall,
     step: any
-): sol.Statement[] {
+): [sol.Statement[], boolean] {
     if (step.nameReturns) {
         // Skip - only one sample that is easy to process manually
-        return [];
+        return [[], false];
     }
 
     if (step.expectedReturns) {
         if (step.expectedReturns.length === 0) {
-            return [factory.makeExpressionStatement(call)];
+            return [[factory.makeExpressionStatement(call)], false];
         }
 
         const stmts: sol.Statement[] = [];
 
-        const expects: sol.VariableDeclaration[] = [];
+        const expects: sol.Expression[] = [];
+        const expectTs: sol.TypeName[] = [];
         const rets: sol.VariableDeclaration[] = [];
 
         for (let i = 0; i < step.expectedReturns.length; i++) {
             const ret = step.expectedReturns[i];
-
-            const varExpect = composeVarForRet(factory, `expect_${call.id}_${i}`, ret);
-
-            varExpect.vValue = makeArg(factory, instances, ret);
+            const [expV, expStmts] = makeArg(factory, instances, ret);
+            stmts.push(...expStmts);
 
             const varRet = composeVarForRet(factory, `ret_${call.id}_${i}`, ret);
 
-            expects.push(varExpect);
+            expects.push(expV);
+            expectTs.push(composeTypeForRet(factory, ret));
             rets.push(varRet);
         }
-
-        const varExpectAssign = factory.makeVariableDeclarationStatement(
-            expects.map((v) => v.id),
-            expects,
-            factory.makeTupleExpression(
-                "<missing>",
-                false,
-                expects.map((v) => {
-                    const val = v.vValue as sol.Expression;
-
-                    v.vValue = undefined;
-
-                    return val;
-                })
-            )
-        );
 
         const varRetsAssign = factory.makeVariableDeclarationStatement(
             rets.map((v) => v.id),
@@ -274,19 +594,19 @@ function composeStepCheck(
             call
         );
 
-        stmts.push(varExpectAssign, varRetsAssign);
+        stmts.push(varRetsAssign);
 
         for (let i = 0; i < expects.length; i++) {
             const ret = rets[i];
-            const expect = expects[i];
+            const expectT = expectTs[i];
 
             let retCompareExpr: sol.Expression = factory.makeIdentifierFor(ret);
-            let expectCompareExpr: sol.Expression = factory.makeIdentifierFor(expect);
+            let expectCompareExpr: sol.Expression = expects[i];
 
             if (
-                (expect.vType instanceof sol.ElementaryTypeName &&
-                    (expect.vType.name === "string" || expect.vType.name === "bytes")) ||
-                expect.vType instanceof sol.ArrayTypeName
+                (expectT instanceof sol.ElementaryTypeName &&
+                    (expectT.name === "string" || expectT.name === "bytes")) ||
+                expectT instanceof sol.ArrayTypeName
             ) {
                 retCompareExpr = factory.makeFunctionCall(
                     "<missing>",
@@ -337,247 +657,10 @@ function composeStepCheck(
             stmts.push(factory.makeExpressionStatement(check));
         }
 
-        return stmts;
+        return [stmts, false];
     }
 
-    if (step.expectedAssertFail && gte(inference.version, "0.6.0")) {
-        return [
-            factory.makeTryStatement(call, [
-                factory.makeTryCatchClause(
-                    "",
-                    factory.makeBlock([
-                        factory.makeExpressionStatement(
-                            factory.makeFunctionCall(
-                                "<missing>",
-                                sol.FunctionCallKind.FunctionCall,
-                                factory.makeIdentifier("<missing>", "assert", -1),
-                                [
-                                    factory.makeLiteral(
-                                        "<missing>",
-                                        sol.LiteralKind.Bool,
-                                        "",
-                                        "false"
-                                    )
-                                ]
-                            )
-                        )
-                    ])
-                ),
-                factory.makeTryCatchClause(
-                    "Error",
-                    factory.makeBlock([
-                        factory.makeExpressionStatement(
-                            factory.makeFunctionCall(
-                                "<missing>",
-                                sol.FunctionCallKind.FunctionCall,
-                                factory.makeIdentifier("<missing>", "assert", -1),
-                                [
-                                    factory.makeLiteral(
-                                        "<missing>",
-                                        sol.LiteralKind.Bool,
-                                        "",
-                                        "false"
-                                    )
-                                ]
-                            )
-                        )
-                    ]),
-                    factory.makeParameterList([
-                        factory.makeVariableDeclaration(
-                            false,
-                            false,
-                            "reason",
-                            0,
-                            false,
-                            sol.DataLocation.Memory,
-                            sol.StateVariableVisibility.Default,
-                            sol.Mutability.Mutable,
-                            "<missing>",
-                            undefined,
-                            factory.makeElementaryTypeName("<missing>", "string")
-                        )
-                    ])
-                ),
-                factory.makeTryCatchClause(
-                    "",
-                    factory.makeBlock([
-                        factory.makeExpressionStatement(
-                            factory.makeFunctionCall(
-                                "<missing>",
-                                sol.FunctionCallKind.FunctionCall,
-                                factory.makeIdentifier("<missing>", "assert", -1),
-                                [factory.makeLiteral("<missing>", sol.LiteralKind.Bool, "", "true")]
-                            )
-                        )
-                    ])
-                )
-            ])
-        ];
-    }
-
-    if (step.expectedAssertFail) {
-        sol.assert(
-            gte(inference.version, "0.6.0"),
-            "Unable to handle step.expectedAssertFail in Solidity below 0.6.0"
-        );
-
-        return [
-            factory.makeTryStatement(call, [
-                factory.makeTryCatchClause(
-                    "",
-                    factory.makeBlock([
-                        factory.makeExpressionStatement(
-                            factory.makeFunctionCall(
-                                "<missing>",
-                                sol.FunctionCallKind.FunctionCall,
-                                factory.makeIdentifier("<missing>", "assert", -1),
-                                [
-                                    factory.makeLiteral(
-                                        "<missing>",
-                                        sol.LiteralKind.Bool,
-                                        "",
-                                        "false"
-                                    )
-                                ]
-                            )
-                        )
-                    ])
-                ),
-                factory.makeTryCatchClause(
-                    "Error",
-                    factory.makeBlock([
-                        factory.makeExpressionStatement(
-                            factory.makeFunctionCall(
-                                "<missing>",
-                                sol.FunctionCallKind.FunctionCall,
-                                factory.makeIdentifier("<missing>", "assert", -1),
-                                [
-                                    factory.makeLiteral(
-                                        "<missing>",
-                                        sol.LiteralKind.Bool,
-                                        "",
-                                        "false"
-                                    )
-                                ]
-                            )
-                        )
-                    ]),
-                    factory.makeParameterList([
-                        factory.makeVariableDeclaration(
-                            false,
-                            false,
-                            "reason",
-                            0,
-                            false,
-                            sol.DataLocation.Memory,
-                            sol.StateVariableVisibility.Default,
-                            sol.Mutability.Mutable,
-                            "<missing>",
-                            undefined,
-                            factory.makeElementaryTypeName("<missing>", "string")
-                        )
-                    ])
-                ),
-                factory.makeTryCatchClause(
-                    "",
-                    factory.makeBlock([
-                        factory.makeExpressionStatement(
-                            factory.makeFunctionCall(
-                                "<missing>",
-                                sol.FunctionCallKind.FunctionCall,
-                                factory.makeIdentifier("<missing>", "assert", -1),
-                                [factory.makeLiteral("<missing>", sol.LiteralKind.Bool, "", "true")]
-                            )
-                        )
-                    ])
-                )
-            ])
-        ];
-    }
-
-    if (step.expectedRequireFail || step.expectedExplicitRevert) {
-        sol.assert(
-            gte(inference.version, "0.6.0"),
-            "Unable to handle step.expectedRequireFail in Solidity below 0.6.0"
-        );
-
-        return [
-            factory.makeTryStatement(call, [
-                factory.makeTryCatchClause(
-                    "",
-                    factory.makeBlock([
-                        factory.makeExpressionStatement(
-                            factory.makeFunctionCall(
-                                "<missing>",
-                                sol.FunctionCallKind.FunctionCall,
-                                factory.makeIdentifier("<missing>", "assert", -1),
-                                [
-                                    factory.makeLiteral(
-                                        "<missing>",
-                                        sol.LiteralKind.Bool,
-                                        "",
-                                        "false"
-                                    )
-                                ]
-                            )
-                        )
-                    ])
-                ),
-                factory.makeTryCatchClause(
-                    "Error",
-                    factory.makeBlock([
-                        factory.makeExpressionStatement(
-                            factory.makeFunctionCall(
-                                "<missing>",
-                                sol.FunctionCallKind.FunctionCall,
-                                factory.makeIdentifier("<missing>", "assert", -1),
-                                [factory.makeLiteral("<missing>", sol.LiteralKind.Bool, "", "true")]
-                            )
-                        )
-                    ]),
-                    factory.makeParameterList([
-                        factory.makeVariableDeclaration(
-                            false,
-                            false,
-                            "reason",
-                            0,
-                            false,
-                            sol.DataLocation.Memory,
-                            sol.StateVariableVisibility.Default,
-                            sol.Mutability.Mutable,
-                            "<missing>",
-                            undefined,
-                            factory.makeElementaryTypeName("<missing>", "string")
-                        )
-                    ])
-                ),
-                factory.makeTryCatchClause(
-                    "",
-                    factory.makeBlock([
-                        factory.makeExpressionStatement(
-                            factory.makeFunctionCall(
-                                "<missing>",
-                                sol.FunctionCallKind.FunctionCall,
-                                factory.makeIdentifier("<missing>", "assert", -1),
-                                [
-                                    factory.makeLiteral(
-                                        "<missing>",
-                                        sol.LiteralKind.Bool,
-                                        "",
-                                        "false"
-                                    )
-                                ]
-                            )
-                        )
-                    ])
-                )
-            ])
-        ];
-    }
-
-    throw new Error(
-        "Unable to compose statements to check step " + JSON.stringify(step, undefined, 4)
-    );
+    return composeFailCheck(factory, instances, inference, call, step);
 }
 
 async function composeSolidityFromConfig(config: any): Promise<string> {
@@ -615,6 +698,10 @@ async function composeSolidityFromConfig(config: any): Promise<string> {
     const [contract, main] = createTestCaseContract(factory);
 
     contract.scope = unit.id;
+
+    if (unit.vPragmaDirectives.length === 0) {
+        unit.appendChild(factory.makePragmaDirective(["solidity", result.compilerVersion]));
+    }
 
     unit.appendChild(contract);
 
@@ -666,6 +753,16 @@ async function composeSolidityFromConfig(config: any): Promise<string> {
         if (step.act === "call") {
             const varName = "__" + step.args[0].name + "__";
 
+            const preCallStmts: sol.Statement[] = [];
+            const args: sol.Expression[] = [];
+
+            for (const jsArg of step.args.slice(1)) {
+                const [arg, argStmts] = makeArg(factory, instances, jsArg);
+
+                args.push(arg);
+                preCallStmts.push(...argStmts);
+            }
+
             if (step.method === "constructor") {
                 if (step.args.length === 1) {
                     continue;
@@ -675,11 +772,11 @@ async function composeSolidityFromConfig(config: any): Promise<string> {
 
                 sol.assert(call !== undefined, "Unable to find associated call for {0}", varName);
 
-                const argExprs = step.args
-                    .slice(1)
-                    .map((arg: any) => makeArg(factory, instances, arg));
-
-                call.vArguments.push(...argExprs);
+                assert(
+                    preCallStmts.length === 0,
+                    `Unsupported pre-call statements for constructor`
+                );
+                call.vArguments.push(...args);
             } else {
                 const name = step.method.slice(0, step.method.indexOf("("));
                 const def = resolveCallee(units, inference, step.mdc, name);
@@ -703,10 +800,17 @@ async function composeSolidityFromConfig(config: any): Promise<string> {
                     "<missing>",
                     sol.FunctionCallKind.FunctionCall,
                     callee,
-                    step.args.slice(1).map((arg: any) => makeArg(factory, instances, arg))
+                    args
                 );
 
                 const testCaseArgs = [...instances.values()].map((v) => factory.copy(v));
+                const [stmts, needsFailVars] = composeStepCheck(
+                    factory,
+                    instances,
+                    inference,
+                    call,
+                    step
+                );
                 const testCaseFn = factory.makeFunctionDefinition(
                     contract.id,
                     sol.FunctionKind.Function,
@@ -719,8 +823,73 @@ async function composeSolidityFromConfig(config: any): Promise<string> {
                     factory.makeParameterList([]),
                     [],
                     undefined,
-                    factory.makeBlock(composeStepCheck(factory, instances, inference, call, step))
+                    factory.makeBlock([...preCallStmts, ...stmts])
                 );
+
+                if (needsFailVars) {
+                    const body = testCaseFn.vBody as sol.Block;
+                    body.insertAtBeginning(
+                        factory.makeVariableDeclarationStatement(
+                            [],
+                            [
+                                factory.makeVariableDeclaration(
+                                    false,
+                                    false,
+                                    `data`,
+                                    -1,
+                                    false,
+                                    sol.DataLocation.Memory,
+                                    sol.StateVariableVisibility.Default,
+                                    sol.Mutability.Mutable,
+                                    "bytes memory",
+                                    undefined,
+                                    factory.makeElementaryTypeName("<missing>", "bytes")
+                                )
+                            ]
+                        )
+                    );
+
+                    body.insertAtBeginning(
+                        factory.makeVariableDeclarationStatement(
+                            [],
+                            [
+                                factory.makeVariableDeclaration(
+                                    false,
+                                    false,
+                                    `retData`,
+                                    -1,
+                                    false,
+                                    sol.DataLocation.Memory,
+                                    sol.StateVariableVisibility.Default,
+                                    sol.Mutability.Mutable,
+                                    "bytes memory",
+                                    undefined,
+                                    factory.makeElementaryTypeName("<missing>", "bytes")
+                                )
+                            ]
+                        )
+                    );
+                    body.insertAtBeginning(
+                        factory.makeVariableDeclarationStatement(
+                            [],
+                            [
+                                factory.makeVariableDeclaration(
+                                    false,
+                                    false,
+                                    `res`,
+                                    -1,
+                                    false,
+                                    sol.DataLocation.Default,
+                                    sol.StateVariableVisibility.Default,
+                                    sol.Mutability.Mutable,
+                                    "bool",
+                                    undefined,
+                                    factory.makeElementaryTypeName("<missing>", "bool")
+                                )
+                            ]
+                        )
+                    );
+                }
 
                 contract.appendChild(testCaseFn);
 
@@ -754,6 +923,13 @@ async function main(): Promise<void> {
     const configs = searchRecursive("test/samples/solidity", (fileName) =>
         fileName.endsWith(".config.json")
     );
+    /*
+    const configs = [
+        "test/samples/solidity/AddressLiteralMemberAccess.config.json",
+        "test/samples/solidity/CodeSize080.config.json",
+        "test/samples/solidity/CodeSize081.config.json"
+    ];
+    */
 
     const failing = [];
 

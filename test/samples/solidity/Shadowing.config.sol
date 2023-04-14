@@ -43,28 +43,26 @@ contract __IRTest__ {
     function main() public {
         Shadowing __this__ = new Shadowing();
         __testCase237__(__this__);
-        __testCase266__(__this__);
-        __testCase295__(__this__);
-        __testCase309__(__this__);
+        __testCase262__(__this__);
+        __testCase287__(__this__);
+        __testCase301__(__this__);
     }
 
     function __testCase237__(Shadowing __this__) internal {
-        uint256 expect_237_0 = (uint256(8));
         uint256 ret_237_0 = __this__.shadow(uint256(6));
-        assert(ret_237_0 == expect_237_0);
+        assert(ret_237_0 == uint256(8));
     }
 
-    function __testCase266__(Shadowing __this__) internal {
-        uint256 expect_266_0 = (uint256(0));
-        uint256 ret_266_0 = __this__.shadowReturn1();
-        assert(ret_266_0 == expect_266_0);
+    function __testCase262__(Shadowing __this__) internal {
+        uint256 ret_262_0 = __this__.shadowReturn1();
+        assert(ret_262_0 == uint256(0));
     }
 
-    function __testCase295__(Shadowing __this__) internal {
+    function __testCase287__(Shadowing __this__) internal {
         __this__.shadowReturn2Harness();
     }
 
-    function __testCase309__(Shadowing __this__) internal {
+    function __testCase301__(Shadowing __this__) internal {
         __this__.shadowReturn2Harness2();
     }
 }

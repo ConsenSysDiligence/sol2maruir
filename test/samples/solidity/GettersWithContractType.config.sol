@@ -1,3 +1,5 @@
+pragma solidity 0.7.6;
+
 contract Provider {
     uint256 public v;
 
@@ -34,10 +36,10 @@ contract Test {
 contract __IRTest__ {
     function main() public {
         Test __this__ = new Test();
-        __testCase113__(__this__);
+        __testCase114__(__this__);
     }
 
-    function __testCase113__(Test __this__) internal {
+    function __testCase114__(Test __this__) internal {
         __this__.verify();
     }
 }

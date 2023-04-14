@@ -46,40 +46,35 @@ contract Casts {
 contract __IRTest__ {
     function main() public {
         Casts __this__ = new Casts();
-        __testCase284__(__this__);
-        __testCase316__(__this__);
+        __testCase286__(__this__);
+        __testCase318__(__this__);
         __testCase348__(__this__);
-        __testCase386__(__this__);
-        __testCase424__(__this__);
+        __testCase382__(__this__);
+        __testCase416__(__this__);
     }
 
-    function __testCase284__(Casts __this__) internal {
-        byte expect_284_0 = (byte(0x7c));
-        byte ret_284_0 = __this__.castToChar(byte(0x25));
-        assert(ret_284_0 == expect_284_0);
+    function __testCase286__(Casts __this__) internal {
+        bytes1 ret_286_0 = __this__.castToChar(bytes1(uint8(0x25)));
+        assert(ret_286_0 == bytes1(uint8(0x7c)));
     }
 
-    function __testCase316__(Casts __this__) internal {
-        byte expect_316_0 = (byte(0x35));
-        byte ret_316_0 = __this__.castToChar(byte(0x05));
-        assert(ret_316_0 == expect_316_0);
+    function __testCase318__(Casts __this__) internal {
+        bytes1 ret_318_0 = __this__.castToChar(bytes1(uint8(0x5)));
+        assert(ret_318_0 == bytes1(uint8(0x35)));
     }
 
     function __testCase348__(Casts __this__) internal {
-        string memory expect_348_0 = ("14723a09acff6d2a60dcdf7aa4aff308fddc160c");
         string memory ret_348_0 = __this__.castToString(address(0x14723a09acff6d2a60dcdf7aa4aff308fddc160c));
-        assert(keccak256(abi.encodePacked(ret_348_0)) == keccak256(abi.encodePacked(expect_348_0)));
+        assert(keccak256(abi.encodePacked(ret_348_0)) == keccak256(abi.encodePacked("14723a09acff6d2a60dcdf7aa4aff308fddc160c")));
     }
 
-    function __testCase386__(Casts __this__) internal {
-        string memory expect_386_0 = ("AB1C2Y3XYZ");
-        string memory ret_386_0 = __this__.castToUpper("ab1c2y3xyz");
-        assert(keccak256(abi.encodePacked(ret_386_0)) == keccak256(abi.encodePacked(expect_386_0)));
+    function __testCase382__(Casts __this__) internal {
+        string memory ret_382_0 = __this__.castToUpper("ab1c2y3xyz");
+        assert(keccak256(abi.encodePacked(ret_382_0)) == keccak256(abi.encodePacked("AB1C2Y3XYZ")));
     }
 
-    function __testCase424__(Casts __this__) internal {
-        uint256 expect_424_0 = (uint256(11233));
-        uint256 ret_424_0 = __this__.castToUint("te1st123xy3z");
-        assert(ret_424_0 == expect_424_0);
+    function __testCase416__(Casts __this__) internal {
+        uint256 ret_416_0 = __this__.castToUint("te1st123xy3z");
+        assert(ret_416_0 == uint256(11233));
     }
 }

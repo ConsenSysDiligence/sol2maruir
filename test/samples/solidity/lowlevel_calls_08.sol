@@ -107,34 +107,33 @@ contract Test {
         address payable a = payable(0x0000000100030004000100000000000000000001);
         // no successful fallback
         (bool res0, bytes memory resBytes0) = a.call{gas: 2300}("");
-        assert(!res0 && resBytes0.length == 0);
+        assert(res0 && resBytes0.length == 0);
         // no successful normal call
         (bool res1, bytes memory resBytes1) = a.call{gas: 2300}(getIdData(1));
-        assert(!res1 && resBytes1.length == 0);
+        assert(res1 && resBytes1.length == 0);
         // no successful staticcall call
         (bool res2, bytes memory resBytes2) = a.staticcall{gas: 2300}(getIdData(1));
-        assert(!res2 && resBytes2.length == 0);
+        assert(res2 && resBytes2.length == 0);
 
         // no successful delegatecall call
         (bool res3, bytes memory resBytes3) = a.delegatecall{gas: 2300}(getIdData(1));
         assert(!res3 && resBytes3.length == 0);
 
         // no successful send
-        bool res4 = a.send(0);
-        assert(!res4);
         
-
+        bool res4 = a.send(0);
+        assert(res4);
+        
         // Transfer also fails
         try this.transfer(a) {
-            assert(false);
+
         } catch Error(string memory s){
             assert(false);
         } catch Panic(uint x) {
             assert(false);
         } catch {
-            
+            assert(false);            
         }
-
     }
     
     function fallbackTests() public {

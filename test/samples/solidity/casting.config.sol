@@ -190,10 +190,10 @@ contract __IRTest__ {
         __testCase1019__(__this__);
         __testCase1033__(__this__);
         __testCase1047__(__this__);
-        __testCase1105__(__this__);
-        __testCase1163__(__this__);
-        __testCase1221__(__this__);
-        __testCase1279__(__this__);
+        __testCase1099__(__this__);
+        __testCase1151__(__this__);
+        __testCase1203__(__this__);
+        __testCase1255__(__this__);
     }
 
     function __testCase963__(Casting __this__) internal {
@@ -221,37 +221,32 @@ contract __IRTest__ {
     }
 
     function __testCase1047__(Casting __this__) internal {
-        (string memory expect_1047_0, bytes memory expect_1047_1) = ("a2cd", hex"61326364");
         (string memory ret_1047_0, bytes memory ret_1047_1) = __this__.stringByteMemToMemCastAliasing();
-        assert(keccak256(abi.encodePacked(ret_1047_0)) == keccak256(abi.encodePacked(expect_1047_0)));
-        assert(keccak256(abi.encodePacked(ret_1047_1)) == keccak256(abi.encodePacked(expect_1047_1)));
+        assert(keccak256(abi.encodePacked(ret_1047_0)) == keccak256(abi.encodePacked("a2cd")));
+        assert(keccak256(abi.encodePacked(ret_1047_1)) == keccak256(abi.encodePacked(hex"61326364")));
     }
 
-    function __testCase1105__(Casting __this__) internal {
-        (string memory expect_1105_0, bytes memory expect_1105_1) = ("abcd", hex"61326364");
-        (string memory ret_1105_0, bytes memory ret_1105_1) = __this__.stringByteMemToStorageCastAliasing();
-        assert(keccak256(abi.encodePacked(ret_1105_0)) == keccak256(abi.encodePacked(expect_1105_0)));
-        assert(keccak256(abi.encodePacked(ret_1105_1)) == keccak256(abi.encodePacked(expect_1105_1)));
+    function __testCase1099__(Casting __this__) internal {
+        (string memory ret_1099_0, bytes memory ret_1099_1) = __this__.stringByteMemToStorageCastAliasing();
+        assert(keccak256(abi.encodePacked(ret_1099_0)) == keccak256(abi.encodePacked("abcd")));
+        assert(keccak256(abi.encodePacked(ret_1099_1)) == keccak256(abi.encodePacked(hex"61326364")));
     }
 
-    function __testCase1163__(Casting __this__) internal {
-        (string memory expect_1163_0, bytes memory expect_1163_1) = ("abcd", hex"61326364");
-        (string memory ret_1163_0, bytes memory ret_1163_1) = __this__.stringByteStorageToStorageCastAliasing();
-        assert(keccak256(abi.encodePacked(ret_1163_0)) == keccak256(abi.encodePacked(expect_1163_0)));
-        assert(keccak256(abi.encodePacked(ret_1163_1)) == keccak256(abi.encodePacked(expect_1163_1)));
+    function __testCase1151__(Casting __this__) internal {
+        (string memory ret_1151_0, bytes memory ret_1151_1) = __this__.stringByteStorageToStorageCastAliasing();
+        assert(keccak256(abi.encodePacked(ret_1151_0)) == keccak256(abi.encodePacked("abcd")));
+        assert(keccak256(abi.encodePacked(ret_1151_1)) == keccak256(abi.encodePacked(hex"61326364")));
     }
 
-    function __testCase1221__(Casting __this__) internal {
-        (string memory expect_1221_0, bytes memory expect_1221_1) = ("abcd", hex"61326364");
-        (string memory ret_1221_0, bytes memory ret_1221_1) = __this__.stringByteStorageToMemCastAliasing();
-        assert(keccak256(abi.encodePacked(ret_1221_0)) == keccak256(abi.encodePacked(expect_1221_0)));
-        assert(keccak256(abi.encodePacked(ret_1221_1)) == keccak256(abi.encodePacked(expect_1221_1)));
+    function __testCase1203__(Casting __this__) internal {
+        (string memory ret_1203_0, bytes memory ret_1203_1) = __this__.stringByteStorageToMemCastAliasing();
+        assert(keccak256(abi.encodePacked(ret_1203_0)) == keccak256(abi.encodePacked("abcd")));
+        assert(keccak256(abi.encodePacked(ret_1203_1)) == keccak256(abi.encodePacked(hex"61326364")));
     }
 
-    function __testCase1279__(Casting __this__) internal {
-        (string memory expect_1279_0, bytes memory expect_1279_1) = ("2bc", hex"326263");
-        (string memory ret_1279_0, bytes memory ret_1279_1) = __this__.stringByteStorageToStorageLocalCastAliasing();
-        assert(keccak256(abi.encodePacked(ret_1279_0)) == keccak256(abi.encodePacked(expect_1279_0)));
-        assert(keccak256(abi.encodePacked(ret_1279_1)) == keccak256(abi.encodePacked(expect_1279_1)));
+    function __testCase1255__(Casting __this__) internal {
+        (string memory ret_1255_0, bytes memory ret_1255_1) = __this__.stringByteStorageToStorageLocalCastAliasing();
+        assert(keccak256(abi.encodePacked(ret_1255_0)) == keccak256(abi.encodePacked("2bc")));
+        assert(keccak256(abi.encodePacked(ret_1255_1)) == keccak256(abi.encodePacked(hex"326263")));
     }
 }

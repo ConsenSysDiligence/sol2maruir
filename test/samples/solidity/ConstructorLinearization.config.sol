@@ -96,7 +96,6 @@ contract __IRTest__ {
 
     function __testCase352__(ConstructorLinearization __this__) internal {
         (uint256 ret_352_0, uint256 ret_352_1, uint256 ret_352_2, uint256 ret_352_3, uint256 ret_352_4, uint256 ret_352_5, uint256 ret_352_6, uint256 ret_352_7, uint256 ret_352_8, uint256 ret_352_9) = __this__.main();
-
         assert(ret_352_0 == uint256(1));
         assert(ret_352_1 == uint256(5));
         assert(ret_352_2 == uint256(2));

@@ -33,10 +33,10 @@ contract T is D {
 contract __IRTest__ {
     function main() public {
         T __this__ = new T();
-        __testCase78__(__this__);
+        __testCase79__(__this__);
     }
 
-    function __testCase78__(T __this__) internal {
+    function __testCase79__(T __this__) internal {
         __this__.test();
     }
 }

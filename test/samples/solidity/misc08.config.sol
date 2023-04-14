@@ -13,8 +13,7 @@ contract __IRTest__ {
     }
 
     function __testCase43__(Misc08 __this__) internal {
-        uint256 expect_43_0 = (uint256(512));
         uint256 ret_43_0 = __this__.expAssoc(uint256(2), uint256(3), uint256(2));
-        assert(ret_43_0 == expect_43_0);
+        assert(ret_43_0 == uint256(512));
     }
 }
