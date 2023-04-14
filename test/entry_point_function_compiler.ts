@@ -80,10 +80,11 @@ export class EntryPointFunctionCompiler extends BaseFunctionCompiler {
             ir.noSrc
         );
 
-        const failed = builder.getTmpId(ir.boolT, ir.noSrc);
         /**
          * Call test case main function of contract
          */
+        const failed = builder.getTmpId(ir.boolT, ir.noSrc);
+
         builder.transCall(
             [failed],
             factory.identifier(ir.noSrc, this.mainFunc.name, noType),
@@ -103,6 +104,9 @@ export class EntryPointFunctionCompiler extends BaseFunctionCompiler {
 
         builder.assert(factory.unaryOperation(ir.noSrc, "!", failed, ir.boolT), ir.noSrc);
 
+        /**
+         * Compose return values and perform finalization actions
+         */
         builder.return([], ir.noSrc);
 
         return this.finishCompile(ir.noSrc, "__entry__", []);

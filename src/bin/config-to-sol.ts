@@ -1,4 +1,3 @@
-import { assert } from "console";
 import fse from "fs-extra";
 import path from "path";
 import { gte, lt } from "semver";
@@ -772,7 +771,7 @@ async function composeSolidityFromConfig(config: any): Promise<string> {
 
                 sol.assert(call !== undefined, "Unable to find associated call for {0}", varName);
 
-                assert(
+                sol.assert(
                     preCallStmts.length === 0,
                     `Unsupported pre-call statements for constructor`
                 );

@@ -7,20 +7,22 @@ contract GetMoney {
 }
 
 contract Test {
+    constructor() payable {}
+
     function testCreationWithValue() internal {
         uint a = 42;
         GetMoney g1 = new GetMoney{value: a}();
         assert(address(g1).balance == 42);
     }
 
-    function main() public {
+    function main() public payable {
         testCreationWithValue();
     }
 }
 
 contract __IRTest__ {
-    function main() public {
-        Test __this__ = new Test();
+    function main() public payable {
+        Test __this__ = new Test{value: msg.value}();
         __testCase67__(__this__);
     }
 

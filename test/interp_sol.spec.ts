@@ -7,7 +7,7 @@ import { SolMaruirInterp } from "../src/interp";
 import { EntryPointFunctionCompiler } from "./entry_point_function_compiler";
 import { searchRecursive } from "./utils";
 
-describe("Interpreter tests", () => {
+describe("Interpreter tests for *.config.sol", () => {
     const files = searchRecursive("test/samples/solidity", (fileName) =>
         fileName.endsWith(".config.sol")
     );
