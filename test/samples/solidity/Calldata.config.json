@@ -60,23 +60,23 @@
                 {
                     "kind": "array",
                     "location": "calldata",
-                    "type": "byte",
+                    "type": "bytes1",
                     "sized": false,
                     "size": 3,
                     "elements": [
                         {
                             "kind": "literal",
-                            "type": "byte",
+                            "type": "bytes1",
                             "value": ["43"]
                         },
                         {
                             "kind": "literal",
-                            "type": "byte",
+                            "type": "bytes1",
                             "value": ["2"]
                         },
                         {
                             "kind": "literal",
-                            "type": "byte",
+                            "type": "bytes1",
                             "value": ["3"]
                         }
                     ]
@@ -85,7 +85,7 @@
             "expectedReturns": [
                 {
                     "kind": "literal",
-                    "type": "byte",
+                    "type": "bytes1",
                     "value": ["43"]
                 }
             ]
@@ -104,23 +104,23 @@
                 {
                     "kind": "array",
                     "location": "calldata",
-                    "type": "byte",
+                    "type": "bytes1",
                     "sized": false,
                     "size": 3,
                     "elements": [
                         {
                             "kind": "literal",
-                            "type": "byte",
+                            "type": "bytes1",
                             "value": ["43"]
                         },
                         {
                             "kind": "literal",
-                            "type": "byte",
+                            "type": "bytes1",
                             "value": ["2"]
                         },
                         {
                             "kind": "literal",
-                            "type": "byte",
+                            "type": "bytes1",
                             "value": ["3"]
                         }
                     ]
@@ -129,7 +129,7 @@
             "expectedReturns": [
                 {
                     "kind": "literal",
-                    "type": "byte",
+                    "type": "bytes1",
                     "value": ["66"]
                 }
             ]

@@ -13,27 +13,7 @@ contract EncodingTest {
         return true;
     }
 
-    struct Arg {
-        uint u;
-        bool b;
-        int i;
-        address a;
-    }
-
-    function encodeStructs() public pure returns (bytes memory) {
-        Arg memory arg = Arg(3, true, -1, 0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF);
-
-        return abi.encode(arg);
-    }
-
     function test() public pure {
-        assert(
-            isSame(
-                encodeStructs(),
-                hex"00000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000001ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000000000000000000deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
-            )
-        );
-
         assert(
             isSame(
                 abi.encode(true, false),

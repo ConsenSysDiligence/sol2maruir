@@ -3,10 +3,38 @@
     "compilerVersion": "0.7.6",
     "steps": [
         {
-            "act": "validateBySnapshot",
+            "act": "define",
+            "type": "AddressLiteralMemberAccess",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
             "definingContract": "AddressLiteralMemberAccess",
+            "mdc": "AddressLiteralMemberAccess",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "AddressLiteralMemberAccess",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "AddressLiteralMemberAccess",
+            "mdc": "AddressLiteralMemberAccess",
             "method": "verify()",
-            "dotFile": "./test/samples/dot/AddressLiteralMemberAccess_verify.dot"
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "AddressLiteralMemberAccess",
+                    "name": "this"
+                }
+            ],
+            "expectedAssertFail": true
         }
     ]
 }

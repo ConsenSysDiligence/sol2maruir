@@ -13,17 +13,6 @@
             }
         },
         {
-            "act": "define",
-            "type": "Test",
-            "location": "storage",
-            "name": "this1",
-            "balance": {
-                "kind": "literal",
-                "type": "uint256",
-                "value": "20"
-            }
-        },
-        {
             "act": "call",
             "definingContract": "Test",
             "mdc": "Test",
@@ -36,6 +25,17 @@
                 }
             ],
             "expectedReturns": []
+        },
+        {
+            "act": "define",
+            "type": "Test",
+            "location": "storage",
+            "name": "this1",
+            "balance": {
+                "kind": "literal",
+                "type": "uint256",
+                "value": "20"
+            }
         },
         {
             "act": "call",

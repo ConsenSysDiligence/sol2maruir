@@ -2,10 +2,38 @@
     "file": "./test/samples/solidity/AddressMembersOfContract04.sol",
     "steps": [
         {
-            "act": "validateBySnapshot",
+            "act": "define",
+            "type": "AddressMembersOfContract",
+            "location": "storage",
+            "name": "this"
+        },
+        {
+            "act": "call",
             "definingContract": "AddressMembersOfContract",
-            "method": "verify(uint256)",
-            "dotFile": "./test/samples/dot/AddressMembersOfContract_verify.dot"
+            "mdc": "AddressMembersOfContract",
+            "method": "constructor",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "AddressMembersOfContract",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
+        },
+        {
+            "act": "call",
+            "definingContract": "AddressMembersOfContract",
+            "mdc": "AddressMembersOfContract",
+            "method": "verify()",
+            "args": [
+                {
+                    "kind": "object",
+                    "type": "AddressMembersOfContract",
+                    "name": "this"
+                }
+            ],
+            "expectedReturns": []
         }
     ]
 }
