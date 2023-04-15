@@ -366,6 +366,27 @@ export class CFGBuilder {
     }
 
     /**
+     * Add a statement to the current BB that checks if key exists in the map pointed to by `base` of type `type`
+     */
+    contains(
+        base: ir.Expression,
+        type: ir.Type,
+        key: ir.Expression,
+        src: ir.BaseSrc
+    ): ir.Identifier {
+        sol.assert(
+            type instanceof ir.PointerType && type.toType instanceof ir.MapType,
+            `Expected a pointer to a map not {0}`,
+            type
+        );
+
+        const lhs = this.getTmpId(boolT, src);
+        this.curBB.statements.push(this.factory.contains(src, lhs, base, key));
+
+        return lhs;
+    }
+
+    /**
      * Add an assignment to the current BB
      */
     assign(lhs: ir.Identifier, rhs: ir.Expression, src: ir.BaseSrc): void {
@@ -389,6 +410,10 @@ export class CFGBuilder {
         src: ir.BaseSrc
     ): void {
         this.curBB.statements.push(this.factory.allocStruct(src, lhs, baseT, inMem));
+    }
+
+    allocMap(lhs: ir.Identifier, type: ir.MapType, inMem: ir.MemDesc, src: ir.BaseSrc): void {
+        this.curBB.statements.push(this.factory.allocMap(src, lhs, type, inMem));
     }
 
     call(
@@ -546,6 +571,13 @@ export class CFGBuilder {
 
                     return res;
                 }
+            }
+
+            if (typ.toType instanceof ir.MapType) {
+                const res = this.getTmpId(typ, src);
+                this.allocMap(res, typ.toType, typ.region, src);
+
+                return res;
             }
         }
 

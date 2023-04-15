@@ -203,6 +203,15 @@ export class IRFactory {
         return new ir.StoreIndex(src, baseExpr, idxExpr, rhs);
     }
 
+    contains(
+        src: ir.BaseSrc,
+        lhs: ir.Identifier,
+        baseExpr: ir.Expression,
+        keyExpr: ir.Expression
+    ): ir.Contains {
+        return new ir.Contains(src, lhs, baseExpr, keyExpr);
+    }
+
     assignment(src: ir.BaseSrc, lhs: ir.Identifier, rhs: ir.Expression): ir.Assignment {
         return new ir.Assignment(src, lhs, rhs);
     }
@@ -224,6 +233,10 @@ export class IRFactory {
         mem: ir.MemDesc
     ): ir.AllocStruct {
         return new ir.AllocStruct(src, lhs, type, mem);
+    }
+
+    allocMap(src: ir.BaseSrc, lhs: ir.Identifier, type: ir.MapType, mem: ir.MemDesc): ir.AllocMap {
+        return new ir.AllocMap(src, lhs, type, mem);
     }
 
     functionCall(
@@ -313,6 +326,10 @@ export class IRFactory {
 
     tupleType(src: ir.BaseSrc, elementTypes: Array<ir.Type | null>): IRTupleType2 {
         return new IRTupleType2(src, elementTypes);
+    }
+
+    mapType(src: ir.BaseSrc, keyT: ir.Type, valueT: ir.Type): ir.MapType {
+        return new ir.MapType(src, keyT, valueT);
     }
 
     abort(src: ir.BaseSrc): ir.Abort {
