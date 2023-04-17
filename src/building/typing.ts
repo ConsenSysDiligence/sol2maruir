@@ -73,8 +73,6 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: M
         res = factory.intType(ir.noSrc, 160, false);
     } else if (type instanceof sol.FixedBytesType) {
         res = factory.intType(ir.noSrc, type.size * 8, false);
-    } else if (type instanceof sol.MappingType) {
-        throw new Error(`NYI Mappings!`);
     } else if (type instanceof sol.UserDefinedType) {
         const def = type.definition;
 
@@ -109,6 +107,11 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: M
             res = factory.pointerType(ir.noSrc, arrT, loc);
         } else if (type.to instanceof sol.UserDefinedType) {
             res = factory.pointerType(ir.noSrc, transpileType(type.to, factory, loc), loc);
+        } else if (type.to instanceof sol.MappingType) {
+            const keyT = transpileType(type.to.keyType, factory, ptrLoc);
+            const valT = transpileType(type.to.valueType, factory, ptrLoc);
+
+            res = factory.pointerType(ir.noSrc, factory.mapType(ir.noSrc, keyT, valT), loc);
         }
     } else if (type instanceof sol.TupleType) {
         res = factory.tupleType(

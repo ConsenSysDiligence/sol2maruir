@@ -76,6 +76,7 @@ export class GetterCompiler extends BaseFunctionCompiler {
             const argT = transpileType(argTs[i], factory);
             const argName = `ARG_${i}`;
             this.cfgBuilder.addIRArg(argName, argT, ir.noSrc);
+            const argId = factory.identifier(ir.noSrc, argName, argT);
 
             if (fieldT instanceof ir.PointerType && fieldT.toType instanceof ir.UserDefinedType) {
                 const decl = this.cfgBuilder.resolve(fieldT.toType.name);
@@ -84,13 +85,12 @@ export class GetterCompiler extends BaseFunctionCompiler {
                     throw new Error(`Unexpected struct ${decl.pp()} in getter`);
                 }
 
-                fieldRef = this.exprCompiler.solArrRead(
-                    fieldRef,
-                    factory.identifier(ir.noSrc, argName, argT),
-                    ir.noSrc
-                );
+                fieldRef = this.exprCompiler.solArrRead(fieldRef, argId, ir.noSrc);
 
                 fieldT = fieldT.toType.typeArgs[0];
+            } else if (fieldT instanceof ir.PointerType && fieldT.toType instanceof ir.MapType) {
+                fieldRef = this.exprCompiler.makeMapLoadIndex(fieldRef, argId, ir.noSrc);
+                fieldT = fieldT.toType.valueType;
             } else {
                 throw new Error(`Unexpected arg for field type ${fieldT.pp()}`);
             }

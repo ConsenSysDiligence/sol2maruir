@@ -112,7 +112,7 @@ export class ExpressionCompiler {
             }
         }
 
-        throw new Error(`NYI compileIdentifier(${pp(expr)})`);
+        throw new Error(`NYI compileIdentifier(${expr.name})`);
     }
 
     /**
@@ -267,6 +267,12 @@ export class ExpressionCompiler {
             ) {
                 this.solArrWrite(base, idx, castedRHS, assignSrc);
 
+                return rhs;
+            }
+
+            if (baseIrT instanceof ir.PointerType && baseIrT.toType instanceof ir.MapType) {
+                const castedIdx = this.mustImplicitlyCastTo(idx, baseIrT.toType.keyType, idx.src);
+                this.cfgBuilder.storeIndex(base, castedIdx, castedRHS, assignSrc);
                 return rhs;
             }
         }
@@ -1948,9 +1954,48 @@ export class ExpressionCompiler {
             return res;
         }
 
+        if (baseT instanceof ir.PointerType && baseT.toType instanceof ir.MapType) {
+            return this.makeMapLoadIndex(base, idx, src);
+        }
+
         throw new Error(
             `NYI compiling index expression ${expr.print()} with base type ${baseT.pp()}`
         );
+    }
+
+    /**
+     * Make a solidity-style load from a map. The generated code:
+     * 1. Check if the key is present
+     * 2. If so returns the corresponding value
+     * 3. Otherwisre returns a zero-value
+     */
+    makeMapLoadIndex(base: ir.Expression, idx: ir.Expression, src: ir.BaseSrc): ir.Identifier {
+        const builder = this.cfgBuilder;
+        const factory = this.factory;
+
+        const baseT = this.typeOf(base);
+        const mapT = (baseT as ir.PointerType).toType as ir.MapType;
+
+        const castedIdx = this.mustImplicitlyCastTo(idx, mapT.keyType, idx.src);
+        const hasKey = builder.contains(base, baseT, castedIdx, src);
+        const hasKeyBB = builder.mkBB();
+        const noKeyBB = builder.mkBB();
+        const unionBB = builder.mkBB();
+
+        builder.branch(hasKey, hasKeyBB, noKeyBB, src);
+        const res = builder.getTmpId(mapT.valueType, src);
+
+        builder.curBB = hasKeyBB;
+        builder.addStmt(factory.loadIndex(src, res, base, castedIdx));
+        builder.jump(unionBB, src);
+
+        builder.curBB = noKeyBB;
+        builder.assign(res, builder.zeroValue(mapT.valueType, src), res);
+        builder.jump(unionBB, src);
+
+        builder.curBB = unionBB;
+
+        return res;
     }
 
     /**
@@ -2000,9 +2045,27 @@ export class ExpressionCompiler {
     }
 
     compileMemberAccess(expr: sol.MemberAccess): ir.Expression {
+        const builder = this.cfgBuilder;
+        const baseSolT = builder.infer.typeOf(expr.vExpression);
+        const src = new ASTSource(expr);
+
+        // Case of <EnumName>.<EnumEntry>
+        if (
+            baseSolT instanceof sol.TypeNameType &&
+            baseSolT.type instanceof sol.UserDefinedType &&
+            baseSolT.type.definition instanceof sol.EnumDefinition
+        ) {
+            const enumDef = baseSolT.type.definition;
+            const entryIdx = enumDef.vMembers.map((value) => value.name).indexOf(expr.memberName);
+
+            assert(entryIdx !== -1, `{0} not found in enum {1}`, expr.memberName, enumDef.name);
+
+            const resT = transpileType(builder.infer.typeOf(expr), this.factory);
+            return this.factory.numberLiteral(src, BigInt(entryIdx), 10, resT);
+        }
+
         const base = this.compile(expr.vExpression);
         const baseT = this.typeOf(base);
-        const src = new ASTSource(expr);
 
         if (baseT instanceof ir.PointerType && baseT.toType instanceof ir.UserDefinedType) {
             const def = this.cfgBuilder.globalScope.getTypeDecl(baseT.toType);
