@@ -57,9 +57,7 @@
                 {
                     "kind": "literal",
                     "type": "bytes1",
-                    "value": [
-                        "66"
-                    ]
+                    "value": "0x66"
                 }
             ]
         }

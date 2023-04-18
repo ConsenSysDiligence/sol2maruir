@@ -505,6 +505,10 @@ export class ExpressionCompiler {
         }
 
         if (expr.kind === sol.LiteralKind.String) {
+            if (expr.value === null) {
+                return this.cfgBuilder.getBytesLit(expr.hexValue, src);
+            }
+
             return this.cfgBuilder.getStrLit(expr.value, src);
         }
 
@@ -1899,6 +1903,7 @@ export class ExpressionCompiler {
         // Indexing into fixed bytes
         if (baseT instanceof ir.IntType) {
             const solT = baseT.md.get("sol_type");
+
             assert(
                 typeof solT === "string",
                 `Missing solidity type metadata for {0} of type {1} in compiling of index access {2}`,

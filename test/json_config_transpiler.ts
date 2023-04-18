@@ -199,7 +199,12 @@ export class JSONConfigTranspiler extends BaseFunctionCompiler {
 
             if (litT instanceof ir.IntType) {
                 if (arg.type.startsWith("bytes")) {
-                    return factory.numberLiteral(ir.noSrc, BigInt("0x" + arg.value), 16, litT);
+                    return factory.numberLiteral(
+                        ir.noSrc,
+                        BigInt(arg.value.startsWith("0x") ? arg.value : "0x" + arg.value),
+                        16,
+                        litT
+                    );
                 }
 
                 return factory.numberLiteral(ir.noSrc, BigInt(arg.value), 10, litT);

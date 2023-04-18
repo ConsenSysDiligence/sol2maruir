@@ -125,6 +125,20 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: M
             [ptrLoc ? ptrLoc : factory.memConstant(ir.noSrc, "memory")],
             [u8]
         );
+    } else if (type instanceof sol.ArrayType) {
+        const ptrLoc = factory.memConstant(ir.noSrc, "memory");
+        const arrT = factory.userDefinedType(
+            noSrc,
+            "ArrWithLen",
+            [ptrLoc],
+            [transpileType(type.elementT, factory, ptrLoc)]
+        );
+
+        if (type.size !== undefined) {
+            arrT.md.set("size", type.size);
+        }
+
+        res = factory.pointerType(ir.noSrc, arrT, ptrLoc);
     }
 
     assert(res !== undefined, "Unable to transpile type {0} ({1})", type, type.constructor.name);
