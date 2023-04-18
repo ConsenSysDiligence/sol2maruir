@@ -891,12 +891,16 @@ export class ExpressionCompiler {
         return [args, argTs];
     }
 
-    compileBuiltinFunctionCall(expr: sol.FunctionCall): ir.Expression {
+    compileBuiltinFunctionCall(
+        expr: sol.FunctionCall,
+        callee: sol.Expression,
+        valueMod: sol.Expression | undefined
+    ): ir.Expression {
         const builder = this.cfgBuilder;
         const factory = builder.factory;
 
         const exprSrc = new ASTSource(expr);
-        const calleeSrc = new ASTSource(expr.vCallee);
+        const calleeSrc = new ASTSource(callee);
 
         if (expr.vFunctionName === "assert") {
             this.cfgBuilder.call(
@@ -1068,7 +1072,6 @@ export class ExpressionCompiler {
              *
              * @see https://docs.soliditylang.org/en/latest/050-breaking-changes.html#semantic-and-syntactic-changes
              */
-            const [calledOn, , valueMod] = this.stripCallOptions(expr.vExpression);
             let callBytes;
 
             if (expr.vArguments.length === 0) {
@@ -1079,10 +1082,10 @@ export class ExpressionCompiler {
             const callBytesT = this.typeOf(callBytes);
 
             assert(
-                calledOn instanceof sol.MemberAccess,
+                callee instanceof sol.MemberAccess,
                 `Exepcted member access as callee for {0} not {1}`,
                 expr.vFunctionName,
-                calledOn
+                callee
             );
 
             assert(
@@ -1093,7 +1096,7 @@ export class ExpressionCompiler {
                 expr.vFunctionName
             );
 
-            const addr = this.compile(calledOn.vExpression);
+            const addr = this.compile(callee.vExpression);
             const rets = [this.cfgBuilder.getTmpId(boolT, exprSrc)];
 
             let builtinName: string;
@@ -1290,11 +1293,14 @@ export class ExpressionCompiler {
         throw new Error(`NYI compileBuiltinFunctionCall(${expr.vFunctionName})`);
     }
 
-    compileNewCall(expr: sol.FunctionCall): ir.Expression {
+    compileNewCall(
+        expr: sol.FunctionCall,
+        newE: sol.NewExpression,
+        valueMod: sol.Expression | undefined
+    ): ir.Expression {
         const builder = this.cfgBuilder;
         const factory = builder.factory;
 
-        const [newE, , valueMod] = this.stripCallOptions(expr.vExpression);
         assert(newE instanceof sol.NewExpression, ``);
         const newSolT = builder.infer.typeOf(expr);
         const newIrT = transpileType(newSolT, factory);
@@ -1462,6 +1468,12 @@ export class ExpressionCompiler {
                 }
 
                 callee = callee.vExpression;
+            } else if (
+                callee instanceof sol.TupleExpression &&
+                callee.vOriginalComponents.length === 1 &&
+                callee.vOriginalComponents[0] !== null
+            ) {
+                callee = callee.vOriginalComponents[0];
             } else {
                 break;
             }
@@ -1629,12 +1641,14 @@ export class ExpressionCompiler {
         const builder = this.cfgBuilder;
         const factory = this.factory;
 
+        const [callE, , valueMod] = this.stripCallOptions(expr.vExpression);
+
         if (expr.vFunctionCallType === sol.ExternalReferenceType.Builtin) {
-            if (expr.vCallee instanceof sol.NewExpression) {
-                return this.compileNewCall(expr);
+            if (callE instanceof sol.NewExpression) {
+                return this.compileNewCall(expr, callE, valueMod);
             }
 
-            return this.compileBuiltinFunctionCall(expr);
+            return this.compileBuiltinFunctionCall(expr, callE, valueMod);
         }
 
         const src = new ASTSource(expr);
@@ -1642,7 +1656,6 @@ export class ExpressionCompiler {
 
         const irCallee = decoded.thisExpr;
         const solCallee = decoded.calleeDecl;
-        const valueMod = decoded.valueModifier;
         const isExternal = decoded.isExternal;
         const isTransaction = decoded.isTransaction;
         const irFun = decoded.irFun;

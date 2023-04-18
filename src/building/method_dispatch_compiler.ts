@@ -27,6 +27,7 @@ export class MethodDispatchCompiler extends BaseFunctionCompiler {
      * Compile the implicit partial constructor. Just zero-es out the state variables
      */
     compile(): ir.FunctionDefinition {
+        const builder = this.cfgBuilder;
         const factory = this.cfgBuilder.factory;
 
         // Add this argument
@@ -64,6 +65,19 @@ export class MethodDispatchCompiler extends BaseFunctionCompiler {
                 )
             );
         }
+
+        // First update balances
+        const sender = builder.loadField(builder.msgPtr(noSrc), msgPtrT, "sender", noSrc);
+        const amount = builder.loadField(builder.msgPtr(noSrc), msgPtrT, "value", noSrc);
+        const thisAddr = factory.identifier(noSrc, "this", u160Addr);
+        builder.call(
+            [],
+            factory.funIdentifier("sol_transfer_internal"),
+            [],
+            [],
+            [sender, thisAddr, amount],
+            noSrc
+        );
 
         for (let i = 0; i < this.overridingImpls.length; i++) {
             const [irContract, irFun] = this.overridingImpls[i];

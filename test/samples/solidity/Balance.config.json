@@ -6,12 +6,7 @@
             "act": "define",
             "type": "Balance",
             "location": "storage",
-            "name": "this",
-            "balance": {
-                "kind": "literal",
-                "type": "uint256",
-                "value": "43"
-            }
+            "name": "this"
         },
         {
             "act": "call",
@@ -25,7 +20,8 @@
                     "name": "this"
                 }
             ],
-            "expectedReturns": []
+            "expectedReturns": [],
+            "value": 43
         },
         {
             "act": "call",

@@ -4,7 +4,16 @@ import { UIDGenerator } from "../src";
 import { BaseFunctionCompiler } from "../src/building/base_function_compiler";
 import { ExpressionCompiler } from "../src/building/expression_compiler";
 import { IRFactory } from "../src/building/factory";
-import { blockPtrT, blockT, msgPtrT, noType, u160Addr, u256 } from "../src/building/typing";
+import {
+    blockPtrT,
+    blockT,
+    msgPtrT,
+    msgT,
+    noType,
+    u160,
+    u160Addr,
+    u256
+} from "../src/building/typing";
 
 export class EntryPointFunctionCompiler extends BaseFunctionCompiler {
     readonly exprCompiler: ExpressionCompiler;
@@ -54,6 +63,26 @@ export class EntryPointFunctionCompiler extends BaseFunctionCompiler {
             factory.identifier(ir.noSrc, "block", blockPtrT),
             "number",
             factory.numberLiteral(ir.noSrc, 1n, 10, u256),
+            ir.noSrc
+        );
+
+        builder.allocStruct(
+            factory.identifier(ir.noSrc, "msg", msgPtrT),
+            msgT,
+            factory.memConstant(ir.noSrc, "memory"),
+            ir.noSrc
+        );
+
+        builder.storeField(
+            factory.identifier(ir.noSrc, "msg", msgPtrT),
+            "sender",
+            factory.numberLiteral(ir.noSrc, 0n, 16, u160),
+            ir.noSrc
+        );
+        builder.storeField(
+            factory.identifier(ir.noSrc, "msg", msgPtrT),
+            "value",
+            factory.numberLiteral(ir.noSrc, 1000000n, 10, u256),
             ir.noSrc
         );
 

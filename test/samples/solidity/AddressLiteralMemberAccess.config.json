@@ -34,7 +34,7 @@
                     "name": "this"
                 }
             ],
-            "expectedAssertFail": true
+            "expectedReturns": []
         }
     ]
 }
