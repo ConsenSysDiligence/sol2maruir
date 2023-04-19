@@ -199,12 +199,23 @@ contract __IRTest__ {
         __testCase1918__(__this__);
         __testCase1959__(__this__);
         __testCase2000__(__this__);
-        InlineInitializerArithmetic __this1__ = new InlineInitializerArithmetic();
+
+        try new InlineInitializerArithmetic() {
+            assert(false);
+        } catch {
+            assert(true);
+        }
+
         ModifierArgArithmetic __this2__ = new ModifierArgArithmetic();
-        __testCase2048__(__this__, __this1__, __this2__);
-        __testCase2071__(__this__, __this1__, __this2__);
+        __testCase2048__(__this2__);
+        __testCase2071__(__this2__);
         BaseConstructorArgArithmetic __this3__ = new BaseConstructorArgArithmetic(int8(126));
-        BaseConstructorArgArithmetic __this4__ = new BaseConstructorArgArithmetic(int8(127));
+
+        try new BaseConstructorArgArithmetic(int8(127)) {
+            assert(false);
+        } catch {
+            assert(true);
+        }
     }
 
     function __testCase427__(Overflow08 __this__) internal {
@@ -537,11 +548,11 @@ contract __IRTest__ {
         }
     }
 
-    function __testCase2048__(Overflow08 __this__, InlineInitializerArithmetic __this1__, ModifierArgArithmetic __this2__) internal {
+    function __testCase2048__(ModifierArgArithmetic __this2__) internal {
         __this2__.foo(int8(126));
     }
 
-    function __testCase2071__(Overflow08 __this__, InlineInitializerArithmetic __this1__, ModifierArgArithmetic __this2__) internal {
+    function __testCase2071__(ModifierArgArithmetic __this2__) internal {
         try __this2__.foo(int8(127)) {
             assert(false);
         } catch Error(string memory reason) {
