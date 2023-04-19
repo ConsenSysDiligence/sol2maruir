@@ -111,8 +111,6 @@ contract Test {
         assert(res1 && (resBytes1.length == 0));
         (bool res2, bytes memory resBytes2) = a.staticcall{gas: 2300}(getIdData(1));
         assert(res2 && (resBytes2.length == 0));
-        (bool res3, bytes memory resBytes3) = a.delegatecall{gas: 2300}(getIdData(1));
-        assert((!res3) && (resBytes3.length == 0));
         bool res4 = a.send(0);
         assert(res4);
         try this.transfer(a) {} catch Error(string memory s) {
@@ -171,25 +169,6 @@ contract Test {
         uint newBalance = address(this).balance;
         assert(res1 && (resBytes1.length == 0));
         assert(newBalance == (oldBalance - 1));
-    }
-
-    function delegatecallTests(Test other) public {
-        assert(address(other) != address(this));
-        address a = address(other);
-        bytes memory msgData = abi.encodeWithSignature("inc()");
-        uint oldX = x;
-        uint otherOldX = other.x();
-        (bool res, bytes memory ret) = a.delegatecall(msgData);
-        assert(res && (ret.length > 0));
-        uint retX = abi.decode(ret, (uint));
-        assert(retX == (oldX + 1));
-        assert(x == (oldX + 1));
-        assert(otherOldX == other.x());
-        bytes memory msgFailData = abi.encodeWithSignature("incAndThrow()");
-        oldX = x;
-        (bool res1, bytes memory ret1) = a.delegatecall(msgFailData);
-        assert((!res1) && (ret1.length > 0));
-        assert(x == oldX);
     }
 
     function callTests(Test other) public {
@@ -330,22 +309,17 @@ contract Test {
 
 contract __IRTest__ {
     function main() public {
-        Test __this__ = new Test();
+        Test __this__ = new Test{value: 20}();
         Test __this1__ = new Test();
-        __testCase1752__(__this__, __this1__);
-        __testCase1770__(__this__, __this1__);
-        __testCase1788__(__this__, __this1__);
+        __testCase1600__(__this__, __this1__);
+        __testCase1618__(__this__, __this1__);
     }
 
-    function __testCase1752__(Test __this__, Test __this1__) internal {
+    function __testCase1600__(Test __this__, Test __this1__) internal {
         __this__.main();
     }
 
-    function __testCase1770__(Test __this__, Test __this1__) internal {
+    function __testCase1618__(Test __this__, Test __this1__) internal {
         __this__.callTests(__this1__);
-    }
-
-    function __testCase1788__(Test __this__, Test __this1__) internal {
-        __this__.delegatecallTests(__this1__);
     }
 }

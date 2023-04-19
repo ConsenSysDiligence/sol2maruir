@@ -207,10 +207,8 @@ contract __IRTest__ {
         }
 
         ModifierArgArithmetic __this2__ = new ModifierArgArithmetic();
-
         __testCase2048__(__this2__);
         __testCase2071__(__this2__);
-
         BaseConstructorArgArithmetic __this3__ = new BaseConstructorArgArithmetic(int8(126));
 
         try new BaseConstructorArgArithmetic(int8(127)) {

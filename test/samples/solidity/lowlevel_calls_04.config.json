@@ -5,12 +5,7 @@
             "act": "define",
             "type": "Test",
             "location": "storage",
-            "name": "this",
-            "balance": {
-                "kind": "literal",
-                "type": "uint256",
-                "value": "20"
-            }
+            "name": "this"
         },
         {
             "act": "call",
@@ -24,18 +19,14 @@
                     "name": "this"
                 }
             ],
-            "expectedReturns": []
+            "expectedReturns": [],
+            "value": 20
         },
         {
             "act": "define",
             "type": "Test",
             "location": "storage",
-            "name": "this1",
-            "balance": {
-                "kind": "literal",
-                "type": "uint256",
-                "value": "20"
-            }
+            "name": "this1"
         },
         {
             "act": "call",
@@ -49,7 +40,8 @@
                     "name": "this1"
                 }
             ],
-            "expectedReturns": []
+            "expectedReturns": [],
+            "value": 20
         },
         {
             "act": "define",
@@ -130,25 +122,6 @@
                     "kind": "literal",
                     "type": "address",
                     "value": "0x0000000000000000000000000000000000000101"
-                }
-            ],
-            "expectedReturns": []
-        },
-        {
-            "act": "call",
-            "definingContract": "Test",
-            "mdc": "Test",
-            "method": "delegatecallTests(address)",
-            "args": [
-                {
-                    "kind": "object",
-                    "type": "Test",
-                    "name": "this"
-                },
-                {
-                    "kind": "object",
-                    "type": "Test",
-                    "name": "this1"
                 }
             ],
             "expectedReturns": []

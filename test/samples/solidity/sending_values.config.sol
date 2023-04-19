@@ -13,7 +13,7 @@ contract ReceiveThroughMethod {
 contract Test {
     constructor() payable {}
 
-    function main() public payable {
+    function main() public {
         uint myBal = address(this).balance;
         CanReceiveOnCreate crc = (new CanReceiveOnCreate){value: 1}();
         assert((address(crc).balance == 1) && ((myBal - 1) == address(this).balance));
@@ -27,12 +27,12 @@ contract Test {
 }
 
 contract __IRTest__ {
-    function main() public payable {
-        Test __this__ = new Test();
-        __testCase148__(__this__);
+    function main() public {
+        Test __this__ = new Test{value: 10}();
+        __testCase145__(__this__);
     }
 
-    function __testCase148__(Test __this__) internal {
-        __this__.main{value: msg.value}();
+    function __testCase145__(Test __this__) internal {
+        __this__.main();
     }
 }

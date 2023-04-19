@@ -143,18 +143,29 @@ export class MsgBuilderCompiler extends BaseFunctionCompiler {
             );
 
             // Call abi.encode
-            this.cfgBuilder.call(
-                [res],
-                factory.identifier(
-                    noSrc,
-                    `builtin_abi_encodeWithSignature_${solArgTs.length}`,
-                    noType
-                ),
-                [factory.memConstant(noSrc, "exception")],
-                irArgTs,
-                [sig, ...callArgs],
-                noSrc
-            );
+            if (this.buildArgs) {
+                this.cfgBuilder.call(
+                    [res],
+                    factory.identifier(
+                        noSrc,
+                        `builtin_abi_encodeWithSignature_${solArgTs.length}`,
+                        noType
+                    ),
+                    [factory.memConstant(noSrc, "exception")],
+                    irArgTs,
+                    [sig, ...callArgs],
+                    noSrc
+                );
+            } else {
+                this.cfgBuilder.call(
+                    [res],
+                    factory.identifier(noSrc, `builtin_abi_encode_${solArgTs.length}`, noType),
+                    [],
+                    irArgTs,
+                    callArgs,
+                    noSrc
+                );
+            }
 
             // Return
             this.cfgBuilder.return([res], noSrc);

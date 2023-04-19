@@ -5,6 +5,7 @@ contract GetMoney {
 }
 
 contract Test {
+    constructor() payable {}
     function testCreationWithValue() internal {
         uint a = 42;
         GetMoney g1 = new GetMoney{value: a}();
