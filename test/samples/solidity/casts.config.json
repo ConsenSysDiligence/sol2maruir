@@ -22,14 +22,14 @@
                 {
                     "kind": "literal",
                     "type": "bytes1",
-                    "value": ["0x25"]
+                    "value": "0x25"
                 }
             ],
             "expectedReturns": [
                 {
                     "kind": "literal",
                     "type": "bytes1",
-                    "value": ["0x7c"]
+                    "value": "0x7c"
                 }
             ]
         },
@@ -47,14 +47,14 @@
                 {
                     "kind": "literal",
                     "type": "bytes1",
-                    "value": ["0x05"]
+                    "value": "0x05"
                 }
             ],
             "expectedReturns": [
                 {
                     "kind": "literal",
                     "type": "bytes1",
-                    "value": ["0x35"]
+                    "value": "0x35"
                 }
             ]
         },

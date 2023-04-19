@@ -67,17 +67,17 @@
                         {
                             "kind": "literal",
                             "type": "bytes1",
-                            "value": ["43"]
+                            "value": "0x2b"
                         },
                         {
                             "kind": "literal",
                             "type": "bytes1",
-                            "value": ["2"]
+                            "value": "0x02"
                         },
                         {
                             "kind": "literal",
                             "type": "bytes1",
-                            "value": ["3"]
+                            "value": "0x03"
                         }
                     ]
                 }
@@ -86,7 +86,7 @@
                 {
                     "kind": "literal",
                     "type": "bytes1",
-                    "value": ["43"]
+                    "value": "0x2b"
                 }
             ]
         },
@@ -111,17 +111,17 @@
                         {
                             "kind": "literal",
                             "type": "bytes1",
-                            "value": ["43"]
+                            "value": "0x43"
                         },
                         {
                             "kind": "literal",
                             "type": "bytes1",
-                            "value": ["2"]
+                            "value": "0x02"
                         },
                         {
                             "kind": "literal",
                             "type": "bytes1",
-                            "value": ["3"]
+                            "value": "0x03"
                         }
                     ]
                 }
@@ -130,7 +130,7 @@
                 {
                     "kind": "literal",
                     "type": "bytes1",
-                    "value": ["66"]
+                    "value": "0x42"
                 }
             ]
         }
