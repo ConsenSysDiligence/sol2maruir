@@ -12,7 +12,6 @@ import {
 import { UIDGenerator } from "../src";
 import { IRFactory } from "../src/building/factory";
 import {
-    balancesMapPtrT,
     blockPtrT,
     blockT,
     boolT,
@@ -68,7 +67,7 @@ export function buildMaps(
                     ? "constructor"
                     : infer.signature(def.src.nd);
             } else if (def.name.endsWith("_build_msg_data")) {
-                const nameRX = /([a-zA-Z0-9]*)_([a-zA-Z0-9]*)_([a-f0-9]*)_build_msg_data/;
+                const nameRX = /([a-zA-Z0-9]*)_([a-zA-Z0-9_]*)_([a-f0-9]{8,8})_build_msg_data/;
                 const m = def.name.match(nameRX);
 
                 if (m) {
@@ -372,24 +371,6 @@ export class JSONConfigTranspiler extends BaseFunctionCompiler {
                     );
                 }
 
-                if (step.balance) {
-                    const addr = builder.getTmpId(u160, ir.noSrc);
-                    followups.push(
-                        factory.loadField(
-                            ir.noSrc,
-                            addr,
-                            factory.identifier(noSrc, lastObjName as string, thisT),
-                            "__address__"
-                        ),
-                        factory.storeIndex(
-                            ir.noSrc,
-                            factory.identifier(noSrc, "_balances_", balancesMapPtrT),
-                            addr,
-                            this.compileJSArg(step.balance)
-                        )
-                    );
-                }
-
                 constuctionFollowups.set(lastObjName as string, followups);
             } else if (step.act === "call") {
                 const fun = this.methodMap.get(step.definingContract)?.get(step.method);
@@ -416,13 +397,14 @@ export class JSONConfigTranspiler extends BaseFunctionCompiler {
                 );
 
                 // Add remaining args
+                const off = args.length;
                 args.push(
                     ...step.args
                         .slice(1)
                         .map((jsArg: any, i: number) =>
                             this.exprCompiler.mustImplicitlyCastTo(
                                 this.compileJSArg(jsArg),
-                                fun.parameters[i + 3].type,
+                                fun.parameters[i + off].type,
                                 noSrc
                             )
                         )
@@ -450,6 +432,14 @@ export class JSONConfigTranspiler extends BaseFunctionCompiler {
                 lhss.push(aborted);
 
                 const funName = fun.name;
+                const value: bigint = step.value !== undefined ? BigInt(step.value) : 0n;
+
+                builder.storeField(
+                    factory.identifier(ir.noSrc, "msg", msgPtrT),
+                    "value",
+                    factory.numberLiteral(ir.noSrc, value, 10, u256),
+                    noSrc
+                );
 
                 if (step.method !== "constructor") {
                     const msgDataTmp = builder.getTmpId(u8ArrMemPtr);

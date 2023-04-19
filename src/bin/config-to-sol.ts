@@ -662,6 +662,39 @@ function composeStepCheck(
     return composeFailCheck(factory, instances, inference, call, step);
 }
 
+function addValueToCallee(
+    factory: sol.ASTNodeFactory,
+    callee: sol.Expression,
+    value: bigint,
+    version: string
+): sol.Expression {
+    if (value === 0n) {
+        return callee;
+    }
+
+    if (lt(version, "0.6.2")) {
+        // Add .value
+        if (callee instanceof sol.NewExpression) {
+            callee = factory.makeTupleExpression("", false, [callee]);
+        }
+
+        return factory.makeFunctionCall(
+            "",
+            sol.FunctionCallKind.FunctionCall,
+            factory.makeMemberAccess("", callee, "value", -1),
+            [factory.makeLiteral("uint256", sol.LiteralKind.Number, "", String(value))]
+        );
+    }
+
+    return factory.makeFunctionCallOptions(
+        "",
+        callee,
+        new Map([
+            ["value", factory.makeLiteral("uint256", sol.LiteralKind.Number, "", String(value))]
+        ])
+    );
+}
+
 async function composeSolidityFromConfig(config: any): Promise<string> {
     const result = await sol.compileSol(
         config.file,
@@ -731,7 +764,6 @@ async function composeSolidityFromConfig(config: any): Promise<string> {
 
             const args: sol.Expression[] = [];
 
-            // @todo No support for setting balance here. Watch out.
             const call = factory.makeFunctionCall(
                 type.typeString,
                 sol.FunctionCallKind.FunctionCall,
@@ -755,6 +787,8 @@ async function composeSolidityFromConfig(config: any): Promise<string> {
             const preCallStmts: sol.Statement[] = [];
             const args: sol.Expression[] = [];
 
+            const value: bigint = step.value !== undefined ? step.value : 0n;
+
             for (const jsArg of step.args.slice(1)) {
                 const [arg, argStmts] = makeArg(factory, instances, jsArg);
 
@@ -763,19 +797,29 @@ async function composeSolidityFromConfig(config: any): Promise<string> {
             }
 
             if (step.method === "constructor") {
+                const call = constrs.get(varName);
+                sol.assert(call !== undefined, "Unable to find associated call for {0}", varName);
+
+                if (value !== 0n) {
+                    call.vExpression = addValueToCallee(
+                        factory,
+                        call.vExpression,
+                        value,
+                        inference.version
+                    );
+                }
+
                 if (step.args.length === 1) {
                     continue;
                 }
-
-                const call = constrs.get(varName);
-
-                sol.assert(call !== undefined, "Unable to find associated call for {0}", varName);
 
                 sol.assert(
                     preCallStmts.length === 0,
                     `Unsupported pre-call statements for constructor`
                 );
                 call.vArguments.push(...args);
+
+                call.acceptChildren();
             } else {
                 const name = step.method.slice(0, step.method.indexOf("("));
                 const def = resolveCallee(units, inference, step.mdc, name);
@@ -788,12 +832,16 @@ async function composeSolidityFromConfig(config: any): Promise<string> {
                     varName
                 );
 
-                const callee = factory.makeMemberAccess(
+                let callee: sol.Expression = factory.makeMemberAccess(
                     "<missing>",
                     factory.makeIdentifierFor(instance),
                     name,
                     def.id
                 );
+
+                if (value !== 0n) {
+                    callee = addValueToCallee(factory, callee, value, inference.version);
+                }
 
                 const call = factory.makeFunctionCall(
                     "<missing>",
@@ -922,13 +970,6 @@ async function main(): Promise<void> {
     const configs = searchRecursive("test/samples/solidity", (fileName) =>
         fileName.endsWith(".config.json")
     );
-    /*
-    const configs = [
-        "test/samples/solidity/AddressLiteralMemberAccess.config.json",
-        "test/samples/solidity/CodeSize080.config.json",
-        "test/samples/solidity/CodeSize081.config.json"
-    ];
-    */
 
     const failing = [];
 

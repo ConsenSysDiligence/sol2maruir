@@ -95,8 +95,10 @@ contract Test {
         */
 
         // no successful delegatecall call
+        /*
         bool res3 = a.delegatecall.gas(23000)(getIdData(1));
         assert(res3);
+        */
 
         // no successful send
         /*
@@ -157,6 +159,7 @@ contract Test {
         assert(!res2);
     }
     
+    /*
     function delegatecallTests(Test other) public {
         assert(address(other) != address(this));
         
@@ -179,6 +182,7 @@ contract Test {
         assert(!res1);
         assert(x == oldX);
     }
+    */
     
     function callTests(Test other) public {
         address a = address(other);

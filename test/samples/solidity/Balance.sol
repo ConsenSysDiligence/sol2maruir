@@ -11,6 +11,8 @@ contract BalanceFunc {
 }
 
 contract Balance {
+    constructor() payable {}
+    
     // Otherwise just return the balance.
     function getBalance() public returns (uint) {
         return this.balance;

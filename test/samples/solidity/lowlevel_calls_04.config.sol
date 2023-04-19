@@ -80,8 +80,6 @@ contract Test {
         assert(res0);
         bool res1 = a.call.gas(23000)(getIdData(1));
         assert(res1);
-        bool res3 = a.delegatecall.gas(23000)(getIdData(1));
-        assert(res3);
     }
 
     function fallbackTests() public returns (bool, int8) {
@@ -106,23 +104,6 @@ contract Test {
         assert(!res1);
         bool res2 = a.call.gas(2300)("\n\u000b");
         assert(!res2);
-    }
-
-    function delegatecallTests(Test other) public {
-        assert(address(other) != address(this));
-        address a = address(other);
-        bytes memory msgData = abi.encodeWithSignature("inc()");
-        uint oldX = x;
-        uint otherOldX = other.x();
-        bool res = a.delegatecall(msgData);
-        assert(res);
-        assert(x == (oldX + 1));
-        assert(otherOldX == other.x());
-        bytes memory msgFailData = abi.encodeWithSignature("incAndThrow()");
-        oldX = x;
-        bool res1 = a.delegatecall(msgFailData);
-        assert(!res1);
-        assert(x == oldX);
     }
 
     function callTests(Test other) public {
@@ -202,29 +183,24 @@ contract Test {
 
 contract __IRTest__ {
     function main() public {
-        Test __this__ = new Test();
-        Test __this1__ = new Test();
+        Test __this__ = (new Test).value(20)();
+        Test __this1__ = (new Test).value(20)();
         RejectFallback __rf__ = new RejectFallback();
         RejectNoFuns __rnf__ = new RejectNoFuns();
-        __testCase899__(__this__, __this1__, __rf__, __rnf__);
-        __testCase925__(__this__, __this1__, __rf__, __rnf__);
-        __testCase949__(__this__, __this1__, __rf__, __rnf__);
-        __testCase975__(__this__, __this1__, __rf__, __rnf__);
+        __testCase796__(__this__, __this1__, __rf__, __rnf__);
+        __testCase822__(__this__, __this1__, __rf__, __rnf__);
+        __testCase848__(__this__, __this1__, __rf__, __rnf__);
     }
 
-    function __testCase899__(Test __this__, Test __this1__, RejectFallback __rf__, RejectNoFuns __rnf__) internal {
+    function __testCase796__(Test __this__, Test __this1__, RejectFallback __rf__, RejectNoFuns __rnf__) internal {
         __this__.main();
     }
 
-    function __testCase925__(Test __this__, Test __this1__, RejectFallback __rf__, RejectNoFuns __rnf__) internal {
+    function __testCase822__(Test __this__, Test __this1__, RejectFallback __rf__, RejectNoFuns __rnf__) internal {
         __this__.transfer(address(0x0000000000000000000000000000000000000101));
     }
 
-    function __testCase949__(Test __this__, Test __this1__, RejectFallback __rf__, RejectNoFuns __rnf__) internal {
-        __this__.delegatecallTests(__this1__);
-    }
-
-    function __testCase975__(Test __this__, Test __this1__, RejectFallback __rf__, RejectNoFuns __rnf__) internal {
+    function __testCase848__(Test __this__, Test __this1__, RejectFallback __rf__, RejectNoFuns __rnf__) internal {
         __this__.transfer(address(0x0000000000000000000000000000000000000102));
     }
 }

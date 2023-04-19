@@ -34,7 +34,7 @@ var _string_str_: ArrWithLen<#exception; u8> *#exception = {
 }
 
 
-var _balances_ : map(u160, u256) *#storage = { }
+var _balances_ : map(u160, u256) *#storage = { 0_u160: 100000000_u256 }
 
 struct Block {
     number: u256;

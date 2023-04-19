@@ -6,12 +6,7 @@
             "act": "define",
             "type": "ExternalCallModifiers",
             "location": "storage",
-            "name": "this",
-            "balance": {
-                "kind": "literal",
-                "type": "uint256",
-                "value": "20"
-            }
+            "name": "this"
         },
         {
             "act": "call",
@@ -25,7 +20,8 @@
                     "name": "this"
                 }
             ],
-            "expectedReturns": []
+            "expectedReturns": [],
+            "value": 20
         },
         {
             "act": "call",

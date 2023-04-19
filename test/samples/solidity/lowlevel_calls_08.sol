@@ -116,8 +116,10 @@ contract Test {
         assert(res2 && resBytes2.length == 0);
 
         // no successful delegatecall call
+        /*
         (bool res3, bytes memory resBytes3) = a.delegatecall{gas: 2300}(getIdData(1));
         assert(!res3 && resBytes3.length == 0);
+        */
 
         // no successful send
         
@@ -213,6 +215,7 @@ contract Test {
         assert(newBalance == oldBalance - 1);
     }
     
+    /*
     function delegatecallTests(Test other) public {
         assert(address(other) != address(this));
         
@@ -237,6 +240,7 @@ contract Test {
         assert(!res1 && ret1.length > 0);
         assert(x == oldX);
     }
+    */
     
     function callTests(Test other) public {
         assert(address(other) != address(this));

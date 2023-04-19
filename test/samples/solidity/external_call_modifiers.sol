@@ -6,6 +6,8 @@ contract A {
 }
 
 contract ExternalCallModifiers {
+    constructor() payable {}
+    
     function main() public {
         A a = new A();
         //a = (new A)();

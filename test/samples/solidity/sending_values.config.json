@@ -5,23 +5,7 @@
             "act": "define",
             "type": "Test",
             "location": "storage",
-            "name": "this",
-            "balance": {
-                "kind": "literal",
-                "type": "uint256",
-                "value": "10"
-            }
-        },
-        {
-            "act": "define",
-            "type": "Test",
-            "location": "storage",
-            "name": "this1",
-            "balance": {
-                "kind": "literal",
-                "type": "uint256",
-                "value": "10"
-            }
+            "name": "this"
         },
         {
             "act": "call",
@@ -35,7 +19,8 @@
                     "name": "this"
                 }
             ],
-            "expectedReturns": []
+            "expectedReturns": [],
+            "value": 10
         },
         {
             "act": "call",

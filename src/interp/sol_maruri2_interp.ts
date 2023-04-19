@@ -29,6 +29,7 @@ import {
     builtin_un_op_overflows,
     ContractRegistry
 } from "./builtins";
+import { noType } from "../building/typing";
 
 export class SolMaruirInterp {
     readonly defs: Program;
@@ -45,7 +46,7 @@ export class SolMaruirInterp {
         this.defs = defs;
         this.resolving = new Resolving(defs);
         this.typing = new Typing(defs, this.resolving);
-        this.contractRegistry = new Map();
+        this.contractRegistry = new Map([[0n, [noType, 0n]]]);
 
         this.state = new State(defs, [], rootTrans, this.getBuiltinsMap());
 

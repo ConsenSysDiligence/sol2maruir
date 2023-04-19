@@ -7,6 +7,8 @@ contract A {
 }
 
 contract ExternalCallModifiers {
+    constructor() public payable {}
+
     function main() public {
         A a = new A();
         a = (new A).value(5)();
@@ -19,11 +21,11 @@ contract ExternalCallModifiers {
 
 contract __IRTest__ {
     function main() public {
-        ExternalCallModifiers __this__ = new ExternalCallModifiers();
-        __testCase80__(__this__);
+        ExternalCallModifiers __this__ = (new ExternalCallModifiers).value(20)();
+        __testCase88__(__this__);
     }
 
-    function __testCase80__(ExternalCallModifiers __this__) internal {
+    function __testCase88__(ExternalCallModifiers __this__) internal {
         __this__.main();
     }
 }
