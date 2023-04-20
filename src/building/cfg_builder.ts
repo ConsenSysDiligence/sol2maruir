@@ -881,4 +881,39 @@ export class CFGBuilder {
 
         return this.factory.identifier(noSrc, name, noType);
     }
+
+    /**
+     * @see https://github.com/ConsenSys/solc-typed-ast/blob/f3236d354c811f3bfcf4dd6370b02255911db3ee/src/types/infer.ts#L2290-L2346
+     * @see https://github.com/ConsenSys/solc-typed-ast/blob/f3236d354c811f3bfcf4dd6370b02255911db3ee/src/types/infer.ts#L196-L215
+     * @see https://github.com/ConsenSys/solc-typed-ast/blob/f3236d354c811f3bfcf4dd6370b02255911db3ee/src/types/abi.ts#L31-L65
+     * @see https://github.com/ConsenSys/solc-typed-ast/blob/f3236d354c811f3bfcf4dd6370b02255911db3ee/src/types/abi.ts#L72-L122
+     */
+    getAbiTypeStringConst(
+        solType: sol.TypeNode,
+        abiEncodeVersion: sol.ABIEncoderVersion
+    ): ir.Identifier {
+        let abiSafeSolType: sol.TypeNode;
+
+        if (solType instanceof sol.IntLiteralType) {
+            const fitT = solType.smallestFittingType();
+
+            sol.assert(
+                fitT !== undefined,
+                "Unable to detect smallest fitting type for {0}",
+                solType
+            );
+
+            abiSafeSolType = fitT;
+        } else if (solType instanceof sol.StringLiteralType) {
+            abiSafeSolType = new sol.StringType();
+        } else {
+            abiSafeSolType = solType;
+        }
+
+        const abiType = sol.generalizeType(
+            this.infer.toABIEncodedType(abiSafeSolType, abiEncodeVersion)
+        )[0];
+
+        return this.getStrLit(abiType.pp(), noSrc);
+    }
 }

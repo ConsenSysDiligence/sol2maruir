@@ -25,12 +25,6 @@ export class MsgBuilderCompiler extends BaseFunctionCompiler {
         super(factory, globalUid, globalScope, solVersion, abiVersion);
     }
 
-    /**
-     * This looks similar to ExpressionCompiler.prepEncodeArgs, but there are differences so we can't
-     * just reuse that.
-     * @param solArgs
-     * @returns
-     */
     private prepEncodeArgs(irArgs: ir.Expression[], solTypes: sol.TypeNode[]): ir.Expression[] {
         const args: ir.Expression[] = [];
 
@@ -40,27 +34,7 @@ export class MsgBuilderCompiler extends BaseFunctionCompiler {
             const solType = solTypes[i];
             const irArg = irArgs[i];
 
-            let abiSafeSolType: sol.TypeNode;
-
-            if (solType instanceof sol.IntLiteralType) {
-                const fitT = solType.smallestFittingType();
-
-                sol.assert(
-                    fitT !== undefined,
-                    "Unable to detect smalles fitting type for {0}",
-                    solType
-                );
-
-                abiSafeSolType = fitT;
-            } else {
-                abiSafeSolType = solType;
-            }
-
-            const abiType = sol.generalizeType(
-                this.cfgBuilder.infer.toABIEncodedType(abiSafeSolType, this.abiVersion)
-            )[0];
-
-            const abiTypeName = this.cfgBuilder.getStrLit(abiType.pp(), noSrc);
+            const abiTypeName = this.cfgBuilder.getAbiTypeStringConst(solType, this.abiVersion);
 
             args.push(abiTypeName, irArg);
         }
