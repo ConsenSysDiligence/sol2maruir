@@ -1815,17 +1815,20 @@ export class ExpressionCompiler {
 
         assert(expr.vArguments.length === 1, ``);
 
-        let toT = transpileType(calleeT.type, factory);
+        let calleeInnerT = calleeT.type;
 
-        // Cast to string/bytes. Wrap in a pointer type around it
-        if (toT instanceof ir.UserDefinedType) {
-            assert(toT.name === "ArrWithLen", `Unexpected cast to user defined type {0}`, toT);
-            toT = factory.pointerType(
-                new ASTSource(expr.vExpression),
-                toT,
-                factory.memConstant(ir.noSrc, "memory")
-            );
+        /**
+         * Cast to string, bytes or arrays. Wrap in a pointer type around it.
+         */
+        if (
+            calleeInnerT instanceof sol.ArrayType ||
+            calleeInnerT instanceof sol.BytesType ||
+            calleeInnerT instanceof sol.StringType
+        ) {
+            calleeInnerT = new sol.PointerType(calleeInnerT, sol.DataLocation.Memory);
         }
+
+        const toT = transpileType(calleeInnerT, factory);
 
         const irExpr = this.compile(expr.vArguments[0]);
         const fromT = this.typeOf(irExpr);
