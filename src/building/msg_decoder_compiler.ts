@@ -24,44 +24,10 @@ export class MsgDecoderCompiler extends BaseFunctionCompiler {
         super(factory, globalUid, globalScope, solVersion, abiVersion);
     }
 
-    /**
-     * This looks similar to ExpressionCompiler.prepDecodeArgs, but there are differences so we can't
-     * just reuse that.
-     * @param solArgs
-     * @returns
-     */
     private prepDecodeArgs(solTypes: sol.TypeNode[]): ir.Expression[] {
-        const args: ir.Expression[] = [];
-
-        for (let i = 0; i < solTypes.length; i++) {
-            const solType = solTypes[i];
-
-            let abiSafeSolType: sol.TypeNode;
-
-            if (solType instanceof sol.IntLiteralType) {
-                const fitT = solType.smallestFittingType();
-
-                sol.assert(
-                    fitT !== undefined,
-                    "Unable to detect smalles fitting type for {0}",
-                    solType
-                );
-
-                abiSafeSolType = fitT;
-            } else {
-                abiSafeSolType = solType;
-            }
-
-            const abiType = sol.generalizeType(
-                this.cfgBuilder.infer.toABIEncodedType(abiSafeSolType, this.abiVersion)
-            )[0];
-
-            const abiTypeName = this.cfgBuilder.getStrLit(abiType.pp(), noSrc);
-
-            args.push(abiTypeName);
-        }
-
-        return args;
+        return solTypes.map((solType) =>
+            this.cfgBuilder.getAbiTypeStringConst(solType, this.abiVersion)
+        );
     }
 
     /**

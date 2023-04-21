@@ -61,7 +61,9 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: M
 
     if (type instanceof sol.IntLiteralType) {
         assert(type.literal !== undefined, `Missing literal in type {0}`, type);
+
         const smallestT = sol.smallestFittingType(type.literal);
+
         assert(smallestT !== undefined, `Can't fit literal {0} in a type`, type.literal);
 
         res = transpileType(smallestT, factory, ptrLoc);
@@ -90,22 +92,12 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: M
     } else if (type instanceof sol.PointerType) {
         const loc = ptrLoc ? ptrLoc : factory.memConstant(ir.noSrc, type.location);
 
-        if (type.to instanceof sol.StringType || type.to instanceof sol.BytesType) {
-            res = factory.pointerType(ir.noSrc, transpileType(type.to, factory, loc), loc);
-        } else if (type.to instanceof sol.ArrayType) {
-            const arrT = factory.userDefinedType(
-                noSrc,
-                "ArrWithLen",
-                [loc],
-                [transpileType(type.to.elementT, factory, loc)]
-            );
-
-            if (type.to.size !== undefined) {
-                arrT.md.set("size", type.to.size);
-            }
-
-            res = factory.pointerType(ir.noSrc, arrT, loc);
-        } else if (type.to instanceof sol.UserDefinedType) {
+        if (
+            type.to instanceof sol.StringType ||
+            type.to instanceof sol.BytesType ||
+            type.to instanceof sol.ArrayType ||
+            type.to instanceof sol.UserDefinedType
+        ) {
             res = factory.pointerType(ir.noSrc, transpileType(type.to, factory, loc), loc);
         } else if (type.to instanceof sol.MappingType) {
             const keyT = transpileType(type.to.keyType, factory, ptrLoc);
@@ -125,6 +117,19 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: M
             [ptrLoc ? ptrLoc : factory.memConstant(ir.noSrc, "memory")],
             [u8]
         );
+    } else if (type instanceof sol.ArrayType) {
+        const loc = ptrLoc ? ptrLoc : factory.memConstant(ir.noSrc, "memory");
+
+        res = factory.userDefinedType(
+            ir.noSrc,
+            "ArrWithLen",
+            [loc],
+            [transpileType(type.elementT, factory, loc)]
+        );
+
+        if (type.size !== undefined) {
+            res.md.set("size", type.size);
+        }
     }
 
     assert(res !== undefined, "Unable to transpile type {0} ({1})", type, type.constructor.name);

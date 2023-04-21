@@ -114,7 +114,10 @@ export function toWeb3Value(val: any, abiType: string | sol.TypeNode, s: ir.Stat
     if (type instanceof sol.BoolType) {
         assert(
             typeof val === "boolean",
-            `Expected boolean value for ABI type "${abiType}", got ${val} of type "${typeof val}"`
+            `Expected boolean value for ABI type "{0}", got {1} of type "{2}"`,
+            abiType,
+            val,
+            typeof val
         );
 
         return val;
@@ -123,9 +126,10 @@ export function toWeb3Value(val: any, abiType: string | sol.TypeNode, s: ir.Stat
     if (type instanceof sol.IntType) {
         assert(
             typeof val === "bigint",
-            `Expected bigint value for ABI type "${ir.pp(
-                abiType
-            )}", got ${val} of type "${typeof val}"`
+            `Expected bigint value for ABI type "{0}", got {1} of type "{2}"`,
+            abiType,
+            val,
+            typeof val
         );
 
         return val;
@@ -198,6 +202,7 @@ export function toWeb3Value(val: any, abiType: string | sol.TypeNode, s: ir.Stat
             const v = vals[i];
 
             assert(t !== null, `Unexpected null tuple element in toWeb3Value`);
+
             res.push(toWeb3Value(v, t, s));
         }
 
@@ -508,7 +513,7 @@ export function builtin_decode(
 
     const abiTypeNames: string[] = [];
 
-    for (let i = 1; i < frame.args.length; i += 2) {
+    for (let i = 1; i < frame.args.length; i++) {
         const typePtr = frame.args[i][1];
 
         assert(typePtr instanceof Array, "Expected pointer, got {0}", typePtr);
@@ -528,7 +533,7 @@ export function builtin_decode(
         return undefined;
     }
 
-    // console.error(`Decode vals: ${web3Vals}`);
+    // console.error("Decode vals:", web3Vals);
     const lastFun = getLastSolidityFun(s);
 
     const scope = resolving.getScope(lastFun);

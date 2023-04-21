@@ -2,14 +2,7 @@ import * as ir from "maru-ir2";
 import { BaseSrc, noSrc } from "maru-ir2";
 import { gte, lt } from "semver";
 import * as sol from "solc-typed-ast";
-import {
-    assert,
-    ContractDefinition,
-    ContractKind,
-    generalizeType,
-    pp,
-    TypeNode
-} from "solc-typed-ast";
+import { ContractDefinition, ContractKind, TypeNode, assert, pp } from "solc-typed-ast";
 import { IRTuple2, IRTupleType2 } from "../ir";
 import { ASTSource } from "../ir/source";
 import { single } from "../utils";
@@ -20,9 +13,9 @@ import {
     FunctionScope,
     getDesugaredConstructorName,
     getDesugaredFunName,
-    getMethodDispatchName,
     getIRContractName,
     getIRStructDefName,
+    getMethodDispatchName,
     getMsgBuilderName
 } from "./resolving";
 import {
@@ -505,6 +498,10 @@ export class ExpressionCompiler {
         }
 
         if (expr.kind === sol.LiteralKind.String) {
+            if (expr.value === null) {
+                return this.cfgBuilder.getBytesLit(expr.hexValue, src);
+            }
+
             return this.cfgBuilder.getStrLit(expr.value, src);
         }
 
@@ -800,26 +797,8 @@ export class ExpressionCompiler {
         );
     }
 
-    public getAbiTypeStringConst(solType: TypeNode): ir.Identifier {
-        let abiSafeSolType: sol.TypeNode;
-
-        if (solType instanceof sol.IntLiteralType) {
-            const fitT = solType.smallestFittingType();
-
-            assert(fitT !== undefined, "Unable to detect smalles fitting type for {0}", solType);
-
-            abiSafeSolType = fitT;
-        } else if (solType instanceof sol.StringLiteralType) {
-            abiSafeSolType = new sol.StringType();
-        } else {
-            abiSafeSolType = solType;
-        }
-
-        const abiType = generalizeType(
-            this.cfgBuilder.infer.toABIEncodedType(abiSafeSolType, this.abiEncodeVersion)
-        )[0];
-
-        return this.cfgBuilder.getStrLit(abiType.pp(), noSrc);
+    getAbiTypeStringConst(solType: TypeNode): ir.Identifier {
+        return this.cfgBuilder.getAbiTypeStringConst(solType, this.abiEncodeVersion);
     }
 
     /**
@@ -865,14 +844,6 @@ export class ExpressionCompiler {
         return [args, argTs];
     }
 
-    /**
-     * @todo Please, be careful with encoder here. Things may get bad quickly.
-     *
-     * @see https://github.com/ConsenSys/solc-typed-ast/blob/f3236d354c811f3bfcf4dd6370b02255911db3ee/src/types/infer.ts#L2290-L2346
-     * @see https://github.com/ConsenSys/solc-typed-ast/blob/f3236d354c811f3bfcf4dd6370b02255911db3ee/src/types/infer.ts#L196-L215
-     * @see https://github.com/ConsenSys/solc-typed-ast/blob/f3236d354c811f3bfcf4dd6370b02255911db3ee/src/types/abi.ts#L31-L65
-     * @see https://github.com/ConsenSys/solc-typed-ast/blob/f3236d354c811f3bfcf4dd6370b02255911db3ee/src/types/abi.ts#L72-L122
-     */
     private prepEncodeArgs(solArgs: sol.Expression[]): [ir.Expression[], ir.Type[]] {
         const args: ir.Expression[] = [];
         const argTs: ir.Type[] = [];
@@ -882,6 +853,7 @@ export class ExpressionCompiler {
 
             const irArg = this.compile(solArg);
             const irArgT = this.typeOf(irArg);
+
             const abiTypeName = this.getAbiTypeStringConst(solType);
 
             args.push(abiTypeName, irArg);
@@ -1811,17 +1783,20 @@ export class ExpressionCompiler {
 
         assert(expr.vArguments.length === 1, ``);
 
-        let toT = transpileType(calleeT.type, factory);
+        let calleeInnerT = calleeT.type;
 
-        // Cast to string/bytes. Wrap in a pointer type around it
-        if (toT instanceof ir.UserDefinedType) {
-            assert(toT.name === "ArrWithLen", `Unexpected cast to user defined type {0}`, toT);
-            toT = factory.pointerType(
-                new ASTSource(expr.vExpression),
-                toT,
-                factory.memConstant(ir.noSrc, "memory")
-            );
+        /**
+         * Cast to string, bytes or arrays. Wrap in a pointer type around it.
+         */
+        if (
+            calleeInnerT instanceof sol.ArrayType ||
+            calleeInnerT instanceof sol.BytesType ||
+            calleeInnerT instanceof sol.StringType
+        ) {
+            calleeInnerT = new sol.PointerType(calleeInnerT, sol.DataLocation.Memory);
         }
+
+        const toT = transpileType(calleeInnerT, factory);
 
         const irExpr = this.compile(expr.vArguments[0]);
         const fromT = this.typeOf(irExpr);
@@ -1912,6 +1887,7 @@ export class ExpressionCompiler {
         // Indexing into fixed bytes
         if (baseT instanceof ir.IntType) {
             const solT = baseT.md.get("sol_type");
+
             assert(
                 typeof solT === "string",
                 `Missing solidity type metadata for {0} of type {1} in compiling of index access {2}`,
