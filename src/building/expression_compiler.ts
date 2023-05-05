@@ -789,12 +789,24 @@ export class ExpressionCompiler {
         }
 
         const type = transpileType(this.cfgBuilder.infer.typeOf(expr), this.factory);
+        const elements: Array<ir.Expression | null> = [];
 
-        return this.factory.tuple(
-            new ASTSource(expr),
-            expr.vComponents.map((compE) => this.compile(compE)),
-            type
-        );
+        for (const element of expr.vOriginalComponents) {
+            let irElement: ir.Expression | null;
+
+            try {
+                irElement = element === null ? null : this.compile(element);
+            } catch (e) {
+                // We allow compile to crash here as tuples can contain
+                // things that are not compilable (e.g. an elementary type name
+                // expression like uint), as long as its not assigned or used anywhere
+                irElement = null;
+            }
+
+            elements.push(irElement);
+        }
+
+        return this.factory.tuple(new ASTSource(expr), elements, type);
     }
 
     getAbiTypeStringConst(solType: TypeNode): ir.Identifier {
@@ -1838,6 +1850,44 @@ export class ExpressionCompiler {
         return this.mustExplicitlyCastTo(irExpr, toT, src);
     }
 
+    /**
+     * Add an assignment to the current BB
+     */
+    assignTuples(lhs: ir.Expression, rhs: ir.Expression, src: ir.BaseSrc): void {
+        if (lhs instanceof IRTuple2 && rhs instanceof IRTuple2) {
+            const lhss = lhs.elements;
+            const rhss = rhs.elements;
+
+            sol.assert(
+                rhss.length === lhss.length,
+                `Unexpected mismatch between rhs ((0)) and lhs ((1)) length in assignMany`,
+                rhss.length,
+                lhss.length
+            );
+
+            for (let i = 0; i < lhss.length; i++) {
+                const lhsEl = lhss[i];
+                const rhsEl = rhss[i];
+
+                if (lhsEl == null) {
+                    continue;
+                }
+
+                sol.assert(rhsEl !== null, `Unexpected null rhs at pos {0} in assignMany`, i);
+                this.assignTuples(lhsEl, rhsEl, src);
+            }
+            return;
+        }
+
+        if (lhs instanceof ir.Identifier) {
+            const castedRHS = this.mustImplicitlyCastTo(rhs, this.typeOf(lhs), src);
+            this.cfgBuilder.assign(lhs, castedRHS, src);
+            return;
+        }
+
+        throw new Error(`Not supported assignTuples to ${lhs.pp()}`);
+    }
+
     compileConditional(expr: sol.Conditional): ir.Expression {
         const src = new ASTSource(expr);
         const cond = this.compile(expr.vCondition);
@@ -1846,23 +1896,23 @@ export class ExpressionCompiler {
         const unionBB = this.cfgBuilder.mkBB();
 
         const unionT = transpileType(this.cfgBuilder.infer.typeOf(expr), this.factory);
-        const unionID = this.cfgBuilder.getTmpId(unionT, src);
+        const unionIDs: ir.Expression = this.cfgBuilder.getTmpIds(unionT, src);
 
         this.cfgBuilder.branch(cond, trueBB, falseBB, src);
 
         this.cfgBuilder.curBB = trueBB;
         const trueIRE = this.compile(expr.vTrueExpression);
-        this.cfgBuilder.assign(unionID, trueIRE, src);
+        this.assignTuples(unionIDs, trueIRE, src);
         this.cfgBuilder.jump(unionBB, src);
 
         this.cfgBuilder.curBB = falseBB;
         const falseIRE = this.compile(expr.vFalseExpression);
-        this.cfgBuilder.assign(unionID, falseIRE, src);
+        this.assignTuples(unionIDs, falseIRE, src);
         this.cfgBuilder.jump(unionBB, src);
 
         this.cfgBuilder.curBB = unionBB;
 
-        return unionID;
+        return unionIDs;
     }
 
     compileIndexAccess(expr: sol.IndexAccess): ir.Expression {
@@ -2097,6 +2147,17 @@ export class ExpressionCompiler {
                 }
 
                 return this.cfgBuilder.getBalance(addrExpr, src);
+            }
+
+            if (expr.memberName === "code") {
+                assert(
+                    isAddressType(baseT),
+                    "Expected an expression of type address for code member access not {0} of type {1}",
+                    base,
+                    baseT
+                );
+
+                return this.cfgBuilder.getCode(base, src);
             }
         }
 

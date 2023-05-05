@@ -33,8 +33,14 @@ var _string_str_: ArrWithLen<#exception; u8> *#exception = {
     capacity: 7_u256
 }
 
+var _empty_code_: ArrWithLen<#exception; u8> *#exception = {
+    arr: [],
+    len: 0_u256,
+    capacity: 0_u256
+}
 
 var _balances_ : map(u160, u256) *#storage = { 0_u160: 100000000_u256 }
+var _code_: map(u160, ArrWithLen<#exception; u8> *#exception) *#memory = { }
 
 struct Block {
     number: u256;
@@ -680,7 +686,28 @@ locals senderBal: u256,
         return;
 }
 
-fun builtin_balance(addr: u160): u256
+fun sol_get_code(addr: u160): ArrWithLen<#exception; u8> *#exception
+locals
+    exists: bool,
+    res: ArrWithLen<#exception; u8> *#exception;
+{
+    entry:
+        exists := _code_ contains addr;
+        branch exists existsBB doesntExistBB;
+    existsBB:
+        load _code_[addr] in res;
+        return res;
+    doesntExistBB:
+        return _empty_code_;
+}
+
+fun sol_set_code(addr: u160, code: ArrWithLen<#exception; u8> *#exception)
+{
+    entry:
+        store code in _code_[addr];
+        return;
+}
+
 fun builtin_keccak256_05<M>(bytes: ArrWithLen<M; u8> *M): u256
 `;
 
