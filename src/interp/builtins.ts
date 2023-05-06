@@ -11,6 +11,7 @@ import {
     hexStringToBytes,
     keccak256
 } from "../utils";
+import { toBN } from "web3-utils";
 
 export type ContractRegistry = Map<bigint, [ir.Type, ir.PrimitiveValue]>;
 
@@ -132,7 +133,7 @@ export function toWeb3Value(val: any, abiType: string | sol.TypeNode, s: ir.Stat
             typeof val
         );
 
-        return val;
+        return toBN(val.toString());
     }
 
     if (type instanceof sol.AddressType || type instanceof sol.FixedBytesType) {

@@ -4,7 +4,7 @@ import { BaseFunctionCompiler } from "./base_function_compiler";
 import { blockPtrT, msgPtrT, u160Addr, u8ArrMemPtr } from "./typing";
 import { noSrc } from "maru-ir2";
 import { IRFactory } from "./factory";
-import { UIDGenerator } from "../utils";
+import { UIDGenerator, isContractDeployable } from "../utils";
 import { ABIEncoderVersion } from "solc-typed-ast";
 import { UnitCompiler } from "./unit_compiler";
 import { getContractDispatchName } from "./resolving";
@@ -40,7 +40,7 @@ export class RootDispatchCompiler extends BaseFunctionCompiler {
         for (const unit of this.units) {
             for (const contract of unit.vContracts) {
                 // Only interested in deployable contracts
-                if (contract.abstract || contract.kind !== sol.ContractKind.Contract) {
+                if (!isContractDeployable(contract)) {
                     continue;
                 }
 

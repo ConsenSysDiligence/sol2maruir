@@ -3,6 +3,7 @@ import * as sol from "solc-typed-ast";
 import { ASTSource } from "../ir/source";
 import {
     getContractCallables,
+    isContractDeployable,
     isExternallyCallable,
     isExternallyVisible,
     UIDGenerator
@@ -78,7 +79,7 @@ export class UnitCompiler {
         for (const [contract, methodOverrideMap] of overrideMap) {
             const abiVersion = this.detectAbiEncoderVersion(contract.vScope);
 
-            if (!contract.abstract) {
+            if (isContractDeployable(contract)) {
                 this.globalDefine(this.compileContractDispatch(contract, abiVersion));
             }
 

@@ -449,6 +449,118 @@ fun builtin_abi_encode_3<;T1, T2, T3>(
     arg3AbiT: ArrWithLen<#exception; u8> *#exception,
     arg3: T3
 ): ArrWithLen<#memory; u8> *#memory
+fun builtin_abi_encode_4<;T1, T2, T3, T4>(
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg1: T1,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2: T2,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3: T3,
+    arg4AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg4: T4
+): ArrWithLen<#memory; u8> *#memory
+fun builtin_abi_encode_5<;T1, T2, T3, T4, T5>(
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg1: T1,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2: T2,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3: T3,
+    arg4AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg4: T4,
+    arg5AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg5: T5
+): ArrWithLen<#memory; u8> *#memory
+fun builtin_abi_encode_6<;T1, T2, T3, T4, T5, T6>(
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg1: T1,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2: T2,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3: T3,
+    arg4AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg4: T4,
+    arg5AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg5: T5,
+    arg6AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg6: T6
+): ArrWithLen<#memory; u8> *#memory
+fun builtin_abi_encode_7<;T1, T2, T3, T4, T5, T6, T7>(
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg1: T1,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2: T2,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3: T3,
+    arg4AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg4: T4,
+    arg5AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg5: T5,
+    arg6AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg6: T6,
+    arg7AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg7: T7
+): ArrWithLen<#memory; u8> *#memory
+fun builtin_abi_encode_8<;T1, T2, T3, T4, T5, T6, T7, T8>(
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg1: T1,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2: T2,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3: T3,
+    arg4AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg4: T4,
+    arg5AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg5: T5,
+    arg6AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg6: T6,
+    arg7AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg7: T7,
+    arg8AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg8: T8
+): ArrWithLen<#memory; u8> *#memory
+fun builtin_abi_encode_9<;T1, T2, T3, T4, T5, T6, T7, T8, T9>(
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg1: T1,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2: T2,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3: T3,
+    arg4AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg4: T4,
+    arg5AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg5: T5,
+    arg6AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg6: T6,
+    arg7AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg7: T7,
+    arg8AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg8: T8,
+    arg9AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg9: T9
+): ArrWithLen<#memory; u8> *#memory
+fun builtin_abi_encode_10<;T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg1: T1,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2: T2,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3: T3,
+    arg4AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg4: T4,
+    arg5AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg5: T5,
+    arg6AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg6: T6,
+    arg7AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg7: T7,
+    arg8AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg8: T8,
+    arg9AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg9: T9,
+    arg10AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg10: T10
+): ArrWithLen<#memory; u8> *#memory
 
 fun builtin_abi_encodePacked_1<;T1>(
     arg1AbiT: ArrWithLen<#exception; u8> *#exception,
