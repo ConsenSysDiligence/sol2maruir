@@ -122,6 +122,6 @@ export function isExternallyVisible(fun: sol.FunctionDefinition): boolean {
 
 export function isContractDeployable(c: sol.ContractDefinition): boolean {
     return (
-        c.kind === sol.ContractKind.Contract || (c.kind === sol.ContractKind.Library && !c.abstract)
+        (c.kind === sol.ContractKind.Contract || c.kind === sol.ContractKind.Library) && !c.abstract
     );
 }
