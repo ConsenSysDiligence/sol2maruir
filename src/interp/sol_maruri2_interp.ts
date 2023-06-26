@@ -162,6 +162,55 @@ export class SolMaruirInterp {
                 ]
             ],
             [
+                "builtin_abi_encode_4",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    false,
+                    [builtin_encode(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_encode_5",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    false,
+                    [builtin_encode(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_encode_6",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    false,
+                    [builtin_encode(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_encode_7",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    false,
+                    [builtin_encode(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_encode_8",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    false,
+                    [builtin_encode(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_encode_9",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    false,
+                    [builtin_encode(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_encode_10",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    false,
+                    [builtin_encode(s, frame)]
+                ]
+            ],
+            [
                 "builtin_abi_decode_1",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
                     const res = builtin_decode(this.resolving, s, frame, 0);

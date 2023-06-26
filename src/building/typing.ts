@@ -106,10 +106,25 @@ export function transpileType(type: sol.TypeNode, factory: IRFactory, ptrLoc?: M
             res = factory.pointerType(ir.noSrc, factory.mapType(ir.noSrc, keyT, valT), loc);
         }
     } else if (type instanceof sol.TupleType) {
-        res = factory.tupleType(
-            ir.noSrc,
-            type.elements.map((solT) => (solT ? transpileType(solT, factory) : null))
-        );
+        const elements: Array<ir.Type | null> = [];
+
+        for (let i = 0; i < type.elements.length; i++) {
+            const elT = type.elements[i];
+            let irT: ir.Type | null;
+
+            try {
+                irT = elT === null ? null : transpileType(elT, factory);
+            } catch (e) {
+                // We allow transpileType to crash here as tuples can contain
+                // things that are not typeable (e.g. an elementary type name
+                // expression like uint), as long as its not assigned or used anywhere
+                irT = null;
+            }
+
+            elements.push(irT);
+        }
+
+        res = factory.tupleType(ir.noSrc, elements);
     } else if (type instanceof sol.StringType || type instanceof sol.BytesType) {
         res = factory.userDefinedType(
             ir.noSrc,

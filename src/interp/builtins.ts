@@ -132,7 +132,7 @@ export function toWeb3Value(val: any, abiType: string | sol.TypeNode, s: ir.Stat
             typeof val
         );
 
-        return val;
+        return val.toString();
     }
 
     if (type instanceof sol.AddressType || type instanceof sol.FixedBytesType) {
@@ -188,7 +188,16 @@ export function toWeb3Value(val: any, abiType: string | sol.TypeNode, s: ir.Stat
 
         assert(struct instanceof ir.StructValue, `Expected a struct not {0} of type`, struct);
 
-        const vals = [...struct.values()];
+        let vals: ir.PrimitiveValue[];
+
+        if (struct.has("arr") && struct.has("capacity") && struct.has("len")) {
+            // Fixed size array converted to tuple
+            vals = s.deref(struct.get("arr") as ir.PointerVal) as ir.PrimitiveValue[];
+        } else {
+            // Normal struct
+            vals = [...struct.values()];
+        }
+
         const res = [];
 
         for (let i = 0; i < type.elements.length; i++) {
@@ -570,8 +579,6 @@ export function builtin_encode(s: ir.State, frame: ir.BuiltinFrame): ir.PointerV
         const abiT = decodeString(s, typePtr);
         const abiV = toWeb3Value(value, abiT, s);
 
-        // console.error(abiT, abiV);
-
         abiTs.push(abiT);
         abiVs.push(abiV);
     }
@@ -608,8 +615,6 @@ export function builtin_encodePacked(s: ir.State, frame: ir.BuiltinFrame): ir.Po
 
         const abiT = decodeString(s, typePtr);
         const abiV = toWeb3Value(value, abiT, s);
-
-        // console.error(abiT, abiV);
 
         abiArgs.push({ type: abiT, value: abiV });
     }
