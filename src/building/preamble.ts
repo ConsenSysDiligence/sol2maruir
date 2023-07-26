@@ -635,6 +635,83 @@ fun builtin_abi_decode_3<DataM; T1, T2, T3>(
     arg3AbiT: ArrWithLen<#exception; u8> *#exception
 ): (T1, T2, T3)
 
+fun builtin_abi_decode_4<DataM; T1, T2, T3, T4>(
+    data: ArrWithLen<DataM; u8> *DataM,
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg4AbiT: ArrWithLen<#exception; u8> *#exception
+): (T1, T2, T3, T4)
+
+fun builtin_abi_decode_5<DataM; T1, T2, T3, T4, T5>(
+    data: ArrWithLen<DataM; u8> *DataM,
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg4AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg5AbiT: ArrWithLen<#exception; u8> *#exception
+): (T1, T2, T3, T4, T5)
+
+fun builtin_abi_decode_6<DataM; T1, T2, T3, T4, T5, T6>(
+    data: ArrWithLen<DataM; u8> *DataM,
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg4AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg5AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg6AbiT: ArrWithLen<#exception; u8> *#exception
+): (T1, T2, T3, T4, T5, T6)
+
+fun builtin_abi_decode_7<DataM; T1, T2, T3, T4, T5, T6, T7>(
+    data: ArrWithLen<DataM; u8> *DataM,
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg4AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg5AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg6AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg7AbiT: ArrWithLen<#exception; u8> *#exception
+): (T1, T2, T3, T4, T5, T6, T7)
+
+fun builtin_abi_decode_8<DataM; T1, T2, T3, T4, T5, T6, T7, T8>(
+    data: ArrWithLen<DataM; u8> *DataM,
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg4AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg5AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg6AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg7AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg8AbiT: ArrWithLen<#exception; u8> *#exception
+): (T1, T2, T3, T4, T5, T6, T7, T8)
+
+fun builtin_abi_decode_9<DataM; T1, T2, T3, T4, T5, T6, T7, T8, T9>(
+    data: ArrWithLen<DataM; u8> *DataM,
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg4AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg5AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg6AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg7AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg8AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg9AbiT: ArrWithLen<#exception; u8> *#exception
+): (T1, T2, T3, T4, T5, T6, T7, T8, T9)
+
+fun builtin_abi_decode_10<DataM; T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(
+    data: ArrWithLen<DataM; u8> *DataM,
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg4AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg5AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg6AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg7AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg8AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg9AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg10AbiT: ArrWithLen<#exception; u8> *#exception
+): (T1, T2, T3, T4, T5, T6, T7, T8, T9, T10)
+
 fun builtin_abi_decodeWithHash_1<DataM; T1>(
     data: ArrWithLen<DataM; u8> *DataM,
     arg1AbiT: ArrWithLen<#exception; u8> *#exception

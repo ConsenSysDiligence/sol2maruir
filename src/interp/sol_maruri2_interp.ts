@@ -235,6 +235,62 @@ export class SolMaruirInterp {
                 }
             ],
             [
+                "builtin_abi_decode_4",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const res = builtin_decode(this.resolving, s, frame, 0);
+
+                    return res === undefined ? [true, []] : [false, res];
+                }
+            ],
+            [
+                "builtin_abi_decode_5",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const res = builtin_decode(this.resolving, s, frame, 0);
+
+                    return res === undefined ? [true, []] : [false, res];
+                }
+            ],
+            [
+                "builtin_abi_decode_6",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const res = builtin_decode(this.resolving, s, frame, 0);
+
+                    return res === undefined ? [true, []] : [false, res];
+                }
+            ],
+            [
+                "builtin_abi_decode_7",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const res = builtin_decode(this.resolving, s, frame, 0);
+
+                    return res === undefined ? [true, []] : [false, res];
+                }
+            ],
+            [
+                "builtin_abi_decode_8",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const res = builtin_decode(this.resolving, s, frame, 0);
+
+                    return res === undefined ? [true, []] : [false, res];
+                }
+            ],
+            [
+                "builtin_abi_decode_9",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const res = builtin_decode(this.resolving, s, frame, 0);
+
+                    return res === undefined ? [true, []] : [false, res];
+                }
+            ],
+            [
+                "builtin_abi_decode_10",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
+                    const res = builtin_decode(this.resolving, s, frame, 0);
+
+                    return res === undefined ? [true, []] : [false, res];
+                }
+            ],
+            [
                 "builtin_abi_decodeWithHash_1",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => {
                     const res = builtin_decode(this.resolving, s, frame, 4);

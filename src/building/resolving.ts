@@ -350,9 +350,12 @@ export function getMsgBuilderName(
 export function getMsgDecoderName(
     contract: ContractDefinition,
     fun: FunctionDefinition | VariableDeclaration,
-    infer: InferType
+    infer: InferType,
+    buildArgs: boolean
 ): string {
-    return `${contract.name}_${fun.name}_${infer.signatureHash(fun)}_decode_msg_data`;
+    return `${contract.name}_${fun.name}_${infer.signatureHash(fun)}_decode_${
+        buildArgs ? "msg_data" : "return_data"
+    }`;
 }
 
 export function getIRContractName(contract: ContractDefinition): string {

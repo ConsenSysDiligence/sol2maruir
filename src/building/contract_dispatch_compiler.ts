@@ -113,7 +113,8 @@ export class ContractDispatchCompiler extends BaseFunctionCompiler {
             const msgDecoderFunName = getMsgDecoderName(
                 this.contract,
                 callee,
-                this.cfgBuilder.infer
+                this.cfgBuilder.infer,
+                true
             );
 
             this.cfgBuilder.call(
