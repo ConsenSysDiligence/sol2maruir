@@ -2,7 +2,7 @@ import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
 import { BasicBlock } from "maru-ir2/dist/ir/cfg";
 import { pp } from "solc-typed-ast";
-import { UIDGenerator } from "../utils";
+import { UIDGenerator, fixTupleType } from "../utils";
 import { BaseSrc, concretizeType, makeSubst, noSrc } from "maru-ir2";
 import {
     balancesMapPtrT,
@@ -941,6 +941,6 @@ export class CFGBuilder {
             this.infer.toABIEncodedType(abiSafeSolType, abiEncodeVersion)
         )[0];
 
-        return this.getStrLit(abiType.pp(), noSrc);
+        return this.getStrLit(fixTupleType(abiType.pp()), noSrc);
     }
 }

@@ -5,7 +5,6 @@ import {
     EventDefinition,
     FunctionDefinition,
     FunctionKind,
-    FunctionVisibility,
     InferType,
     ModifierDefinition,
     resolve,

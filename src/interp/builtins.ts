@@ -8,6 +8,7 @@ import {
     encodePacked,
     encodeParameters,
     encodeWithSignature,
+    fixTupleType,
     hexStringToBytes,
     keccak256
 } from "../utils";
@@ -15,7 +16,11 @@ import {
 export type ContractRegistry = Map<bigint, [ir.Type, ir.PrimitiveValue]>;
 
 const RX_ARRAY = /\[(\d+)?\]$/;
-const RX_TUPLE = /^tuple\((.+)?\)$/;
+
+/**
+ * @todo Restore as `/^tuple\((.+)?\)$/` after https://github.com/web3/web3.js/issues/6307 is fixed in upstream.
+ */
+const RX_TUPLE = /^(tuple)?\((.+)?\)$/;
 
 function abiTypeStringToTypeNode(t: string): sol.TypeNode {
     let m = t.match(RX_ARRAY);
@@ -30,7 +35,7 @@ function abiTypeStringToTypeNode(t: string): sol.TypeNode {
     m = t.match(RX_TUPLE);
 
     if (m) {
-        const elements = m[1] === null ? [] : m[1].split(",");
+        const elements = m[2] === null ? [] : m[2].split(",");
         const elementTs = elements.map(abiTypeStringToTypeNode);
 
         return new sol.TupleType(elementTs);
@@ -132,7 +137,7 @@ export function toWeb3Value(val: any, abiType: string | sol.TypeNode, s: ir.Stat
             typeof val
         );
 
-        return val.toString();
+        return val;
     }
 
     if (type instanceof sol.AddressType || type instanceof sol.FixedBytesType) {
@@ -236,7 +241,10 @@ export function fromWeb3Value(
     if (type instanceof sol.BoolType) {
         assert(
             typeof val === "boolean",
-            `Expected boolean value for ABI type "${abiType}", got ${val} of type "${typeof val}"`
+            'Expected boolean value for ABI type "{0}", got {1} of type "{2}"',
+            abiType,
+            val,
+            typeof val
         );
 
         return val;
@@ -244,8 +252,11 @@ export function fromWeb3Value(
 
     if (type instanceof sol.IntType) {
         assert(
-            typeof val === "string",
-            `Expected bigint value for ABI type "${abiType}", got ${val} of type "${typeof val}"`
+            typeof val === "string" || typeof val === "bigint",
+            'Expected string/bigint value for ABI type "{0}", got {1} of type "{2}"',
+            abiType,
+            val,
+            typeof val
         );
 
         return BigInt(val);
@@ -253,8 +264,11 @@ export function fromWeb3Value(
 
     if (type instanceof sol.AddressType || type instanceof sol.FixedBytesType) {
         assert(
-            typeof val === "string",
-            `Expected bigint value for ABI type "${abiType}", got ${val} of type "${typeof val}"`
+            typeof val === "string" || typeof val === "bigint",
+            'Expected string/bigint value for ABI type "{0}", got {1} of type "{2}"',
+            abiType,
+            val,
+            typeof val
         );
 
         return BigInt(val);
@@ -263,7 +277,10 @@ export function fromWeb3Value(
     if (type instanceof sol.StringType) {
         assert(
             typeof val === "string",
-            `Expected string value for ABI type "${abiType}", got ${val} of type "${typeof val}"`
+            'Expected string value for ABI type "{0}", got {1} of type "{2}"',
+            abiType,
+            val,
+            typeof val
         );
 
         return defineString(state, val, "memory");
@@ -281,7 +298,10 @@ export function fromWeb3Value(
     if (type instanceof sol.ArrayType) {
         assert(
             val instanceof Array,
-            `Expected array value for ABI type "${abiType}", got ${val} of type "${typeof val}"`
+            'Expected array value for ABI type "{0}", got {1} of type "{2}"',
+            abiType,
+            val,
+            typeof val
         );
 
         assert(
@@ -289,7 +309,7 @@ export function fromWeb3Value(
                 irType.toType instanceof ir.UserDefinedType &&
                 irType.toType.name === "ArrWithLen" &&
                 irType.toType.typeArgs.length == 1,
-            `Expected ir type to ArrWithLen not {0}`,
+            "Expected ir type to ArrWithLen not {0}",
             irType
         );
 
@@ -317,11 +337,15 @@ export function fromWeb3Value(
     if (type instanceof sol.TupleType) {
         assert(
             val instanceof Array && val.length === type.elements.length,
-            `Expected array value for ABI type "${abiType}", got ${val} of type "${typeof val}"`
+            'Expected array value for ABI type "{0}", got {1} of type "{2}"',
+            abiType,
+            val,
+            typeof val
         );
+
         assert(
             irType instanceof ir.PointerType && irType.toType instanceof ir.UserDefinedType,
-            `Expected ir type to be a struct not {0}`,
+            "Expected ir type to be a pointer to user-defined type not {0}",
             irType
         );
 
@@ -329,7 +353,7 @@ export function fromWeb3Value(
 
         assert(
             irStruct instanceof ir.StructDefinition,
-            `Expected ir type to be a struct not {0}`,
+            "Expected ir type to be a struct not {0}",
             irStruct
         );
 
@@ -477,7 +501,7 @@ export function builtin_encodeWithSignature(s: ir.State, frame: ir.BuiltinFrame)
 
         assert(typePtr instanceof Array, ``);
 
-        const abiT = decodeString(s, typePtr);
+        const abiT = fixTupleType(decodeString(s, typePtr));
         const web3V = toWeb3Value(value, abiT, s);
 
         abiTypes.push(abiT);
@@ -536,7 +560,7 @@ export function builtin_decode(
 
         assert(typePtr instanceof Array, "Expected pointer, got {0}", typePtr);
 
-        const abiT = decodeString(s, typePtr);
+        const abiT = fixTupleType(decodeString(s, typePtr));
 
         abiTypeNames.push(abiT);
     }
@@ -585,7 +609,7 @@ export function builtin_encode(s: ir.State, frame: ir.BuiltinFrame): ir.PointerV
 
         assert(typePtr instanceof Array, "Expected pointer, got {0}", typePtr);
 
-        const abiT = decodeString(s, typePtr);
+        const abiT = fixTupleType(decodeString(s, typePtr));
         const abiV = toWeb3Value(value, abiT, s);
 
         abiTs.push(abiT);
@@ -622,7 +646,7 @@ export function builtin_encodePacked(s: ir.State, frame: ir.BuiltinFrame): ir.Po
 
         assert(typePtr instanceof Array, "Expected pointer, got {0}", typePtr);
 
-        const abiT = decodeString(s, typePtr);
+        const abiT = fixTupleType(decodeString(s, typePtr));
         const abiV = toWeb3Value(value, abiT, s);
 
         abiArgs.push({ type: abiT, value: abiV });
