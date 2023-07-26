@@ -239,6 +239,10 @@ export class ConstructorCompiler {
             noSrc
         );
 
+        // Initialize code to contracts actual code
+        const code = builder.getBytesLit("deadbeef", noSrc);
+        builder.setCode(this.factory.identifier(noSrc, addrTmp.name, u160), code, noSrc);
+
         // Transfer value over
         const sender = builder.loadField(builder.msgPtr(noSrc), msgPtrT, "sender", noSrc);
         const amount = builder.loadField(builder.msgPtr(noSrc), msgPtrT, "value", noSrc);

@@ -19,6 +19,7 @@ import {
 import { ASTSource } from "../ir/source";
 import { IRFactory } from "./factory";
 import { CopyFunCompiler } from "./copy_fun_compiler";
+import { IRTuple2, IRTupleType2 } from "../ir";
 
 export class CFGBuilder {
     /**
@@ -289,6 +290,22 @@ export class CFGBuilder {
         const newId = this.factory.identifier(src, name, type);
 
         return newId;
+    }
+
+    /**
+     * Get a temporary identifier, or a tuple struture containing temporary identifier for the type `type`.
+     * We get a (potentially nested) tuple of temporary identifiers when `type` is a tuple.
+     */
+    getTmpIds(type: ir.Type, src: ir.BaseSrc = noSrc): ir.Identifier | IRTuple2 {
+        if (type instanceof IRTupleType2) {
+            const ids: Array<ir.Expression | null> = type.elementTypes.map((elT) =>
+                elT === null ? null : this.getTmpIds(elT)
+            );
+
+            return this.factory.tuple(src, ids, type);
+        }
+
+        return this.getTmpId(type, src);
     }
 
     resolve(name: string): ir.Def {
@@ -681,6 +698,16 @@ export class CFGBuilder {
         const balance = this.getTmpId(u256, src);
         this.call([balance], this.factory.funIdentifier("sol_get_balance"), [], [], [addr], src);
         return balance;
+    }
+
+    getCode(addr: ir.Expression, src: ir.BaseSrc): ir.Identifier {
+        const code = this.getTmpId(u8ArrExcPtr, src);
+        this.call([code], this.factory.funIdentifier("sol_get_code"), [], [], [addr], src);
+        return code;
+    }
+
+    setCode(addr: ir.Expression, newCode: ir.Expression, src: ir.BaseSrc): void {
+        this.call([], this.factory.funIdentifier("sol_set_code"), [], [], [addr, newCode], src);
     }
 
     setBalance(addr: ir.Expression, newBalance: ir.Expression, src: ir.BaseSrc): void {
