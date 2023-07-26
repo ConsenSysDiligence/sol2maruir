@@ -1,5 +1,21 @@
-const Utils = require("web3-utils");
-const ethAbi = require("web3-eth-abi");
+import * as web3Utils from "web3-utils";
+import * as web3EthAbi from "web3-eth-abi";
+
+/**
+ * Handles https://github.com/web3/web3.js/issues/6307 while it is not fixed in upsteam.
+ * @todo Remove on when it is fixed.
+ */
+export function fixTupleType(type: string): string {
+    const RX_TUPLE = /tuple\((.+)\)/g;
+
+    let res = type;
+
+    while (RX_TUPLE.test(res)) {
+        res = res.replace(RX_TUPLE, "($1)");
+    }
+
+    return res;
+}
 
 /**
  * Converts HEX string to an array of bytes, represented by `NumberValue`s.
@@ -19,15 +35,15 @@ export function bigIntToHex(value: bigint): string {
 }
 
 export function keccak256(value: any): Buffer {
-    return hexStringToBytes(Utils.keccak256(value));
+    return hexStringToBytes(web3Utils.keccak256(value));
 }
 
 export function encodeParameters(types: any[], ...params: any[]): Buffer {
-    return hexStringToBytes(ethAbi.encodeParameters(types, params));
+    return hexStringToBytes(web3EthAbi.encodeParameters(types, params));
 }
 
 export function encodePacked(...args: Array<{ type: string; value: any }>): Buffer {
-    return hexStringToBytes(Utils.encodePacked(...args));
+    return hexStringToBytes(web3Utils.encodePacked(...args));
 }
 
 export function encodeWithSelector(
@@ -49,5 +65,5 @@ export function encodeWithSignature(sig: string, types: any[], ...params: any): 
 }
 
 export function decodeParameters(types: any[], data: string): any {
-    return ethAbi.decodeParameters(types, data);
+    return web3EthAbi.decodeParameters(types, data);
 }

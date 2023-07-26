@@ -40,6 +40,7 @@ function createTestCaseContract(
         true,
         [],
         [],
+        [],
         undefined,
         []
     );
