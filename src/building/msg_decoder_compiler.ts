@@ -19,7 +19,8 @@ export class MsgDecoderCompiler extends BaseFunctionCompiler {
         globalScope: ir.Scope,
         globalUid: UIDGenerator,
         solVersion: string,
-        abiVersion: sol.ABIEncoderVersion
+        abiVersion: sol.ABIEncoderVersion,
+        private readonly buildArgs: boolean // If true build fun for args, otherwise for returns
     ) {
         super(factory, globalUid, globalScope, solVersion, abiVersion);
     }
@@ -35,12 +36,28 @@ export class MsgDecoderCompiler extends BaseFunctionCompiler {
      */
     compile(): ir.FunctionDefinition {
         const factory = this.cfgBuilder.factory;
-        const solArgTs: sol.TypeNode[] =
-            this.origDef instanceof sol.FunctionDefinition
-                ? this.origDef.vParameters.vParameters.map((param) =>
-                      this.cfgBuilder.infer.variableDeclarationToTypeNode(param)
-                  )
-                : this.cfgBuilder.infer.getterArgsAndReturn(this.origDef)[0];
+        let solArgTs: sol.TypeNode[];
+
+        if (this.buildArgs) {
+            solArgTs =
+                this.origDef instanceof sol.FunctionDefinition
+                    ? this.origDef.vParameters.vParameters.map((param) =>
+                          this.cfgBuilder.infer.variableDeclarationToTypeNode(param)
+                      )
+                    : this.cfgBuilder.infer.getterArgsAndReturn(this.origDef)[0];
+        } else {
+            if (this.origDef instanceof sol.FunctionDefinition) {
+                solArgTs = this.origDef.vReturnParameters.vParameters.map((param) =>
+                    this.cfgBuilder.infer.variableDeclarationToTypeNode(param)
+                );
+            } else {
+                const getterRetT = this.cfgBuilder.infer.getterArgsAndReturn(this.origDef)[1];
+                solArgTs =
+                    getterRetT instanceof sol.TupleType
+                        ? (getterRetT.elements as sol.TypeNode[])
+                        : [getterRetT];
+            }
+        }
 
         // Add arguments
         const dataDecl = this.cfgBuilder.addIRArg(
@@ -74,10 +91,14 @@ export class MsgDecoderCompiler extends BaseFunctionCompiler {
         // Prep abi.decode arguments
         const callArgs = this.prepDecodeArgs(solArgTs);
 
+        const builtinName = this.buildArgs
+            ? `builtin_abi_decodeWithHash_${solArgTs.length}`
+            : `builtin_abi_decode_${solArgTs.length}`;
+
         // Call abi.encodeWithSignature
         this.cfgBuilder.call(
             rets,
-            factory.identifier(noSrc, `builtin_abi_decodeWithHash_${solArgTs.length}`, noType),
+            factory.identifier(noSrc, builtinName, noType),
             [factory.memVariableDeclaration(noSrc, "DataM")],
             irRetTs,
             [factory.identifier(noSrc, dataDecl.name, dataDecl.type), ...callArgs],
@@ -87,7 +108,12 @@ export class MsgDecoderCompiler extends BaseFunctionCompiler {
         // Return
         this.cfgBuilder.return(rets, noSrc);
 
-        const name = getMsgDecoderName(this.contract, this.origDef, this.cfgBuilder.infer);
+        const name = getMsgDecoderName(
+            this.contract,
+            this.origDef,
+            this.cfgBuilder.infer,
+            this.buildArgs
+        );
 
         return this.finishCompile(noSrc, name, [factory.memVariableDeclaration(noSrc, "DataM")]);
     }

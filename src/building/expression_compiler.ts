@@ -16,7 +16,8 @@ import {
     getIRContractName,
     getIRStructDefName,
     getMethodDispatchName,
-    getMsgBuilderName
+    getMsgBuilderName,
+    getMsgDecoderName
 } from "./resolving";
 import {
     boolT,
@@ -1704,17 +1705,81 @@ export class ExpressionCompiler {
                 sigHash,
                 noSrc
             );
+
+            const retData = builder.getTmpId(u8ArrMemPtr, src);
+
+            const decodeArgsHelperF = factory.funIdentifier(
+                getMsgDecoderName(
+                    solCallee.vScope as sol.ContractDefinition,
+                    solCallee,
+                    this.cfgBuilder.infer,
+                    false
+                )
+            );
+
+            const receiver = this.mustImplicitlyCastTo(decoded.thisExpr, u160, src);
+            if (isTransaction) {
+                const transFailed = builder.getTmpId(boolT, src);
+                builder.transCall(
+                    [retData, transFailed],
+                    factory.funIdentifier("contract_dispatch"),
+                    [],
+                    [],
+                    [receiver, builder.blockPtr(noSrc), msgPtrArg],
+                    src
+                );
+
+                if (lhss.length > 0) {
+                    const unionBB = builder.mkBB();
+                    const succBB = builder.mkBB();
+                    builder.branch(transFailed, unionBB, succBB, src);
+
+                    builder.curBB = succBB;
+                    builder.call(
+                        lhss,
+                        decodeArgsHelperF,
+                        [factory.memConstant(noSrc, "memory")],
+                        [],
+                        [retData],
+                        src
+                    );
+                    builder.jump(unionBB, src);
+                    builder.curBB = unionBB;
+                }
+
+                lhss.push(transFailed);
+            } else {
+                builder.call(
+                    [retData],
+                    factory.funIdentifier("contract_dispatch"),
+                    [],
+                    [],
+                    [receiver, builder.blockPtr(noSrc), msgPtrArg],
+                    src
+                );
+
+                if (lhss.length > 0) {
+                    builder.call(
+                        lhss,
+                        decodeArgsHelperF,
+                        [factory.memConstant(noSrc, "memory")],
+                        [],
+                        [retData],
+                        src
+                    );
+                }
+            }
         } else {
             msgPtrArg = builder.msgPtr(noSrc);
-        }
 
-        args.splice(0, 0, irCallee, builder.blockPtr(noSrc), msgPtrArg);
+            args.splice(0, 0, irCallee, builder.blockPtr(noSrc), msgPtrArg);
 
-        if (isTransaction) {
-            lhss.push(builder.getTmpId(boolT, src));
-            builder.transCall(lhss, callee, [], [], args, src);
-        } else {
-            builder.call(lhss, callee, [], [], args, src);
+            if (isTransaction) {
+                lhss.push(builder.getTmpId(boolT, src));
+                builder.transCall(lhss, callee, [], [], args, src);
+            } else {
+                builder.call(lhss, callee, [], [], args, src);
+            }
         }
 
         if (lhss.length === 0) {

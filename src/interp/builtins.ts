@@ -263,10 +263,19 @@ export function fromWeb3Value(
     if (type instanceof sol.StringType) {
         assert(
             typeof val === "string",
-            `Expected bigint value for ABI type "${abiType}", got ${val} of type "${typeof val}"`
+            `Expected string value for ABI type "${abiType}", got ${val} of type "${typeof val}"`
         );
 
         return defineString(state, val, "memory");
+    }
+
+    if (type instanceof sol.BytesType) {
+        assert(
+            typeof val === "string",
+            `Expected string igint value for ABI type "${abiType}", got ${val} of type "${typeof val}"`
+        );
+
+        return defineBytes(state, Buffer.from(val.slice(2), "hex"), "memory");
     }
 
     if (type instanceof sol.ArrayType) {

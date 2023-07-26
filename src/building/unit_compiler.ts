@@ -93,6 +93,7 @@ export class UnitCompiler {
         const infer = new sol.InferType(this.solVersion);
         for (const [contract] of overrideMap) {
             let emitDecodeMsgData: boolean;
+            let emitDecodeRetData: boolean;
             const abiVersion = this.detectAbiEncoderVersion(contract.vScope);
 
             for (const callable of getContractCallables(contract, infer)) {
@@ -106,16 +107,26 @@ export class UnitCompiler {
                     }
 
                     emitDecodeMsgData = callable.vParameters.vParameters.length > 0;
+                    emitDecodeRetData = callable.vReturnParameters.vParameters.length > 0;
                 } else {
                     const [args] = infer.getterArgsAndReturn(callable);
                     emitDecodeMsgData = args.length > 0;
+                    emitDecodeRetData = true;
                 }
 
                 this.globalDefine(this.compileBuildMsgData(contract, callable, abiVersion));
                 this.globalDefine(this.compileBuildReturnData(contract, callable, abiVersion));
 
                 if (emitDecodeMsgData) {
-                    this.globalDefine(this.compileDecodeMsgData(contract, callable, abiVersion));
+                    this.globalDefine(
+                        this.compileDecodeMsgData(contract, callable, abiVersion, true)
+                    );
+                }
+
+                if (emitDecodeRetData) {
+                    this.globalDefine(
+                        this.compileDecodeMsgData(contract, callable, abiVersion, false)
+                    );
                 }
             }
         }
@@ -421,7 +432,8 @@ export class UnitCompiler {
     compileDecodeMsgData(
         contract: sol.ContractDefinition,
         solMethodOrVar: sol.FunctionDefinition | sol.VariableDeclaration,
-        abiVersion: sol.ABIEncoderVersion
+        abiVersion: sol.ABIEncoderVersion,
+        args: boolean
     ): ir.FunctionDefinition {
         const dispatchCompiler = new MsgDecoderCompiler(
             this.factory,
@@ -430,7 +442,8 @@ export class UnitCompiler {
             this.globalScope,
             this.globalUid,
             this.solVersion,
-            abiVersion
+            abiVersion,
+            args
         );
 
         return dispatchCompiler.compile();
