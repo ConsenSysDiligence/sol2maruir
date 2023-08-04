@@ -510,6 +510,17 @@ export class CFGBuilder {
         return this.getInternalId("this", src);
     }
 
+    thisAddr(src: ir.BaseSrc): ir.Identifier {
+        const thisId = this.this(src);
+        const thisT = this.typeOfLocal("this");
+
+        if (thisT instanceof ir.IntType) {
+            return thisId;
+        }
+
+        return this.loadField(thisId, thisT, "__address__", src);
+    }
+
     msgPtr(src: ir.BaseSrc): ir.Identifier {
         return this.getInternalId("msg", src);
     }

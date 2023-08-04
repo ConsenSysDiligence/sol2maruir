@@ -1597,8 +1597,13 @@ export class ExpressionCompiler {
                 baseT.type.definition.kind === ContractKind.Library
             ) {
                 // 4. Library call LibraryName.foo()
-                throw new Error(
-                    `NYI library call to ${callee.print()} with base type ${baseT.pp()}`
+                thisExpr = this.cfgBuilder.thisAddr(noSrc);
+                calleeDecl = expr.vReferencedDeclaration as sol.FunctionDefinition;
+                isExternal = calleeDecl.visibility === sol.FunctionVisibility.External;
+                irFun = getMethodDispatchName(
+                    baseT.type.definition,
+                    calleeDecl,
+                    this.cfgBuilder.infer
                 );
             } else {
                 // 5. Library call (some data).fun() with a `using for`

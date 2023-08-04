@@ -263,8 +263,7 @@ export class ContractDispatchCompiler extends BaseFunctionCompiler {
         // 0. Update the balances. If sender has insufficient balance abort.
         const sender = builder.loadField(builder.msgPtr(noSrc), msgPtrT, "sender", noSrc);
         const amount = builder.loadField(builder.msgPtr(noSrc), msgPtrT, "value", noSrc);
-        const thisPtr = builder.this(noSrc);
-        const thisAddr = builder.loadField(thisPtr, thisPtrT, "__address__", noSrc);
+        const thisAddr = builder.thisAddr(noSrc);
         builder.call(
             [],
             factory.funIdentifier("sol_transfer_internal"),
