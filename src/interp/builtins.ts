@@ -7,6 +7,7 @@ import {
     decodeParameters,
     encodePacked,
     encodeParameters,
+    encodeWithSelector,
     encodeWithSignature,
     fixTupleType,
     hexStringToBytes,
@@ -487,7 +488,9 @@ export function builtin_un_op_overflows(frame: ir.BuiltinFrame, op: string): boo
 export function builtin_encodeWithSignature(s: ir.State, frame: ir.BuiltinFrame): ir.PointerVal {
     assert(
         frame.args.length === 2 * frame.typeArgs.length + 1,
-        `Expected one type arg and 3 args to builtin_abi_encodeWithSignature_${frame.typeArgs.length}`
+        `Unexpected number of type args ({0}) and actual args ({1}) in builtin_encodeWithSignature`,
+        frame.typeArgs.length,
+        frame.args.length
     );
 
     const sigPtr = frame.args[0][1];
@@ -514,6 +517,41 @@ export function builtin_encodeWithSignature(s: ir.State, frame: ir.BuiltinFrame)
 
     // console.error(`Signature: ${signature} abi types: ${ir.pp(abiTypes)} arg: ${ir.pp(argVals)}`);
     const result = encodeWithSignature(signature, abiTypes, ...argVals);
+    // console.error(result.toString("hex"));
+
+    return defineBytes(s, result, "memory");
+}
+
+export function builtin_encodeWithSelector(s: ir.State, frame: ir.BuiltinFrame): ir.PointerVal {
+    assert(
+        frame.args.length === 2 * frame.typeArgs.length + 1,
+        `Unexpected number of type args ({0}) and actual args ({1}) in builtin_encodeWithSelector`,
+        frame.typeArgs.length,
+        frame.args.length
+    );
+
+    const selector = frame.args[0][1];
+
+    const argVals: ir.PrimitiveValue[] = [];
+    const abiTypes: string[] = [];
+
+    for (let i = 0; i < frame.typeArgs.length; i++) {
+        const typePtr = frame.args[i * 2 + 1][1];
+        const value = frame.args[i * 2 + 2][1];
+
+        assert(typePtr instanceof Array, ``);
+
+        const abiT = fixTupleType(decodeString(s, typePtr));
+        const web3V = toWeb3Value(value, abiT, s);
+
+        abiTypes.push(abiT);
+        argVals.push(web3V);
+    }
+
+    assert(typeof selector === "bigint", `Expected bigint for selector not {0}`, selector);
+
+    // console.error(`Selector : ${selector} abi types: ${ir.pp(abiTypes)} arg: ${ir.pp(argVals)}`);
+    const result = encodeWithSelector(selector.toString(16), abiTypes, ...argVals);
     // console.error(result.toString("hex"));
 
     return defineBytes(s, result, "memory");

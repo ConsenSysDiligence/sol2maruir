@@ -1175,6 +1175,24 @@ export class ExpressionCompiler {
             return res;
         }
 
+        if (expr.vFunctionName === "encodeWithSelector") {
+            const selector = this.compile(expr.vArguments[0]);
+            const [args, argTs] = this.prepEncodeArgs(expr.vArguments.slice(1));
+            const builtinName = `builtin_abi_encodeWithSelector_${argTs.length}`;
+            const res = this.cfgBuilder.getTmpId(u8ArrMemPtr);
+
+            this.cfgBuilder.call(
+                [res],
+                this.factory.identifier(calleeSrc, builtinName, noType),
+                [],
+                argTs,
+                [selector, ...args],
+                exprSrc
+            );
+
+            return res;
+        }
+
         if (expr.vFunctionName === "keccak256") {
             assert(
                 gte(this.cfgBuilder.solVersion, "0.5.0"),

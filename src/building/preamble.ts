@@ -617,6 +617,42 @@ fun builtin_abi_encodeWithSignature_4<SigM; T1, T2, T3, T4>(
     arg4: T4
 ): ArrWithLen<#memory; u8> *#memory
 
+fun builtin_abi_encodeWithSelector_0(
+    selector: u32 
+): ArrWithLen<#memory; u8> *#memory
+fun builtin_abi_encodeWithSelector_1<;T1>(
+    sig: u32,
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg1: T1
+): ArrWithLen<#memory; u8> *#memory
+fun builtin_abi_encodeWithSelector_2<;T1, T2>(
+    sig: u32,
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg1: T1,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2: T2
+): ArrWithLen<#memory; u8> *#memory
+fun builtin_abi_encodeWithSelector_3<;T1, T2, T3>(
+    sig: u32,
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg1: T1,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2: T2,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3: T3
+): ArrWithLen<#memory; u8> *#memory
+fun builtin_abi_encodeWithSelector_4<;T1, T2, T3, T4>(
+    sig: u32,
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg1: T1,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2: T2,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3: T3,
+    arg4AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg4: T4
+): ArrWithLen<#memory; u8> *#memory
+
 fun builtin_abi_decode_1<DataM; T1>(
     data: ArrWithLen<DataM; u8> *DataM,
     arg1AbiT: ArrWithLen<#exception; u8> *#exception

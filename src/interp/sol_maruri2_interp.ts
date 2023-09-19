@@ -21,6 +21,7 @@ import {
     builtin_decode,
     builtin_encode,
     builtin_encodePacked,
+    builtin_encodeWithSelector,
     builtin_encodeWithSignature,
     builtin_get_contract_at,
     builtin_is_contract_at,
@@ -138,6 +139,41 @@ export class SolMaruirInterp {
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
                     true,
                     [builtin_encodeWithSignature(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_encodeWithSelector_0",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    false,
+                    [builtin_encodeWithSelector(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_encodeWithSelector_1",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    false,
+                    [builtin_encodeWithSelector(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_encodeWithSelector_2",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    false,
+                    [builtin_encodeWithSelector(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_encodeWithSelector_3",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    false,
+                    [builtin_encodeWithSelector(s, frame)]
+                ]
+            ],
+            [
+                "builtin_abi_encodeWithSelector_4",
+                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
+                    true,
+                    [builtin_encodeWithSelector(s, frame)]
                 ]
             ],
             [
