@@ -15,7 +15,6 @@ import {
     getDesugaredFunName,
     getIRContractName,
     getIRStructDefName,
-    getMethodDispatchName,
     getMsgBuilderName,
     getMsgDecoderName
 } from "./resolving";
@@ -35,6 +34,7 @@ import {
     u8,
     u8ArrMemPtr
 } from "./typing";
+import { RootDispatchCompiler } from "./root_dispatch_compiler";
 
 const overflowBuiltinMap = new Map<string, string>([
     ["+", "builtin_add_overflows"],
@@ -1540,7 +1540,7 @@ export class ExpressionCompiler {
 
             assert(
                 callee.vReferencedDeclaration instanceof sol.FunctionDefinition,
-                `Unsupported calle with non-functiondef decl {0}`,
+                `Unsupported callee with non-functiondef decl {0}`,
                 callee.vReferencedDeclaration
             );
 
@@ -1577,9 +1577,8 @@ export class ExpressionCompiler {
 
                 const def = expr.vReferencedDeclaration;
 
+                irFun = RootDispatchCompiler.methodName;
                 if (def instanceof sol.FunctionDefinition) {
-                    irFun = getMethodDispatchName(baseT.definition, def, this.cfgBuilder.infer);
-
                     const baseIRExpr = this.compile(base);
 
                     thisExpr = this.mustImplicitlyCastTo(baseIRExpr, u160, new ASTSource(base));
@@ -1589,7 +1588,6 @@ export class ExpressionCompiler {
                         `Expected a state var in decodeCall`
                     );
 
-                    irFun = getMethodDispatchName(def.vScope, def, this.cfgBuilder.infer);
                     const baseIRExpr = this.compile(base);
 
                     thisExpr = this.mustImplicitlyCastTo(baseIRExpr, u160, new ASTSource(base));
@@ -1618,11 +1616,10 @@ export class ExpressionCompiler {
                 thisExpr = this.cfgBuilder.thisAddr(noSrc);
                 calleeDecl = expr.vReferencedDeclaration as sol.FunctionDefinition;
                 isExternal = calleeDecl.visibility === sol.FunctionVisibility.External;
-                irFun = getMethodDispatchName(
-                    baseT.type.definition,
-                    calleeDecl,
-                    this.cfgBuilder.infer
-                );
+
+                irFun = isExternal
+                    ? RootDispatchCompiler.methodName
+                    : getDesugaredFunName(calleeDecl, this.solScope, this.cfgBuilder.infer);
             } else {
                 // 5. Library call (some data).fun() with a `using for`
                 throw new Error(`NYI call to ${callee.print()} with base type ${baseT.pp()}`);
