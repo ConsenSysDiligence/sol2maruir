@@ -130,13 +130,16 @@ export class FunctionCompiler extends BaseFunctionCompiler {
     private collectArgs(): void {
         const factory = this.cfgBuilder.factory;
         // Add this argument
-        const thisT = this.contractStruct
-            ? factory.pointerType(
-                  noSrc,
-                  factory.userDefinedType(noSrc, this.contractStruct.name, [], []),
-                  factory.memConstant(noSrc, "storage")
-              )
-            : u160;
+        const thisT =
+            this.contractStruct &&
+            this.fun.vScope instanceof sol.ContractDefinition &&
+            this.fun.vScope.kind === sol.ContractKind.Contract
+                ? factory.pointerType(
+                      noSrc,
+                      factory.userDefinedType(noSrc, this.contractStruct.name, [], []),
+                      factory.memConstant(noSrc, "storage")
+                  )
+                : u160;
 
         this.cfgBuilder.addThis(thisT);
 

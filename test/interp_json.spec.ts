@@ -83,16 +83,16 @@ describe("Interpreter tests for *.config.json", () => {
             const defs = [...compiler.globalScope.definitions()];
 
             // Uncomment below lines to see compiled maruir file
-            // const contents = defs.map((def) => def.pp()).join("\n");
-            // const maruirFile = jsonFile.replace(".config.json", ".maruir");
+            const contents = defs.map((def) => def.pp()).join("\n");
+            const maruirFile = jsonFile.replace(".config.json", ".maruir");
 
-            // fse.writeFileSync(maruirFile, contents, {
-            //     encoding: "utf8"
-            // });
+            fse.writeFileSync(maruirFile, contents, {
+                encoding: "utf8"
+            });
 
             const interp = new SolMaruirInterp(defs, true);
 
-            interp.run(main, false);
+            interp.run(main, true);
 
             if (interp.state.failure) {
                 console.log(JSON.stringify(interp.state.dump(), undefined, 4));

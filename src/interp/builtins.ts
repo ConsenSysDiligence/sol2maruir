@@ -551,7 +551,7 @@ export function builtin_encodeWithSelector(s: ir.State, frame: ir.BuiltinFrame):
     assert(typeof selector === "bigint", `Expected bigint for selector not {0}`, selector);
 
     // console.error(`Selector : ${selector} abi types: ${ir.pp(abiTypes)} arg: ${ir.pp(argVals)}`);
-    const result = encodeWithSelector(selector.toString(16), abiTypes, ...argVals);
+    const result = encodeWithSelector(selector.toString(16).padStart(8, "0"), abiTypes, ...argVals);
     // console.error(result.toString("hex"));
 
     return defineBytes(s, result, "memory");
@@ -706,9 +706,9 @@ export function builtin_keccak256_05(s: ir.State, frame: ir.BuiltinFrame): ir.Pr
 
     assert(bytesPtr instanceof Array, ``);
 
-    const bytes = decodeBytes(s, bytesPtr);
+    const hexByteStr = "0x" + decodeBytes(s, bytesPtr);
 
-    // console.error(`builtin_keccak256_05: input "${bytes}"`);
+    // console.error(`builtin_keccak256_05: input "${hexByteStr}"`);
 
     /**
      * Edge cases:
@@ -718,9 +718,9 @@ export function builtin_keccak256_05(s: ir.State, frame: ir.BuiltinFrame): ir.Pr
      * @see https://github.com/ethereum/web3.js/blob/2.x/packages/web3-utils/src/Utils.js#L497-L511
      */
     const result =
-        bytes.length === 0
+        hexByteStr.length === 0
             ? hexStringToBytes("0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
-            : keccak256(bytes);
+            : keccak256(hexByteStr);
 
     const hash = "0x" + result.toString("hex");
 

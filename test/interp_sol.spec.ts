@@ -1,5 +1,5 @@
 import expect from "expect";
-// import * as fse from "fs-extra";
+import * as fse from "fs-extra";
 import * as ir from "maru-ir2";
 import * as sol from "solc-typed-ast";
 import { UnitCompiler } from "../src";
@@ -60,7 +60,7 @@ describe("Interpreter tests for *.config.sol", () => {
             const mainFunc = defs.find(
                 (def): def is ir.FunctionDefinition =>
                     def instanceof ir.FunctionDefinition &&
-                    def.name.startsWith(mainContractName + "_main")
+                    def.name.match(new RegExp(mainContractName + "_main_[0-9a-f]{8}")) !== null
             );
 
             sol.assert(
@@ -85,16 +85,16 @@ describe("Interpreter tests for *.config.sol", () => {
             defs.push(entryFunc);
 
             // Uncomment below lines to see compiled maruir file
-            // const contents = defs.map((def) => def.pp()).join("\n");
-            // const maruirFile = sample.replace(".config.sol", ".maruir");
+            const contents = defs.map((def) => def.pp()).join("\n");
+            const maruirFile = sample.replace(".config.sol", ".maruir");
 
-            // fse.writeFileSync(maruirFile, contents, {
-            //     encoding: "utf8"
-            // });
+            fse.writeFileSync(maruirFile, contents, {
+                encoding: "utf8"
+            });
 
             const interp = new SolMaruirInterp(defs, true);
 
-            interp.run(entryFunc, false);
+            interp.run(entryFunc, true);
 
             if (interp.state.failure) {
                 console.log(JSON.stringify(interp.state.dump(), undefined, 4));

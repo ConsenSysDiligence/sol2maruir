@@ -1,7 +1,16 @@
 import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
 import { BaseFunctionCompiler } from "./base_function_compiler";
-import { blockPtrT, msgPtrT, transpileType, u256, u32, u8ArrCDPtr, u8ArrMemPtr } from "./typing";
+import {
+    blockPtrT,
+    msgPtrT,
+    transpileType,
+    u160Addr,
+    u256,
+    u32,
+    u8ArrCDPtr,
+    u8ArrMemPtr
+} from "./typing";
 import { BasicBlock, boolT, noSrc } from "maru-ir2";
 import {
     getContractDispatchName,
@@ -233,12 +242,15 @@ export class ContractDispatchCompiler extends BaseFunctionCompiler {
         const builder = this.cfgBuilder;
         const factory = builder.factory;
 
-        const thisPtrT = factory.pointerType(
-            noSrc,
-            factory.userDefinedType(noSrc, this.irContract.name, [], []),
-            factory.memConstant(noSrc, "storage")
-        );
-        builder.addThis(thisPtrT);
+        const thisT =
+            this.contract.kind === sol.ContractKind.Contract
+                ? factory.pointerType(
+                      noSrc,
+                      factory.userDefinedType(noSrc, this.irContract.name, [], []),
+                      factory.memConstant(noSrc, "storage")
+                  )
+                : u160Addr;
+        builder.addThis(thisT);
         builder.addIRArg("block", blockPtrT, noSrc);
         builder.addIRArg("msg", msgPtrT, noSrc);
         const resDecl = builder.addIRRet("res", u8ArrMemPtr, noSrc);

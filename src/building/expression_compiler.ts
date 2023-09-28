@@ -15,7 +15,6 @@ import {
     getDesugaredFunName,
     getIRContractName,
     getIRStructDefName,
-    getMethodDispatchName,
     getMsgBuilderName,
     getMsgDecoderName
 } from "./resolving";
@@ -35,6 +34,7 @@ import {
     u8,
     u8ArrMemPtr
 } from "./typing";
+import { RootDispatchCompiler } from "./root_dispatch_compiler";
 
 const overflowBuiltinMap = new Map<string, string>([
     ["+", "builtin_add_overflows"],
@@ -1540,7 +1540,7 @@ export class ExpressionCompiler {
 
             assert(
                 callee.vReferencedDeclaration instanceof sol.FunctionDefinition,
-                `Unsupported calle with non-functiondef decl {0}`,
+                `Unsupported callee with non-functiondef decl {0}`,
                 callee.vReferencedDeclaration
             );
 
@@ -1577,9 +1577,8 @@ export class ExpressionCompiler {
 
                 const def = expr.vReferencedDeclaration;
 
+                irFun = RootDispatchCompiler.methodName;
                 if (def instanceof sol.FunctionDefinition) {
-                    irFun = getMethodDispatchName(baseT.definition, def, this.cfgBuilder.infer);
-
                     const baseIRExpr = this.compile(base);
 
                     thisExpr = this.mustImplicitlyCastTo(baseIRExpr, u160, new ASTSource(base));
@@ -1589,7 +1588,6 @@ export class ExpressionCompiler {
                         `Expected a state var in decodeCall`
                     );
 
-                    irFun = getMethodDispatchName(def.vScope, def, this.cfgBuilder.infer);
                     const baseIRExpr = this.compile(base);
 
                     thisExpr = this.mustImplicitlyCastTo(baseIRExpr, u160, new ASTSource(base));
@@ -1618,11 +1616,10 @@ export class ExpressionCompiler {
                 thisExpr = this.cfgBuilder.thisAddr(noSrc);
                 calleeDecl = expr.vReferencedDeclaration as sol.FunctionDefinition;
                 isExternal = calleeDecl.visibility === sol.FunctionVisibility.External;
-                irFun = getMethodDispatchName(
-                    baseT.type.definition,
-                    calleeDecl,
-                    this.cfgBuilder.infer
-                );
+
+                irFun = isExternal
+                    ? RootDispatchCompiler.methodName
+                    : getDesugaredFunName(calleeDecl, this.solScope, this.cfgBuilder.infer);
             } else {
                 // 5. Library call (some data).fun() with a `using for`
                 throw new Error(`NYI call to ${callee.print()} with base type ${baseT.pp()}`);
@@ -1897,9 +1894,36 @@ export class ExpressionCompiler {
         }
 
         const toT = transpileType(calleeInnerT, factory);
+        const fromExpr = expr.vArguments[0];
 
-        const irExpr = this.compile(expr.vArguments[0]);
+        let irExpr = this.compile(fromExpr);
+        const fromSolT = this.cfgBuilder.infer.typeOf(fromExpr);
+
         const fromT = this.typeOf(irExpr);
+
+        // When casting between bytes, Solidity always takes the higher bytes
+        if (calleeT.type instanceof sol.FixedBytesType && fromSolT instanceof sol.FixedBytesType) {
+            const fromLen = fromSolT.size;
+            const toLen = calleeT.type.size;
+
+            if (fromLen > toLen) {
+                irExpr = this.factory.binaryOperation(
+                    src,
+                    irExpr,
+                    ">>",
+                    this.factory.numberLiteral(noSrc, BigInt((fromLen - toLen) * 8), 10, fromT),
+                    fromT
+                );
+            } else if (fromLen < toLen) {
+                irExpr = this.factory.binaryOperation(
+                    src,
+                    this.mustImplicitlyCastTo(irExpr, toT, new ASTSource(fromExpr)),
+                    "<<",
+                    this.factory.numberLiteral(noSrc, BigInt((toLen - fromLen) * 8), 10, toT),
+                    toT
+                );
+            }
+        }
 
         // When casting ints to enums, emit a check for overflow
         if (

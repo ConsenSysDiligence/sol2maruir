@@ -4,16 +4,7 @@ import { UIDGenerator } from "../src";
 import { BaseFunctionCompiler } from "../src/building/base_function_compiler";
 import { ExpressionCompiler } from "../src/building/expression_compiler";
 import { IRFactory } from "../src/building/factory";
-import {
-    blockPtrT,
-    blockT,
-    msgPtrT,
-    msgT,
-    noType,
-    u160,
-    u160Addr,
-    u256
-} from "../src/building/typing";
+import { blockPtrT, blockT, msgPtrT, msgT, noType, u160, u256 } from "../src/building/typing";
 
 export class EntryPointFunctionCompiler extends BaseFunctionCompiler {
     readonly exprCompiler: ExpressionCompiler;
@@ -120,11 +111,7 @@ export class EntryPointFunctionCompiler extends BaseFunctionCompiler {
             [],
             [],
             [
-                this.exprCompiler.mustImplicitlyCastTo(
-                    factory.identifier(ir.noSrc, "__test__", thisT),
-                    u160Addr,
-                    ir.noSrc
-                ),
+                factory.identifier(ir.noSrc, "__test__", thisT),
                 factory.identifier(ir.noSrc, "block", blockPtrT),
                 factory.identifier(ir.noSrc, "msg", msgPtrT)
             ],

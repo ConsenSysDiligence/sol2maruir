@@ -66,24 +66,29 @@ export class RootDispatchCompiler extends BaseFunctionCompiler {
 
                 builder.branch(isType, contractFoundBB, keepLookingBB, noSrc);
                 builder.curBB = contractFoundBB;
+                let thisId: ir.Identifier;
 
-                const contractPtr = builder.getTmpId(contractPtrT, noSrc);
+                if (contract.kind === sol.ContractKind.Contract) {
+                    thisId = builder.getTmpId(contractPtrT, noSrc);
 
-                builder.call(
-                    [contractPtr],
-                    factory.funIdentifier("builtin_get_contract_at"),
-                    [],
-                    [contractPtrT],
-                    [builder.this(noSrc)],
-                    noSrc
-                );
+                    builder.call(
+                        [thisId],
+                        factory.funIdentifier("builtin_get_contract_at"),
+                        [],
+                        [contractPtrT],
+                        [builder.this(noSrc)],
+                        noSrc
+                    );
+                } else {
+                    thisId = builder.this(noSrc);
+                }
 
                 builder.call(
                     [factory.identifier(noSrc, "res", u8ArrMemPtr)],
                     factory.funIdentifier(getContractDispatchName(contract)),
                     [],
                     [],
-                    [contractPtr, builder.blockPtr(noSrc), builder.msgPtr(noSrc)],
+                    [thisId, builder.blockPtr(noSrc), builder.msgPtr(noSrc)],
                     noSrc
                 );
 
