@@ -145,12 +145,10 @@ export class UnitCompiler {
         }
 
         for (const contract of unit.vContracts) {
-            let struct: ir.StructDefinition | undefined;
-
-            if (contract.kind === sol.ContractKind.Contract && !contract.abstract) {
-                struct = this.getContractStruct(contract);
-                this.globalDefine(struct);
-            }
+            // TODO: The only reason we emit contract struct for libraries is to support builtin_is_contract_at<T>().
+            // Eventually we can simplif the emitted code by removing this. For now its ok.
+            const struct = this.getContractStruct(contract);
+            this.globalDefine(struct);
 
             this.compileContractMethods(contract, struct, abiVersion);
 
