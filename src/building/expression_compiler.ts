@@ -1894,9 +1894,36 @@ export class ExpressionCompiler {
         }
 
         const toT = transpileType(calleeInnerT, factory);
+        const fromExpr = expr.vArguments[0];
 
-        const irExpr = this.compile(expr.vArguments[0]);
+        let irExpr = this.compile(fromExpr);
+        const fromSolT = this.cfgBuilder.infer.typeOf(fromExpr);
+
         const fromT = this.typeOf(irExpr);
+
+        // When casting between bytes, Solidity always takes the higher bytes
+        if (calleeT.type instanceof sol.FixedBytesType && fromSolT instanceof sol.FixedBytesType) {
+            const fromLen = fromSolT.size;
+            const toLen = calleeT.type.size;
+
+            if (fromLen > toLen) {
+                irExpr = this.factory.binaryOperation(
+                    src,
+                    irExpr,
+                    ">>",
+                    this.factory.numberLiteral(noSrc, BigInt((fromLen - toLen) * 8), 10, fromT),
+                    fromT
+                );
+            } else if (fromLen < toLen) {
+                irExpr = this.factory.binaryOperation(
+                    src,
+                    this.mustImplicitlyCastTo(irExpr, toT, new ASTSource(fromExpr)),
+                    "<<",
+                    this.factory.numberLiteral(noSrc, BigInt((toLen - fromLen) * 8), 10, toT),
+                    toT
+                );
+            }
+        }
 
         // When casting ints to enums, emit a check for overflow
         if (
