@@ -90,6 +90,21 @@ export class ExpressionCompiler {
 
                 return builder.getVarId(def, src);
             }
+
+            // For identifiers refering to type or def names, just emit an
+            // internal placeholder SolDefinitionExpression which will be ignored
+            // later.
+            if (
+                def instanceof sol.ContractDefinition ||
+                def instanceof sol.FunctionDefinition ||
+                def instanceof sol.EventDefinition ||
+                def instanceof sol.ErrorDefinition ||
+                def instanceof sol.StructDefinition ||
+                def instanceof sol.EnumDefinition ||
+                def instanceof sol.UserDefinedValueTypeDefinition
+            ) {
+                return this.factory.definitionExpression(src, expr);
+            }
         }
 
         if (expr.vIdentifierType === sol.ExternalReferenceType.Builtin) {
@@ -2199,6 +2214,22 @@ export class ExpressionCompiler {
         const builder = this.cfgBuilder;
         const baseSolT = builder.infer.typeOf(expr.vExpression);
         const src = new ASTSource(expr);
+        const def = expr.vReferencedDeclaration;
+
+        // For member access-es refering to type or def names, just emit an
+        // internal placeholder SolDefinitionExpression which will be ignored
+        // later.
+        if (
+            def instanceof sol.ContractDefinition ||
+            def instanceof sol.FunctionDefinition ||
+            def instanceof sol.EventDefinition ||
+            def instanceof sol.ErrorDefinition ||
+            def instanceof sol.StructDefinition ||
+            def instanceof sol.EnumDefinition ||
+            def instanceof sol.UserDefinedValueTypeDefinition
+        ) {
+            return this.factory.definitionExpression(src, expr);
+        }
 
         // Case of <EnumName>.<EnumEntry>
         if (
@@ -2340,6 +2371,10 @@ export class ExpressionCompiler {
 
         if (expr instanceof sol.MemberAccess) {
             return this.compileMemberAccess(expr);
+        }
+
+        if (expr instanceof sol.ElementaryTypeNameExpression) {
+            return this.factory.elementaryTypeName(new ASTSource(expr), expr);
         }
 
         throw new Error(`NYI compiling ${pp(expr)}`);
