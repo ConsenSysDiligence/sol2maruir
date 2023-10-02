@@ -1,7 +1,14 @@
 import * as ir from "maru-ir2";
+import * as sol from "solc-typed-ast";
 import { BaseSrc, noSrc } from "maru-ir2";
 import { assert } from "solc-typed-ast";
-import { IRTuple2, IRTupleType2, SolArrayLiteral } from "../ir";
+import {
+    IRTuple2,
+    IRTupleType2,
+    SolArrayLiteral,
+    SolDefinitionExpression,
+    SolElementaryTypenameExpression
+} from "../ir";
 import { boolT, noType } from "./typing";
 
 /**
@@ -334,5 +341,16 @@ export class IRFactory {
 
     abort(src: ir.BaseSrc): ir.Abort {
         return new ir.Abort(src);
+    }
+
+    elementaryTypeName(src: ir.BaseSrc, raw: sol.ElementaryTypeNameExpression): ir.Abort {
+        return new SolElementaryTypenameExpression(src, raw);
+    }
+
+    definitionExpression(
+        src: ir.BaseSrc,
+        raw: sol.Identifier | sol.MemberAccess | sol.IdentifierPath
+    ): ir.Abort {
+        return new SolDefinitionExpression(src, raw);
     }
 }

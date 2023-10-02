@@ -1,18 +1,24 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
+
+type Foo is uint256;
 
 contract ExpressionStatement {
     struct Foo {
         uint256 f;
     }
 
+    event E();
+    error Err();
+
     function main() external {
         uint256 a;
         uint256 b;
         uint256[] memory arr = new uint256[](3);
+        int256 c;
         Foo memory f;
         uint256;
         a;
-        -a;
+        -c;
         a + b;
         a > b;
         (uint256);
@@ -26,6 +32,19 @@ contract ExpressionStatement {
         1;
         true;
         f.f;
+        ExpressionStatement;
+        ExpressionStatement.main;
+        ExpressionStatement.Foo;
+        ExpressionStatement.E;
+        Err;
+        Foo;
+
+        (ExpressionStatement, 1);
+        (ExpressionStatement.main, 1);
+        (ExpressionStatement.Foo, 1);
+        (ExpressionStatement.E, 1);
+        (Err, 1);
+        (Foo, 1);
     }
 }
 
