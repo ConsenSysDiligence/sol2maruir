@@ -891,6 +891,27 @@ export class ExpressionCompiler {
         return [args, argTs];
     }
 
+    encodePacked(
+        solArgs: sol.Expression[],
+        calleeSrc: ir.BaseSrc,
+        exprSrc: ir.BaseSrc
+    ): ir.Identifier {
+        const [args, argTs] = this.prepEncodeArgs(solArgs);
+        const builtinName = `builtin_abi_encodePacked_${argTs.length}`;
+        const res = this.cfgBuilder.getTmpId(u8ArrMemPtr, exprSrc);
+
+        this.cfgBuilder.call(
+            [res],
+            this.factory.identifier(calleeSrc, builtinName, noType),
+            [],
+            argTs,
+            args,
+            exprSrc
+        );
+
+        return res;
+    }
+
     compileBuiltinFunctionCall(
         expr: sol.FunctionCall,
         callee: sol.Expression,
@@ -1154,20 +1175,7 @@ export class ExpressionCompiler {
         }
 
         if (expr.vFunctionName === "encodePacked") {
-            const [args, argTs] = this.prepEncodeArgs(expr.vArguments);
-            const builtinName = `builtin_abi_encodePacked_${argTs.length}`;
-            const res = this.cfgBuilder.getTmpId(u8ArrMemPtr);
-
-            this.cfgBuilder.call(
-                [res],
-                this.factory.identifier(calleeSrc, builtinName, noType),
-                [],
-                argTs,
-                args,
-                exprSrc
-            );
-
-            return res;
+            return this.encodePacked(expr.vArguments, calleeSrc, exprSrc);
         }
 
         if (expr.vFunctionName === "encodeWithSignature") {
@@ -1208,63 +1216,38 @@ export class ExpressionCompiler {
             return res;
         }
 
-        if (expr.vFunctionName === "keccak256") {
+        if (expr.vFunctionName === "keccak256" || expr.vFunctionName === "sha3") {
             const res = this.cfgBuilder.getTmpId(u256);
+            let arg: ir.Expression;
+            const builtinName = `builtin_keccak256_05`;
 
-            if (gte(this.cfgBuilder.solVersion, "0.5.0")) {
-                const args = expr.vArguments.map((arg) => this.compile(arg));
-                const builtinName = `builtin_keccak256_05`;
-                const argT = this.typeOf(single(args));
-
-                assert(
-                    argT instanceof ir.PointerType,
-                    `keccak256 expects a bytes pointer not {0}`,
-                    argT
-                );
-
-                this.cfgBuilder.call(
-                    [res],
-                    this.factory.identifier(calleeSrc, builtinName, noType),
-                    [argT.region],
-                    [],
-                    args,
-                    exprSrc
-                );
+            if (expr.vFunctionName === "keccak256" && gte(this.cfgBuilder.solVersion, "0.5.0")) {
+                arg = single(expr.vArguments.map((arg) => this.compile(arg)));
             } else {
-                const [args, argTs] = this.prepEncodeArgs(expr.vArguments);
-                const builtinName = `builtin_keccak256_04_${argTs.length}`;
-
-                this.cfgBuilder.call(
-                    [res],
-                    this.factory.identifier(calleeSrc, builtinName, noType),
-                    [],
-                    argTs,
-                    args,
-                    exprSrc
-                );
+                if (
+                    expr.vArguments.length === 1 &&
+                    expr.vArguments[0].typeString.match(/bytes (string|memory|calldata)/)
+                ) {
+                    arg = this.compile(expr.vArguments[0]);
+                } else {
+                    arg = this.encodePacked(expr.vArguments, calleeSrc, exprSrc);
+                }
             }
 
-            return res;
-        }
-
-        if (expr.vFunctionName === "sha3") {
-            const res = this.cfgBuilder.getTmpId(u256);
+            const argT = this.typeOf(arg);
 
             assert(
-                lt(this.cfgBuilder.solVersion, "0.5.0"),
-                "Solidity sha3() only available before 0.5.0 (current version is {0})",
-                this.cfgBuilder.solVersion
+                argT instanceof ir.PointerType,
+                `keccak256 expects a bytes pointer not {0}`,
+                argT
             );
-
-            const [args, argTs] = this.prepEncodeArgs(expr.vArguments);
-            const builtinName = `builtin_sha3_${argTs.length}`;
 
             this.cfgBuilder.call(
                 [res],
                 this.factory.identifier(calleeSrc, builtinName, noType),
+                [argT.region],
                 [],
-                argTs,
-                args,
+                [arg],
                 exprSrc
             );
 

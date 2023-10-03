@@ -25,7 +25,6 @@ import {
     builtin_encodeWithSignature,
     builtin_get_contract_at,
     builtin_is_contract_at,
-    builtin_keccak256_04,
     builtin_keccak256_05,
     builtin_register_contact,
     builtin_un_op_overflows,
@@ -426,76 +425,6 @@ export class SolMaruirInterp {
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
                     false,
                     [builtin_keccak256_05(s, frame)]
-                ]
-            ],
-            [
-                "builtin_keccak256_04_0",
-                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    false,
-                    [builtin_keccak256_04(s, frame)]
-                ]
-            ],
-            [
-                "builtin_keccak256_04_1",
-                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    false,
-                    [builtin_keccak256_04(s, frame)]
-                ]
-            ],
-            [
-                "builtin_keccak256_04_2",
-                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    false,
-                    [builtin_keccak256_04(s, frame)]
-                ]
-            ],
-            [
-                "builtin_keccak256_04_3",
-                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    false,
-                    [builtin_keccak256_04(s, frame)]
-                ]
-            ],
-            [
-                "builtin_keccak256_04_4",
-                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    false,
-                    [builtin_keccak256_04(s, frame)]
-                ]
-            ],
-            [
-                "builtin_sha3_0",
-                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    false,
-                    [builtin_keccak256_04(s, frame)]
-                ]
-            ],
-            [
-                "builtin_sha3_1",
-                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    false,
-                    [builtin_keccak256_04(s, frame)]
-                ]
-            ],
-            [
-                "builtin_sha3_2",
-                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    false,
-                    [builtin_keccak256_04(s, frame)]
-                ]
-            ],
-            [
-                "builtin_sha3_3",
-                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    false,
-                    [builtin_keccak256_04(s, frame)]
-                ]
-            ],
-            [
-                "builtin_sha3_4",
-                (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
-                    false,
-                    [builtin_keccak256_04(s, frame)]
                 ]
             ]
         ]);

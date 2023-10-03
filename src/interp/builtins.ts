@@ -107,17 +107,6 @@ export function defineBytes(s: ir.State, bytes: Buffer, inMem: string): ir.Point
     return defineArrStruct(s, inMem, bigIntArr);
 }
 
-export function requireFunDef(s: ir.State, name: string): ir.FunctionDefinition {
-    const def = s.program.find(
-        (def): def is ir.FunctionDefinition =>
-            def instanceof ir.FunctionDefinition && def.name === name
-    );
-
-    assert(def !== undefined, `Can not locate function definition "{0}"`, name);
-
-    return def;
-}
-
 /**
  * Converts IR value to Web3-compatible value.
  *
@@ -701,13 +690,13 @@ export function builtin_encodePacked(s: ir.State, frame: ir.BuiltinFrame): ir.Po
         abiArgs.push({ type: abiT, value: abiV });
     }
 
+    // console.error(abiArgs);
+
     const bytes = encodePacked(...abiArgs);
 
-    // console.error(bytes.toString("hex"), abiArgs);
+    // console.error(bytes.toString("hex"));
 
     const ptr = defineBytes(s, bytes, "memory");
-
-    // console.error(ptr);
 
     return ptr;
 }
@@ -738,19 +727,4 @@ export function builtin_keccak256_05(s: ir.State, frame: ir.BuiltinFrame): ir.Pr
     // console.error(`builtin_keccak256_05: result "${hash}"`);
 
     return BigInt(hash);
-}
-
-export function builtin_keccak256_04(s: ir.State, frame: ir.BuiltinFrame): ir.PrimitiveValue {
-    const bytes = builtin_encodePacked(s, frame);
-
-    const def = requireFunDef(s, "builtin_keccak256_05");
-
-    const nestedFrame = new ir.BuiltinFrame(
-        def,
-        [["arg0", bytes]],
-        def.memoryParameters,
-        def.typeParameters
-    );
-
-    return builtin_keccak256_05(s, nestedFrame);
 }
