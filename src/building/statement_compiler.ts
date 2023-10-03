@@ -10,7 +10,7 @@ import {
     TryCatchClause,
     TryStatement
 } from "solc-typed-ast";
-import { IRTuple2, IRTupleType2 } from "../ir";
+import { IRTuple2, IRTupleType2, InternalExpression } from "../ir";
 import { ASTSource } from "../ir/source";
 import { single } from "../utils";
 import { CFGBuilder } from "./cfg_builder";
@@ -396,7 +396,9 @@ export class StatementCompiler {
                  * and emit tmp defs for anything that is not a type
                  * expr.
                  */
-                this.makeTmpAssignments(rhs, this.exprCompiler.typeOf(rhs));
+                if (!(rhs instanceof InternalExpression)) {
+                    this.makeTmpAssignments(rhs, this.exprCompiler.typeOf(rhs));
+                }
             } else {
                 const decl = stmt.vDeclarations[lhsI++];
 
