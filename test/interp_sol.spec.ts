@@ -1,5 +1,4 @@
 import expect from "expect";
-import * as fse from "fs-extra";
 import * as ir from "maru-ir2";
 import * as sol from "solc-typed-ast";
 import { UnitCompiler } from "../src";
@@ -85,12 +84,12 @@ describe("Interpreter tests for *.config.sol", () => {
             defs.push(entryFunc);
 
             // Uncomment below lines to see compiled maruir file
-            const contents = defs.map((def) => def.pp()).join("\n");
-            const maruirFile = sample.replace(".config.sol", ".maruir");
+            // const contents = defs.map((def) => def.pp()).join("\n");
+            // const maruirFile = sample.replace(".config.sol", ".maruir");
 
-            fse.writeFileSync(maruirFile, contents, {
-                encoding: "utf8"
-            });
+            // fse.writeFileSync(maruirFile, contents, {
+            //     encoding: "utf8"
+            // });
 
             const interp = new SolMaruirInterp(defs, true);
 

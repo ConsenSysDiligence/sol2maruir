@@ -431,6 +431,7 @@ locals
         return false;
 }
 
+fun builtin_abi_encode_0(): ArrWithLen<#memory; u8> *#memory
 fun builtin_abi_encode_1<;T1>(
     arg1AbiT: ArrWithLen<#exception; u8> *#exception,
     arg1: T1
@@ -562,6 +563,7 @@ fun builtin_abi_encode_10<;T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(
     arg10: T10
 ): ArrWithLen<#memory; u8> *#memory
 
+fun builtin_abi_encodePacked_0(): ArrWithLen<#memory; u8> *#memory
 fun builtin_abi_encodePacked_1<;T1>(
     arg1AbiT: ArrWithLen<#exception; u8> *#exception,
     arg1: T1
@@ -934,6 +936,66 @@ fun sol_set_code(addr: u160, code: ArrWithLen<#exception; u8> *#exception)
 }
 
 fun builtin_keccak256_05<M>(bytes: ArrWithLen<M; u8> *M): u256
+
+fun builtin_keccak256_04_0(): u256
+fun builtin_keccak256_04_1<;T1>(
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg1: T1
+): u256
+fun builtin_keccak256_04_2<;T1, T2>(
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg1: T1,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2: T2
+): u256
+fun builtin_keccak256_04_3<;T1, T2, T3>(
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg1: T1,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2: T2,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3: T3
+): u256
+fun builtin_keccak256_04_4<;T1, T2, T3, T4>(
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg1: T1,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2: T2,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3: T3,
+    arg4AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg4: T4
+): u256
+
+fun builtin_sha3_0(): u256
+fun builtin_sha3_1<;T1>(
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg1: T1
+): u256
+fun builtin_sha3_2<;T1, T2>(
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg1: T1,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2: T2
+): u256
+fun builtin_sha3_3<;T1, T2, T3>(
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg1: T1,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2: T2,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3: T3
+): u256
+fun builtin_sha3_4<;T1, T2, T3, T4>(
+    arg1AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg1: T1,
+    arg2AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg2: T2,
+    arg3AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg3: T3,
+    arg4AbiT: ArrWithLen<#exception; u8> *#exception,
+    arg4: T4
+): u256
 `;
 
 export const preamble = ir.parseProgram(preambleStr);
