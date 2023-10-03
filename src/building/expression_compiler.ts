@@ -1209,29 +1209,61 @@ export class ExpressionCompiler {
         }
 
         if (expr.vFunctionName === "keccak256") {
-            assert(
-                gte(this.cfgBuilder.solVersion, "0.5.0"),
-                "NYI function call to keccak256() for Solidity 0.4 in {0}",
-                expr
-            );
-
-            const args = expr.vArguments.map((arg) => this.compile(arg));
-
-            const builtinName = `builtin_keccak256_05`;
             const res = this.cfgBuilder.getTmpId(u256);
-            const argT = this.typeOf(single(args));
+
+            if (gte(this.cfgBuilder.solVersion, "0.5.0")) {
+                const args = expr.vArguments.map((arg) => this.compile(arg));
+                const builtinName = `builtin_keccak256_05`;
+                const argT = this.typeOf(single(args));
+
+                assert(
+                    argT instanceof ir.PointerType,
+                    `keccak256 expects a bytes pointer not {0}`,
+                    argT
+                );
+
+                this.cfgBuilder.call(
+                    [res],
+                    this.factory.identifier(calleeSrc, builtinName, noType),
+                    [argT.region],
+                    [],
+                    args,
+                    exprSrc
+                );
+            } else {
+                const [args, argTs] = this.prepEncodeArgs(expr.vArguments);
+                const builtinName = `builtin_keccak256_04_${argTs.length}`;
+
+                this.cfgBuilder.call(
+                    [res],
+                    this.factory.identifier(calleeSrc, builtinName, noType),
+                    [],
+                    argTs,
+                    args,
+                    exprSrc
+                );
+            }
+
+            return res;
+        }
+
+        if (expr.vFunctionName === "sha3") {
+            const res = this.cfgBuilder.getTmpId(u256);
 
             assert(
-                argT instanceof ir.PointerType,
-                `keccak256 expects a bytes pointer not {0}`,
-                argT
+                lt(this.cfgBuilder.solVersion, "0.5.0"),
+                "Solidity sha3() only available before 0.5.0 (current version is {0})",
+                this.cfgBuilder.solVersion
             );
+
+            const [args, argTs] = this.prepEncodeArgs(expr.vArguments);
+            const builtinName = `builtin_sha3_${argTs.length}`;
 
             this.cfgBuilder.call(
                 [res],
                 this.factory.identifier(calleeSrc, builtinName, noType),
-                [argT.region],
                 [],
+                argTs,
                 args,
                 exprSrc
             );
