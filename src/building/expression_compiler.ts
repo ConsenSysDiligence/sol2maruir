@@ -891,6 +891,27 @@ export class ExpressionCompiler {
         return [args, argTs];
     }
 
+    encodePacked(
+        solArgs: sol.Expression[],
+        calleeSrc: ir.BaseSrc,
+        exprSrc: ir.BaseSrc
+    ): ir.Identifier {
+        const [args, argTs] = this.prepEncodeArgs(solArgs);
+        const builtinName = `builtin_abi_encodePacked_${argTs.length}`;
+        const res = this.cfgBuilder.getTmpId(u8ArrMemPtr, exprSrc);
+
+        this.cfgBuilder.call(
+            [res],
+            this.factory.identifier(calleeSrc, builtinName, noType),
+            [],
+            argTs,
+            args,
+            exprSrc
+        );
+
+        return res;
+    }
+
     compileBuiltinFunctionCall(
         expr: sol.FunctionCall,
         callee: sol.Expression,
@@ -1154,20 +1175,7 @@ export class ExpressionCompiler {
         }
 
         if (expr.vFunctionName === "encodePacked") {
-            const [args, argTs] = this.prepEncodeArgs(expr.vArguments);
-            const builtinName = `builtin_abi_encodePacked_${argTs.length}`;
-            const res = this.cfgBuilder.getTmpId(u8ArrMemPtr);
-
-            this.cfgBuilder.call(
-                [res],
-                this.factory.identifier(calleeSrc, builtinName, noType),
-                [],
-                argTs,
-                args,
-                exprSrc
-            );
-
-            return res;
+            return this.encodePacked(expr.vArguments, calleeSrc, exprSrc);
         }
 
         if (expr.vFunctionName === "encodeWithSignature") {
@@ -1208,31 +1216,38 @@ export class ExpressionCompiler {
             return res;
         }
 
-        if (expr.vFunctionName === "keccak256") {
-            assert(
-                gte(this.cfgBuilder.solVersion, "0.5.0"),
-                "NYI function call to keccak256() for Solidity 0.4 in {0}",
-                expr
-            );
-
-            const args = expr.vArguments.map((arg) => this.compile(arg));
-
-            const builtinName = `builtin_keccak256_05`;
+        if (expr.vFunctionName === "keccak256" || expr.vFunctionName === "sha3") {
             const res = this.cfgBuilder.getTmpId(u256);
-            const argT = this.typeOf(single(args));
+
+            let arg: ir.Expression;
+
+            if (expr.vFunctionName === "keccak256" && gte(this.cfgBuilder.solVersion, "0.5.0")) {
+                arg = single(expr.vArguments.map((arg) => this.compile(arg)));
+            } else {
+                if (
+                    expr.vArguments.length === 1 &&
+                    expr.vArguments[0].typeString.match(/bytes (storage|memory|calldata)/)
+                ) {
+                    arg = this.compile(expr.vArguments[0]);
+                } else {
+                    arg = this.encodePacked(expr.vArguments, calleeSrc, exprSrc);
+                }
+            }
+
+            const argT = this.typeOf(arg);
 
             assert(
                 argT instanceof ir.PointerType,
-                `keccak256 expects a bytes pointer not {0}`,
+                "keccak256 builtin expects a bytes pointer, not {0}",
                 argT
             );
 
             this.cfgBuilder.call(
                 [res],
-                this.factory.identifier(calleeSrc, builtinName, noType),
+                this.factory.identifier(calleeSrc, "builtin_keccak256", noType),
                 [argT.region],
                 [],
-                args,
+                [arg],
                 exprSrc
             );
 

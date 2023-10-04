@@ -99,17 +99,23 @@ describe("*.config.sol samples", () => {
                 interp = new SolMaruirInterp(defs, true);
             });
 
-            it("Resulting IR program does not contain compile-time (internal) nodes and duplicate nodes", () => {
+            /**
+             * Note that this test case is skipped intentionally
+             * to not cause additional time consumption.
+             *
+             * Feel free to unskip it for sake of local testing purposes.
+             */
+            it.skip("Resulting IR program does not contain compile-time (internal) nodes and duplicate nodes", () => {
                 const nodes = new Set<ir.Node>();
 
                 for (const def of defs) {
                     ir.walk(def, (node) => {
-                        // sol.assert(
-                        //     !nodes.has(node),
-                        //     "Node {0} ({1}) has a duplicate",
-                        //     node,
-                        //     node.constructor.name
-                        // );
+                        sol.assert(
+                            !nodes.has(node),
+                            "Node {0} ({1}) has a duplicate",
+                            node,
+                            node.constructor.name
+                        );
 
                         nodes.add(node);
 

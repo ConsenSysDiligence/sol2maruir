@@ -690,25 +690,25 @@ export function builtin_encodePacked(s: ir.State, frame: ir.BuiltinFrame): ir.Po
         abiArgs.push({ type: abiT, value: abiV });
     }
 
+    // console.error(abiArgs);
+
     const bytes = encodePacked(...abiArgs);
 
-    // console.error(bytes.toString("hex"), abiArgs);
+    // console.error(bytes.toString("hex"));
 
     const ptr = defineBytes(s, bytes, "memory");
-
-    // console.error(ptr);
 
     return ptr;
 }
 
-export function builtin_keccak256_05(s: ir.State, frame: ir.BuiltinFrame): ir.PrimitiveValue {
+export function builtin_keccak256(s: ir.State, frame: ir.BuiltinFrame): ir.PrimitiveValue {
     const [[, bytesPtr]] = frame.args;
 
     assert(bytesPtr instanceof Array, ``);
 
     const hexByteStr = "0x" + decodeBytes(s, bytesPtr);
 
-    // console.error(`builtin_keccak256_05: input "${hexByteStr}"`);
+    // console.error(`builtin_keccak256: input "${hexByteStr}"`);
 
     /**
      * Edge cases:
@@ -724,7 +724,7 @@ export function builtin_keccak256_05(s: ir.State, frame: ir.BuiltinFrame): ir.Pr
 
     const hash = "0x" + result.toString("hex");
 
-    // console.error(`builtin_keccak256_05: result "${hash}"`);
+    // console.error(`builtin_keccak256: result "${hash}"`);
 
     return BigInt(hash);
 }
