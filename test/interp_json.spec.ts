@@ -1,112 +1,130 @@
 import expect from "expect";
 import * as fse from "fs-extra";
+import * as ir from "maru-ir2";
 import { Definition } from "maru-ir2";
-import { assert, ASTReader, compileSol, getABIEncoderVersion } from "solc-typed-ast";
-import { UnitCompiler } from "../src";
+import * as sol from "solc-typed-ast";
+import { InternalExpression, InternalType, UnitCompiler } from "../src";
 import { SolMaruirInterp } from "../src/interp";
-import { buildMaps, JSONConfigTranspiler } from "./json_config_transpiler";
+import { JSONConfigTranspiler, buildMaps } from "./json_config_transpiler";
 import { searchRecursive } from "./utils";
 
-describe("Interpreter tests for *.config.json", () => {
+describe("*.config.json samples", () => {
     const files = searchRecursive("test/samples/solidity", (fileName) =>
         fileName.endsWith(".config.json")
     );
 
-    /*
-    const files = [
-        "test/samples/solidity/calls.config.json",
-        "test/samples/solidity/EncodingTest.config.json",
-        "test/samples/solidity/ABIEncoderV2_Structs.config.json",
-        "test/samples/solidity/public_getters.config.json",
-        "test/samples/solidity/AddressLiteralMemberAccess.config.json",
-        "test/samples/solidity/CalldataArgPassing.config.json",
-        "test/samples/solidity/dispatch.config.json",
-        "test/samples/solidity/public_getters.config.json"
-        "test/samples/solidity/abi_decode_fails.config.json"
-        "test/samples/solidity/value.config.json"
-        "test/samples/solidity/lowlevel_calls_04.config.json"
-        "test/samples/solidity/TryCatch.config.json",
-        "test/samples/solidity/TryCatchMisc.config.json",
-        "test/samples/solidity/TryCatchShadowing.config.json",
-        "test/samples/solidity/TryCatchState.config.json",
-        "test/samples/solidity/TryCatchStateNested.config.json"
-        "test/samples/solidity/TryCatch08.config.json",
-        "test/samples/solidity/lowlevel_calls_04.config.json",
-        "test/samples/solidity/lowlevel_calls_08.config.json"
-    ];
-        */
+    for (const sample of files) {
+        describe(sample, () => {
+            let defs: ir.Program;
+            let entryFunc: ir.FunctionDefinition;
+            let interp: SolMaruirInterp;
 
-    for (const jsonFile of files) {
-        it(jsonFile, async () => {
-            const config = await fse.readJson(jsonFile);
-            const file = config.file;
+            before(async () => {
+                const config = await fse.readJson(sample);
+                const file = config.file;
 
-            const result = await compileSol(file, "auto");
-            const reader = new ASTReader();
-            const units = reader.read(result.data);
+                const result = await sol.compileSol(file, "auto");
+                const reader = new sol.ASTReader();
+                const units = reader.read(result.data);
 
-            assert(result.compilerVersion !== undefined, "Unable to detect compiler version");
+                sol.assert(
+                    result.compilerVersion !== undefined,
+                    "Unable to detect compiler version"
+                );
 
-            const compiler = new UnitCompiler(result.compilerVersion);
+                const compiler = new UnitCompiler(result.compilerVersion);
 
-            let transpiledDefs: Definition[];
+                let transpiledDefs: Definition[];
 
-            try {
-                transpiledDefs = [...compiler.compile(units)];
-            } catch (e) {
-                console.error(`Failed transpiling ${jsonFile}`);
+                try {
+                    transpiledDefs = [...compiler.compile(units)];
+                } catch (e) {
+                    console.error(`Failed transpiling ${sample}`);
 
-                throw e;
-            }
+                    throw e;
+                }
 
-            const [methodMap, contractMap, buildMsgDataMap] = buildMaps(
-                transpiledDefs,
-                result.compilerVersion as string
-            );
+                const [methodMap, contractMap, buildMsgDataMap] = buildMaps(
+                    transpiledDefs,
+                    result.compilerVersion as string
+                );
 
-            const jsonCompiler = new JSONConfigTranspiler(
-                result.compilerVersion as string,
-                getABIEncoderVersion(units[0], result.compilerVersion),
-                compiler.factory,
-                compiler.globalUid,
-                compiler.globalScope,
-                config,
-                methodMap,
-                contractMap,
-                buildMsgDataMap,
-                units[0]
-            );
+                const jsonCompiler = new JSONConfigTranspiler(
+                    result.compilerVersion as string,
+                    sol.getABIEncoderVersion(units[0], result.compilerVersion),
+                    compiler.factory,
+                    compiler.globalUid,
+                    compiler.globalScope,
+                    config,
+                    methodMap,
+                    contractMap,
+                    buildMsgDataMap,
+                    units[0]
+                );
 
-            const main = jsonCompiler.compile();
-            compiler.globalScope.define(main);
+                entryFunc = jsonCompiler.compile();
 
-            const defs = [...compiler.globalScope.definitions()];
+                compiler.globalScope.define(entryFunc);
 
-            // Uncomment below lines to see compiled maruir file
-            const contents = defs.map((def) => def.pp()).join("\n");
-            const maruirFile = jsonFile.replace(".config.json", ".maruir");
+                defs = [...compiler.globalScope.definitions()];
 
-            fse.writeFileSync(maruirFile, contents, {
-                encoding: "utf8"
+                // Uncomment below lines to see compiled maruir file
+                // const contents = defs.map((def) => def.pp()).join("\n");
+                // const irFile = sample.replace(".config.json", ".maruir");
+
+                // await fse.writeFile(irFile, contents, { encoding: "utf8" });
+
+                interp = new SolMaruirInterp(defs, true);
             });
 
-            const interp = new SolMaruirInterp(defs, true);
+            /**
+             * Note that this test case is skipped intentionally
+             * to not cause additional time consumption.
+             *
+             * Feel free to unskip it for sake of local testing purposes.
+             */
+            it.skip("Resulting IR program does not contain compile-time (internal) nodes and duplicate nodes", () => {
+                const nodes = new Set<ir.Node>();
 
-            interp.run(main, true);
+                for (const def of defs) {
+                    ir.walk(def, (node) => {
+                        sol.assert(
+                            !nodes.has(node),
+                            "Node {0} ({1}) has a duplicate",
+                            node,
+                            node.constructor.name
+                        );
 
-            if (interp.state.failure) {
-                console.log(JSON.stringify(interp.state.dump(), undefined, 4));
+                        nodes.add(node);
 
-                throw interp.state.failure;
-            }
+                        expect(node).not.toBeInstanceOf(InternalExpression);
 
-            if (interp.state.failed) {
-                console.error(`Failed interpreting ${jsonFile}`);
-            }
+                        if (node instanceof ir.Expression) {
+                            const typeNode = interp.typing.typeOf(node);
 
-            expect(interp.state.failed).not.toBeTruthy();
+                            expect(typeNode).not.toBeInstanceOf(InternalType);
+                        }
+                    });
+                }
+            });
 
-            console.error(`Success: ${jsonFile}`);
+            it("IR program is executed by interpreter as expected", async () => {
+                const withOutput = true;
+
+                interp.run(entryFunc, withOutput);
+
+                if (interp.state.failure) {
+                    console.log(JSON.stringify(interp.state.dump(), undefined, 4));
+
+                    throw interp.state.failure;
+                }
+
+                if (interp.state.failed) {
+                    console.error(`Failed interpreting ${sample}`);
+                }
+
+                expect(interp.state.failed).not.toBeTruthy();
+            });
         });
     }
 });
