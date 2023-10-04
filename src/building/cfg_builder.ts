@@ -952,6 +952,8 @@ export class CFGBuilder {
             this.infer.toABIEncodedType(abiSafeSolType, abiEncodeVersion)
         )[0];
 
+        // console.error(solType.pp(), "->", abiType.pp());
+
         return this.getStrLit(fixTupleType(abiType.pp()), noSrc);
     }
 }

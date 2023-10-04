@@ -431,6 +431,7 @@ locals
         return false;
 }
 
+fun builtin_abi_encode_0(): ArrWithLen<#memory; u8> *#memory
 fun builtin_abi_encode_1<;T1>(
     arg1AbiT: ArrWithLen<#exception; u8> *#exception,
     arg1: T1
@@ -562,6 +563,7 @@ fun builtin_abi_encode_10<;T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>(
     arg10: T10
 ): ArrWithLen<#memory; u8> *#memory
 
+fun builtin_abi_encodePacked_0(): ArrWithLen<#memory; u8> *#memory
 fun builtin_abi_encodePacked_1<;T1>(
     arg1AbiT: ArrWithLen<#exception; u8> *#exception,
     arg1: T1
@@ -933,7 +935,6 @@ fun sol_set_code(addr: u160, code: ArrWithLen<#exception; u8> *#exception)
         return;
 }
 
-fun builtin_keccak256_05<M>(bytes: ArrWithLen<M; u8> *M): u256
-`;
+fun builtin_keccak256<M>(bytes: ArrWithLen<M; u8> *M): u256`;
 
 export const preamble = ir.parseProgram(preambleStr);
