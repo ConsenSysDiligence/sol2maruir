@@ -76,13 +76,7 @@ describe("*.config.json samples", () => {
                 interp = new SolMaruirInterp(defs, true);
             });
 
-            /**
-             * Note that this test case is skipped intentionally
-             * to not cause additional time consumption.
-             *
-             * Feel free to unskip it for sake of local testing purposes.
-             */
-            it.skip("Resulting IR program does not contain compile-time (internal) nodes and duplicate nodes", () => {
+            it("Resulting IR program does not contain compile-time (internal) nodes and duplicate nodes", () => {
                 const nodes = new Set<ir.Node>();
 
                 for (const def of defs) {
