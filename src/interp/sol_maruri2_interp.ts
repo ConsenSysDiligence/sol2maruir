@@ -25,7 +25,7 @@ import {
     builtin_encodeWithSignature,
     builtin_get_contract_at,
     builtin_is_contract_at,
-    builtin_keccak256_05,
+    builtin_keccak256,
     builtin_register_contact,
     builtin_un_op_overflows,
     ContractRegistry
@@ -421,10 +421,10 @@ export class SolMaruirInterp {
                 }
             ],
             [
-                "builtin_keccak256_05",
+                "builtin_keccak256",
                 (s: State, frame: BuiltinFrame): [boolean, PrimitiveValue[]] => [
                     false,
-                    [builtin_keccak256_05(s, frame)]
+                    [builtin_keccak256(s, frame)]
                 ]
             ]
         ]);

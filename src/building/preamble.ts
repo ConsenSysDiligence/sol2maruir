@@ -935,6 +935,6 @@ fun sol_set_code(addr: u160, code: ArrWithLen<#exception; u8> *#exception)
         return;
 }
 
-fun builtin_keccak256_05<M>(bytes: ArrWithLen<M; u8> *M): u256`;
+fun builtin_keccak256<M>(bytes: ArrWithLen<M; u8> *M): u256`;
 
 export const preamble = ir.parseProgram(preambleStr);

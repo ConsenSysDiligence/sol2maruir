@@ -1218,15 +1218,15 @@ export class ExpressionCompiler {
 
         if (expr.vFunctionName === "keccak256" || expr.vFunctionName === "sha3") {
             const res = this.cfgBuilder.getTmpId(u256);
+
             let arg: ir.Expression;
-            const builtinName = `builtin_keccak256_05`;
 
             if (expr.vFunctionName === "keccak256" && gte(this.cfgBuilder.solVersion, "0.5.0")) {
                 arg = single(expr.vArguments.map((arg) => this.compile(arg)));
             } else {
                 if (
                     expr.vArguments.length === 1 &&
-                    expr.vArguments[0].typeString.match(/bytes (string|memory|calldata)/)
+                    expr.vArguments[0].typeString.match(/bytes (storage|memory|calldata)/)
                 ) {
                     arg = this.compile(expr.vArguments[0]);
                 } else {
@@ -1238,13 +1238,13 @@ export class ExpressionCompiler {
 
             assert(
                 argT instanceof ir.PointerType,
-                `keccak256 expects a bytes pointer not {0}`,
+                "keccak256 builtin expects a bytes pointer, not {0}",
                 argT
             );
 
             this.cfgBuilder.call(
                 [res],
-                this.factory.identifier(calleeSrc, builtinName, noType),
+                this.factory.identifier(calleeSrc, "builtin_keccak256", noType),
                 [argT.region],
                 [],
                 [arg],
