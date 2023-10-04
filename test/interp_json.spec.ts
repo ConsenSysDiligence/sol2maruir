@@ -1,7 +1,6 @@
 import expect from "expect";
 import * as fse from "fs-extra";
 import * as ir from "maru-ir2";
-import { Definition } from "maru-ir2";
 import * as sol from "solc-typed-ast";
 import { InternalExpression, InternalType, UnitCompiler } from "../src";
 import { SolMaruirInterp } from "../src/interp";
@@ -34,7 +33,7 @@ describe("*.config.json samples", () => {
 
                 const compiler = new UnitCompiler(result.compilerVersion);
 
-                let transpiledDefs: Definition[];
+                let transpiledDefs: ir.Definition[];
 
                 try {
                     transpiledDefs = [...compiler.compile(units)];
