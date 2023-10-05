@@ -20,6 +20,7 @@ import { ASTSource } from "../ir/source";
 import { IRFactory } from "./factory";
 import { CopyFunCompiler } from "./copy_fun_compiler";
 import { IRTuple2, IRTupleType2 } from "../ir";
+import { getGlobalVarName } from "./resolving";
 
 export class CFGBuilder {
     /**
@@ -182,7 +183,7 @@ export class CFGBuilder {
     private getVarName(decl: sol.VariableDeclaration): string {
         // Global constants
         if (decl.parent instanceof sol.SourceUnit) {
-            return `${decl.name}_${decl.id}`;
+            return getGlobalVarName(decl);
         }
 
         // Function arguments/returns
@@ -216,6 +217,16 @@ export class CFGBuilder {
         }
 
         throw new Error(`Cannot get ir identifier name for ${pp(decl)}`);
+    }
+
+    /**
+     * Get the IR identifier that corresponds to a Solidity global variable definition.
+     */
+    getGlobalVar(v: sol.VariableDeclaration, src: ir.BaseSrc): ir.Identifier {
+        const name = this.getVarName(v);
+        const type = transpileType(this.infer.variableDeclarationToTypeNode(v), this.factory);
+
+        return this.factory.identifier(src, name, type);
     }
 
     addLocal(localV: sol.VariableDeclaration): ir.VariableDeclaration {

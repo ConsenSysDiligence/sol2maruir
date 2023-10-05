@@ -448,12 +448,13 @@ export class SolMaruirInterp {
                 const storeStr =
                     "{" +
                     [...ids]
-                        .map(
-                            (name) =>
-                                `${name}: ${pp(
-                                    state.curMachFrame.store.get(name) as PrimitiveValue
-                                )}`
-                        )
+                        .map((name) => {
+                            let v = state.curMachFrame.store.get(name);
+                            if (v === undefined) {
+                                v = state.globals.get(name);
+                            }
+                            return `${name}: ${pp(v as PrimitiveValue)}`;
+                        })
                         .join(",") +
                     "}";
 

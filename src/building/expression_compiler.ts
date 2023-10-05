@@ -5,7 +5,7 @@ import * as sol from "solc-typed-ast";
 import { ContractDefinition, ContractKind, TypeNode, assert, pp } from "solc-typed-ast";
 import { IRTuple2, IRTupleType2 } from "../ir";
 import { ASTSource } from "../ir/source";
-import { single } from "../utils";
+import { isFileConstant, single } from "../utils";
 import { CFGBuilder } from "./cfg_builder";
 import { CopyFunCompiler } from "./copy_fun_compiler";
 import { IRFactory } from "./factory";
@@ -81,6 +81,7 @@ export class ExpressionCompiler {
             assert(def !== undefined, `Missing def for user-defined identifier {0}`, expr);
 
             if (def instanceof sol.VariableDeclaration) {
+                // State variable
                 if (def.stateVariable) {
                     const thisId = builder.this(noSrc);
                     const thisT = builder.typeOfLocal("this");
@@ -88,6 +89,12 @@ export class ExpressionCompiler {
                     return builder.loadField(thisId, thisT, def.name, src);
                 }
 
+                // File-level constant
+                if (isFileConstant(def)) {
+                    return this.cfgBuilder.getGlobalVar(def, src);
+                }
+
+                // Function Argument, return, local
                 return builder.getVarId(def, src);
             }
 
@@ -2244,6 +2251,11 @@ export class ExpressionCompiler {
             def instanceof sol.UserDefinedValueTypeDefinition
         ) {
             return this.factory.definitionExpression(src, expr);
+        }
+
+        // References to file constants get compiled to ir identifiers
+        if (def && isFileConstant(def)) {
+            return this.cfgBuilder.getGlobalVar(def, src);
         }
 
         // Case of <EnumName>.<EnumEntry>

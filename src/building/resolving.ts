@@ -362,3 +362,11 @@ export function getIRStructDefName(struct: StructDefinition): string {
         struct.name
     }_${struct.id}`;
 }
+
+export function getGlobalVarName(decl: VariableDeclaration): string {
+    assert(
+        decl.vScope instanceof SourceUnit && decl.constant,
+        `${decl.name} is not a file constant`
+    );
+    return `${decl.name}_${decl.id}`;
+}
