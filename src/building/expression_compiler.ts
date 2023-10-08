@@ -5,7 +5,7 @@ import * as sol from "solc-typed-ast";
 import { ContractDefinition, ContractKind, TypeNode, assert, pp } from "solc-typed-ast";
 import { IRTuple2, IRTupleType2 } from "../ir";
 import { ASTSource } from "../ir/source";
-import { isFileConstant, single } from "../utils";
+import { isBytesLit, isFileConstant, isStrLit, single } from "../utils";
 import { CFGBuilder } from "./cfg_builder";
 import { CopyFunCompiler } from "./copy_fun_compiler";
 import { IRFactory } from "./factory";
@@ -2517,6 +2517,27 @@ export class ExpressionCompiler {
         // Types equal - no cast needed
         if (ir.eq(fromT, toT)) {
             return expr;
+        }
+
+        // Cast from hex/str literal to int type.
+        if ((isBytesLit(expr, fromT) || isStrLit(expr, fromT)) && toT instanceof ir.IntType) {
+            const lit = this.cfgBuilder.globalScope.mustGet(expr.name, noSrc) as ir.GlobalVariable;
+            const len = Number(
+                ((lit.initialValue as ir.StructLiteral).field("len") as ir.NumberLiteral).value
+            );
+
+            if (len * 8 !== toT.nbits) {
+                return undefined;
+            }
+
+            const bytes = (lit.initialValue as ir.StructLiteral).field("arr") as ir.ArrayLiteral;
+            let res: bigint = 0n;
+
+            for (let i = 0; i < len; i++) {
+                res = (bytes.values[i] as ir.NumberLiteral).value + (res << 8n);
+            }
+
+            return this.factory.numberLiteral(expr.src, res, 10, toT);
         }
 
         /**

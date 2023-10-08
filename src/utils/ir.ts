@@ -10,3 +10,28 @@ export function isBytesType(t: ir.Type): t is ir.PointerType {
         t.toType.typeArgs[0].nbits === 8
     );
 }
+
+export function isBytesLit(e: ir.Expression, eT: ir.Type): e is ir.Identifier {
+    return (
+        e instanceof ir.Identifier &&
+        e.name.match(/_bytes_lit_[0-9]*/) !== null &&
+        isBytesType(eT) &&
+        eT.region instanceof ir.MemConstant
+    );
+}
+
+export function isStrLit(e: ir.Expression, eT: ir.Type): e is ir.Identifier {
+    return (
+        e instanceof ir.Identifier &&
+        e.name.match(/_str_lit_[0-9]*/) !== null &&
+        isBytesType(eT) &&
+        eT.region instanceof ir.MemConstant
+    );
+}
+
+export function typeContainsMapping(t: ir.Type): boolean {
+    let hasMapping = t instanceof ir.MapType;
+    ir.walk(t, (subT) => (hasMapping ||= subT instanceof ir.MapType));
+
+    return hasMapping;
+}
