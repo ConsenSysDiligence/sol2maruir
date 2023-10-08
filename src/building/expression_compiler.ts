@@ -1571,7 +1571,6 @@ export class ExpressionCompiler {
         // There are several cases:
         if (callee instanceof sol.Identifier) {
             // 1. Internal call to the same contract or a free function call
-            thisExpr = this.cfgBuilder.this(noSrc);
             isExternal = false;
             let solDef: sol.FunctionDefinition | sol.VariableDeclaration | undefined;
 
@@ -1581,6 +1580,7 @@ export class ExpressionCompiler {
                 callee.vReferencedDeclaration
             );
 
+            // First try and see if this is a method
             if (this.solScope instanceof sol.ContractDefinition) {
                 // Contract function
                 solDef = sol.resolveCallable(
@@ -1588,9 +1588,22 @@ export class ExpressionCompiler {
                     callee.vReferencedDeclaration,
                     this.cfgBuilder.infer
                 );
-            } else {
-                // Free function
+            }
+
+            // Otherwise its a free function
+            if (solDef === undefined) {
                 solDef = callee.vReferencedDeclaration;
+                assert(
+                    solDef.vScope instanceof sol.SourceUnit,
+                    `Unexpected non-free fun ${callee.name} with no def`
+                );
+            }
+
+            thisExpr = this.cfgBuilder.this(noSrc);
+
+            // Free functions get a u160 as this
+            if (solDef.vScope instanceof sol.SourceUnit) {
+                thisExpr = this.mustImplicitlyCastTo(thisExpr, u160Addr, thisExpr.src);
             }
 
             assert(

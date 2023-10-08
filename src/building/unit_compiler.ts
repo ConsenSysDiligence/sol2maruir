@@ -120,19 +120,17 @@ export class UnitCompiler {
             }
         }
 
-        if (defs.length > 0) {
-            // TODO: This is hacky, but its ok as it will be removed when we fix #45
-            const abiVersion = this.detectAbiEncoderVersion(units[0]);
-            const comp = new GlobalConstantInitializerCompiler(
-                this.factory,
-                this.globalScope,
-                this.globalUid,
-                this.solVersion,
-                abiVersion,
-                sortUnits(units)
-            );
-            defs.push(comp.compile());
-        }
+        // TODO: This is hacky, but its ok as it will be removed when we fix #45
+        const abiVersion = this.detectAbiEncoderVersion(units[0]);
+        const comp = new GlobalConstantInitializerCompiler(
+            this.factory,
+            this.globalScope,
+            this.globalUid,
+            this.solVersion,
+            abiVersion,
+            sortUnits(units)
+        );
+        defs.push(comp.compile());
 
         return defs;
     }
