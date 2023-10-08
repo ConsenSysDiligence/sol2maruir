@@ -3,8 +3,10 @@ import * as sol from "solc-typed-ast";
 import { ASTSource } from "../ir/source";
 import {
     getContractCallables,
+    isBytesType,
     isContractDeployable,
     isExternallyCallable,
+    sortUnits,
     UIDGenerator
 } from "../utils";
 import { ConstructorCompiler } from "./constructor_compiler";
@@ -14,11 +16,12 @@ import { GetterCompiler } from "./getter_compiler";
 import { compileGlobalVarInitializer } from "./literal_compiler";
 import { MsgBuilderCompiler } from "./msg_builder_compiler";
 import { preamble } from "./preamble";
-import { getDesugaredGlobalVarName, getIRStructDefName } from "./resolving";
-import { transpileType, u16, u160Addr } from "./typing";
+import { getDesugaredGlobalVarName, getGlobalVarName, getIRStructDefName } from "./resolving";
+import { transpileType, u16, u160Addr, u256 } from "./typing";
 import { MsgDecoderCompiler } from "./msg_decoder_compiler";
 import { ContractDispatchCompiler } from "./contract_dispatch_compiler";
 import { RootDispatchCompiler } from "./root_dispatch_compiler";
+import { GlobalConstantInitializerCompiler } from "./global_const_initializer_compiler";
 
 export class UnitCompiler {
     public readonly globalScope: ir.Scope;
@@ -42,7 +45,20 @@ export class UnitCompiler {
         return sol.getABIEncoderVersion(unit, this.solVersion);
     }
 
-    globalDefine(def: ir.FunctionDefinition | ir.StructDefinition | ir.GlobalVariable): void {
+    globalDefine(
+        def:
+            | ir.FunctionDefinition
+            | ir.StructDefinition
+            | ir.GlobalVariable
+            | Array<ir.FunctionDefinition | ir.StructDefinition | ir.GlobalVariable>
+    ): void {
+        if (def instanceof Array) {
+            for (const d of def) {
+                this.globalDefine(d);
+            }
+            return;
+        }
+
         if (def instanceof ir.FunctionDefinition) {
             this.globalScope.makeFunScope(def);
         } else if (def instanceof ir.StructDefinition) {
@@ -64,7 +80,61 @@ export class UnitCompiler {
         }
 
         this.globalDefine(this.compileRootDispatch(units));
+        this.globalDefine(this.compileGlobalConstants(units));
         return this.globalScope.definitions();
+    }
+
+    /**
+     * Compile all global constants in units, along with an initialization function for those globals.
+     */
+    compileGlobalConstants(
+        units: sol.SourceUnit[]
+    ): Array<ir.GlobalVariable | ir.FunctionDefinition> {
+        const defs: Array<ir.GlobalVariable | ir.FunctionDefinition> = [];
+
+        for (const unit of units) {
+            for (const c of unit.vVariables) {
+                const solT = this.inference.variableDeclarationToTypeNode(c);
+                const irT = transpileType(solT, this.factory);
+                const name = getGlobalVarName(c);
+                const src = new ASTSource(c);
+
+                let initialValue: ir.GlobalVarLiteral;
+
+                if (irT instanceof ir.BoolType) {
+                    initialValue = this.factory.booleanLiteral(src, false);
+                } else if (irT instanceof ir.IntType) {
+                    initialValue = this.factory.numberLiteral(src, 0n, 10, irT);
+                } else if (isBytesType(irT)) {
+                    initialValue = this.factory.structLiteral(src, [
+                        ["len", this.factory.numberLiteral(src, 0n, 10, u256)],
+                        ["capacity", this.factory.numberLiteral(src, 0n, 10, u256)],
+                        ["arr", this.factory.arrayLiteral(src, [])]
+                    ]);
+                } else {
+                    throw new Error(`Cannot compute zero-value for global const type ${irT.pp()}`);
+                }
+
+                const v = this.factory.globalVariable(src, name, irT, initialValue);
+                defs.push(v);
+            }
+        }
+
+        if (defs.length > 0) {
+            // TODO: This is hacky, but its ok as it will be removed when we fix #45
+            const abiVersion = this.detectAbiEncoderVersion(units[0]);
+            const comp = new GlobalConstantInitializerCompiler(
+                this.factory,
+                this.globalScope,
+                this.globalUid,
+                this.solVersion,
+                abiVersion,
+                sortUnits(units)
+            );
+            defs.push(comp.compile());
+        }
+
+        return defs;
     }
 
     compileStructDef(def: sol.StructDefinition): ir.StructDefinition {
@@ -175,10 +245,6 @@ export class UnitCompiler {
             if (funCompile.canEmitBody()) {
                 this.globalDefine(funCompile.compile());
             }
-        }
-
-        for (const globConst of unit.vVariables) {
-            this.globalDefine(this.compileGlobalConst(globConst));
         }
     }
 

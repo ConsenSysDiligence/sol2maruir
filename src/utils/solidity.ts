@@ -1,4 +1,5 @@
 import * as sol from "solc-typed-ast";
+import { topoSort } from "./func";
 
 /**
  * Detect inheritance specifier-style and modifier-style invocation arguments
@@ -124,4 +125,37 @@ export function isContractDeployable(c: sol.ContractDefinition): boolean {
     return (
         (c.kind === sol.ContractKind.Contract || c.kind === sol.ContractKind.Library) && !c.abstract
     );
+}
+
+export function isFileConstant(v: sol.ASTNode): v is sol.VariableDeclaration {
+    return v instanceof sol.VariableDeclaration && v.vScope instanceof sol.SourceUnit && v.constant;
+}
+
+/**
+ * Sort units in topological order of imports
+ */
+export function sortUnits(units: sol.SourceUnit[]): sol.SourceUnit[] {
+    const pred = new Map<sol.SourceUnit, Set<sol.SourceUnit>>();
+    for (const unit of units) {
+        for (const imp of unit.vImportDirectives) {
+            let s = pred.get(imp.vScope);
+
+            if (s == undefined) {
+                s = new Set();
+            }
+
+            s.add(imp.vSourceUnit);
+
+            pred.set(imp.vScope, s);
+        }
+    }
+
+    const order: Array<[sol.SourceUnit, sol.SourceUnit]> = [];
+    for (const [k, v] of pred) {
+        for (const u of v) {
+            order.push([u, k]);
+        }
+    }
+
+    return topoSort(units, order);
 }
