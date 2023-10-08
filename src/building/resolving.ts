@@ -12,6 +12,7 @@ import {
     StructDefinition,
     VariableDeclaration
 } from "solc-typed-ast";
+import { isFileConstant } from "../utils";
 
 export type FunctionScope = ContractDefinition | SourceUnit;
 /**
@@ -364,9 +365,6 @@ export function getIRStructDefName(struct: StructDefinition): string {
 }
 
 export function getGlobalVarName(decl: VariableDeclaration): string {
-    assert(
-        decl.vScope instanceof SourceUnit && decl.constant,
-        `${decl.name} is not a file constant`
-    );
+    assert(isFileConstant(decl), `${decl.name} is not a file constant`);
     return `${decl.name}_${decl.id}`;
 }
