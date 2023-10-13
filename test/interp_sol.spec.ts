@@ -100,7 +100,7 @@ describe("*.config.sol samples", () => {
             });
 
             it("IR program does not have node reuses", () => {
-                const reuses = ir.checkNodeReuse(defs);
+                const reuses = ir.findMultiParentNodes(defs);
 
                 const parts: string[] = [];
 
@@ -139,9 +139,9 @@ describe("*.config.sol samples", () => {
             });
 
             it("IR program is executed by interpreter as expected", async () => {
-                const withOutput = false;
+                const showOutput = true;
 
-                interp.run(entryFunc, withOutput);
+                interp.run(entryFunc, showOutput);
 
                 if (interp.state.failure) {
                     console.log(JSON.stringify(interp.state.dump(), undefined, 4));
