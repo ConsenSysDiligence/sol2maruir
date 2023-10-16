@@ -2526,15 +2526,17 @@ export class ExpressionCompiler {
                 ((lit.initialValue as ir.StructLiteral).field("len") as ir.NumberLiteral).value
             );
 
-            if (len * 8 !== toT.nbits) {
+            if (len * 8 > toT.nbits) {
                 return undefined;
             }
 
             const bytes = (lit.initialValue as ir.StructLiteral).field("arr") as ir.ArrayLiteral;
             let res: bigint = 0n;
+            let base: bigint = 1n << BigInt(toT.nbits - 8);
 
             for (let i = 0; i < len; i++) {
-                res = (bytes.values[i] as ir.NumberLiteral).value + (res << 8n);
+                res = (bytes.values[i] as ir.NumberLiteral).value * base + res;
+                base >>= 8n;
             }
 
             return this.factory.numberLiteral(expr.src, res, 10, toT);
