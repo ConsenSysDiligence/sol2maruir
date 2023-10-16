@@ -26,4 +26,8 @@ export class SolDefinitionExpression extends InternalExpression {
     children(): Iterable<ir.Node> {
         return [];
     }
+
+    copy(): SolDefinitionExpression {
+        return new SolDefinitionExpression(this.src, this.raw);
+    }
 }

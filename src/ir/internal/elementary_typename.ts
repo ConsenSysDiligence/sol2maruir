@@ -23,4 +23,8 @@ export class SolElementaryTypenameExpression extends InternalExpression {
     children(): Iterable<ir.Node> {
         return [];
     }
+
+    copy(): SolElementaryTypenameExpression {
+        return new SolElementaryTypenameExpression(this.src, this.raw);
+    }
 }

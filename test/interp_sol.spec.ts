@@ -99,20 +99,34 @@ describe("*.config.sol samples", () => {
                 interp = new SolMaruirInterp(defs, true);
             });
 
-            it("Resulting IR program does not contain compile-time (internal) nodes and duplicate nodes", () => {
-                const nodes = new Set<ir.Node>();
+            it("IR program does not have node reuses", () => {
+                const reuses = ir.findMultiParentNodes(defs);
 
+                const parts: string[] = [];
+
+                const helper = (node: ir.Node): string =>
+                    `${node.constructor.name}#${node.id} "${node.pp()}"`;
+
+                const indentedHelper = (node: ir.Node): string => "    " + helper(node);
+
+                for (const [used, using] of reuses) {
+                    if (used instanceof ir.Type) {
+                        continue;
+                    }
+
+                    parts.push(
+                        `${helper(used)} is used by several nodes:\n${using
+                            .map(indentedHelper)
+                            .join("\n")}`
+                    );
+                }
+
+                sol.assert(parts.length === 0, parts.join("\n\n"));
+            });
+
+            it("IR program does not contain compile-time (internal) nodes", () => {
                 for (const def of defs) {
-                    ir.walk(def, (node) => {
-                        sol.assert(
-                            !nodes.has(node),
-                            "Node {0} ({1}) has a duplicate",
-                            node,
-                            node.constructor.name
-                        );
-
-                        nodes.add(node);
-
+                    for (const node of ir.traverse(def)) {
                         expect(node).not.toBeInstanceOf(InternalExpression);
 
                         if (node instanceof ir.Expression) {
@@ -120,14 +134,14 @@ describe("*.config.sol samples", () => {
 
                             expect(typeNode).not.toBeInstanceOf(InternalType);
                         }
-                    });
+                    }
                 }
             });
 
             it("IR program is executed by interpreter as expected", async () => {
-                const withOutput = true;
+                const showOutput = true;
 
-                interp.run(entryFunc, withOutput);
+                interp.run(entryFunc, showOutput);
 
                 if (interp.state.failure) {
                     console.log(JSON.stringify(interp.state.dump(), undefined, 4));

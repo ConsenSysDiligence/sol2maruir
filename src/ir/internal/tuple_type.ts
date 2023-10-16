@@ -3,7 +3,10 @@ import { pp } from "maru-ir2";
 import { InternalType } from "./internal_type";
 
 export class IRTupleType2 extends InternalType {
-    constructor(src: ir.BaseSrc, public readonly elementTypes: Array<ir.Type | null>) {
+    constructor(
+        src: ir.BaseSrc,
+        public readonly elementTypes: Array<ir.Type | null>
+    ) {
         super(src);
     }
 
@@ -17,5 +20,12 @@ export class IRTupleType2 extends InternalType {
 
     children(): Iterable<ir.Node> {
         return this.elementTypes.filter((el) => el !== null) as ir.Type[];
+    }
+
+    copy(): IRTupleType2 {
+        return new IRTupleType2(
+            this.src,
+            this.elementTypes.map((elT) => (elT ? elT.copy() : elT))
+        );
     }
 }
