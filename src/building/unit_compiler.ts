@@ -1,3 +1,4 @@
+import Decimal from "decimal.js";
 import * as ir from "maru-ir2";
 import * as sol from "solc-typed-ast";
 import { ASTSource } from "../ir/source";
@@ -6,22 +7,20 @@ import {
     isBytesType,
     isContractDeployable,
     isExternallyCallable,
-    sortUnits,
     UIDGenerator
 } from "../utils";
 import { ConstructorCompiler } from "./constructor_compiler";
+import { ContractDispatchCompiler } from "./contract_dispatch_compiler";
 import { IRFactory } from "./factory";
 import { FunctionCompiler } from "./function_compiler";
 import { GetterCompiler } from "./getter_compiler";
 import { compileGlobalVarInitializer } from "./literal_compiler";
 import { MsgBuilderCompiler } from "./msg_builder_compiler";
+import { MsgDecoderCompiler } from "./msg_decoder_compiler";
 import { preamble } from "./preamble";
 import { getDesugaredGlobalVarName, getGlobalVarName, getIRStructDefName } from "./resolving";
-import { transpileType, u16, u160Addr, u256 } from "./typing";
-import { MsgDecoderCompiler } from "./msg_decoder_compiler";
-import { ContractDispatchCompiler } from "./contract_dispatch_compiler";
 import { RootDispatchCompiler } from "./root_dispatch_compiler";
-import { GlobalConstantInitializerCompiler } from "./global_const_initializer_compiler";
+import { transpileType, u16, u160Addr } from "./typing";
 
 export class UnitCompiler {
     public readonly globalScope: ir.Scope;
@@ -84,53 +83,69 @@ export class UnitCompiler {
         return this.globalScope.definitions();
     }
 
-    /**
-     * Compile all global constants in units, along with an initialization function for those globals.
-     */
-    compileGlobalConstants(
-        units: sol.SourceUnit[]
-    ): Array<ir.GlobalVariable | ir.FunctionDefinition> {
-        const defs: Array<ir.GlobalVariable | ir.FunctionDefinition> = [];
+    compileGlobalConstants(units: sol.SourceUnit[]): ir.GlobalVariable[] {
+        const defs: ir.GlobalVariable[] = [];
 
         for (const unit of units) {
-            for (const c of unit.vVariables) {
-                const solT = this.inference.variableDeclarationToTypeNode(c);
-                const irT = transpileType(solT, this.factory);
-                const name = getGlobalVarName(c);
-                const src = new ASTSource(c);
+            for (const solVar of unit.vVariables) {
+                const name = getGlobalVarName(solVar);
+                const src = new ASTSource(solVar);
 
-                let initialValue: ir.GlobalVarLiteral;
+                const solT = this.inference.variableDeclarationToTypeNode(solVar);
+                const irT = transpileType(solT, this.factory);
+
+                const rawVal = sol.evalConstantExpr(solVar, this.inference);
+
+                let irVal: ir.GlobalVarLiteral | undefined;
 
                 if (irT instanceof ir.BoolType) {
-                    initialValue = this.factory.booleanLiteral(src, false);
+                    if (typeof rawVal === "boolean") {
+                        irVal = this.factory.booleanLiteral(src, rawVal);
+                    }
                 } else if (irT instanceof ir.IntType) {
-                    initialValue = this.factory.numberLiteral(src, 0n, 10, irT);
+                    if (typeof rawVal === "bigint" && irT.fits(rawVal)) {
+                        irVal = this.factory.numberLiteral(src, rawVal, 10, irT);
+                    }
+
+                    if (rawVal instanceof Buffer) {
+                        const intVal =
+                            rawVal.length === 0 ? 0n : BigInt("0x" + rawVal.toString("hex"));
+
+                        if (irT.fits(intVal)) {
+                            irVal = this.factory.numberLiteral(src, intVal, 10, irT);
+                        }
+                    }
+
+                    if (rawVal instanceof Decimal && rawVal.isInt()) {
+                        const intVal = BigInt(rawVal.toHex());
+
+                        if (irT.fits(intVal)) {
+                            irVal = this.factory.numberLiteral(src, intVal, 10, irT);
+                        }
+                    }
                 } else if (isBytesType(irT)) {
-                    initialValue = this.factory.structLiteral(src, [
-                        ["len", this.factory.numberLiteral(src, 0n, 10, u256)],
-                        ["capacity", this.factory.numberLiteral(src, 0n, 10, u256)],
-                        ["arr", this.factory.arrayLiteral(src, [])]
-                    ]);
-                } else {
-                    throw new Error(`Cannot compute zero-value for global const type ${irT.pp()}`);
+                    if (typeof rawVal === "string" || rawVal instanceof Buffer) {
+                        const buf =
+                            typeof rawVal === "string" ? Buffer.from(rawVal, "utf-8") : rawVal;
+
+                        const bytes = [...buf].map((x) => BigInt(x));
+
+                        irVal = this.factory.bytesToArrayStruct(bytes, src);
+                    }
                 }
 
-                const v = this.factory.globalVariable(src, name, irT, initialValue);
-                defs.push(v);
+                sol.assert(
+                    irVal !== undefined,
+                    'Unable to assign "{0}" to a global constant variable of type "{1}"',
+                    rawVal instanceof Decimal ? rawVal.toString() : rawVal,
+                    irT
+                );
+
+                const irVar = this.factory.globalVariable(src, name, irT, irVal);
+
+                defs.push(irVar);
             }
         }
-
-        // TODO: This is hacky, but its ok as it will be removed when we fix #45
-        const abiVersion = this.detectAbiEncoderVersion(units[0]);
-        const comp = new GlobalConstantInitializerCompiler(
-            this.factory,
-            this.globalScope,
-            this.globalUid,
-            this.solVersion,
-            abiVersion,
-            sortUnits(units)
-        );
-        defs.push(comp.compile());
 
         return defs;
     }
