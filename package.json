@@ -25,7 +25,7 @@
         "logplease": "1.2.15",
         "minimist": "^1.2.8",
         "semver": "^7.5.4",
-        "maru-ir2": "file:../maru-ir2",
+        "maru-ir2": "git+ssh://git@github.com:Consensys/maru-ir2.git",
         "solc-typed-ast": "^17.0.0",
         "web3-utils": "^4.0.6"
     },
