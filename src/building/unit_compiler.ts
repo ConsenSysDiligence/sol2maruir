@@ -83,6 +83,54 @@ export class UnitCompiler {
         return this.globalScope.definitions();
     }
 
+    // Convert a value from the Solidity constant evaluator into a IR Literal.
+    private valueToLiteral(rawVal: sol.Value, irT: ir.Type, src: ASTSource): ir.GlobalVarLiteral {
+        let irVal: ir.GlobalVarLiteral | undefined;
+
+        if (irT instanceof ir.BoolType) {
+            if (typeof rawVal === "boolean") {
+                irVal = this.factory.booleanLiteral(src, rawVal);
+            }
+        } else if (irT instanceof ir.IntType) {
+            if (typeof rawVal === "bigint" && irT.fits(rawVal)) {
+                irVal = this.factory.numberLiteral(src, rawVal, 10, irT);
+            }
+
+            if (rawVal instanceof Buffer) {
+                const intVal = rawVal.length === 0 ? 0n : BigInt("0x" + rawVal.toString("hex"));
+
+                if (irT.fits(intVal)) {
+                    irVal = this.factory.numberLiteral(src, intVal, 10, irT);
+                }
+            }
+
+            if (rawVal instanceof Decimal && rawVal.isInt()) {
+                const intVal = BigInt(rawVal.toHex());
+
+                if (irT.fits(intVal)) {
+                    irVal = this.factory.numberLiteral(src, intVal, 10, irT);
+                }
+            }
+        } else if (isBytesType(irT)) {
+            if (typeof rawVal === "string" || rawVal instanceof Buffer) {
+                const buf = typeof rawVal === "string" ? Buffer.from(rawVal, "utf-8") : rawVal;
+
+                const bytes = [...buf].map((x) => BigInt(x));
+
+                irVal = this.factory.bytesToArrayStruct(bytes, src);
+            }
+        }
+
+        sol.assert(
+            irVal !== undefined,
+            'Unable to assign "{0}" to a global constant variable of type "{1}"',
+            rawVal instanceof Decimal ? rawVal.toString() : rawVal,
+            irT
+        );
+
+        return irVal;
+    }
+
     compileGlobalConstants(units: sol.SourceUnit[]): ir.GlobalVariable[] {
         const defs: ir.GlobalVariable[] = [];
 
@@ -96,51 +144,7 @@ export class UnitCompiler {
 
                 const rawVal = sol.evalConstantExpr(solVar, this.inference);
 
-                let irVal: ir.GlobalVarLiteral | undefined;
-
-                if (irT instanceof ir.BoolType) {
-                    if (typeof rawVal === "boolean") {
-                        irVal = this.factory.booleanLiteral(src, rawVal);
-                    }
-                } else if (irT instanceof ir.IntType) {
-                    if (typeof rawVal === "bigint" && irT.fits(rawVal)) {
-                        irVal = this.factory.numberLiteral(src, rawVal, 10, irT);
-                    }
-
-                    if (rawVal instanceof Buffer) {
-                        const intVal =
-                            rawVal.length === 0 ? 0n : BigInt("0x" + rawVal.toString("hex"));
-
-                        if (irT.fits(intVal)) {
-                            irVal = this.factory.numberLiteral(src, intVal, 10, irT);
-                        }
-                    }
-
-                    if (rawVal instanceof Decimal && rawVal.isInt()) {
-                        const intVal = BigInt(rawVal.toHex());
-
-                        if (irT.fits(intVal)) {
-                            irVal = this.factory.numberLiteral(src, intVal, 10, irT);
-                        }
-                    }
-                } else if (isBytesType(irT)) {
-                    if (typeof rawVal === "string" || rawVal instanceof Buffer) {
-                        const buf =
-                            typeof rawVal === "string" ? Buffer.from(rawVal, "utf-8") : rawVal;
-
-                        const bytes = [...buf].map((x) => BigInt(x));
-
-                        irVal = this.factory.bytesToArrayStruct(bytes, src);
-                    }
-                }
-
-                sol.assert(
-                    irVal !== undefined,
-                    'Unable to assign "{0}" to a global constant variable of type "{1}"',
-                    rawVal instanceof Decimal ? rawVal.toString() : rawVal,
-                    irT
-                );
-
+                const irVal: ir.GlobalVarLiteral = this.valueToLiteral(rawVal, irT, src);
                 const irVar = this.factory.globalVariable(src, name, irT, irVal);
 
                 defs.push(irVar);
