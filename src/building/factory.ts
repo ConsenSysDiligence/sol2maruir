@@ -9,7 +9,7 @@ import {
     SolDefinitionExpression,
     SolElementaryTypenameExpression
 } from "../ir";
-import { boolT, noType } from "./typing";
+import { boolT, noType, u256, u8 } from "./typing";
 
 /**
  * The ir node factory class is the only entry point for creating IR nodes.
@@ -352,5 +352,19 @@ export class IRFactory {
         raw: sol.Identifier | sol.MemberAccess | sol.IdentifierPath
     ): ir.Abort {
         return new SolDefinitionExpression(src, raw);
+    }
+
+    bytesToArrayStruct(bytes: bigint[], src: BaseSrc): ir.StructLiteral {
+        return this.structLiteral(src, [
+            ["len", this.numberLiteral(src, BigInt(bytes.length), 10, u256)],
+            ["capacity", this.numberLiteral(src, BigInt(bytes.length), 10, u256)],
+            [
+                "arr",
+                this.arrayLiteral(
+                    src,
+                    bytes.map((v) => this.numberLiteral(src, v, 10, u8))
+                )
+            ]
+        ]);
     }
 }

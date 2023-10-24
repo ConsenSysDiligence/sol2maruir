@@ -4,4 +4,3 @@ export * from "./copy_fun_compiler";
 export * from "./contract_dispatch_compiler";
 export * from "./msg_builder_compiler";
 export * from "./msg_decoder_compiler";
-export * from "./global_const_initializer_compiler";

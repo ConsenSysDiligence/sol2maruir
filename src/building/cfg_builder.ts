@@ -1,9 +1,14 @@
-import * as sol from "solc-typed-ast";
 import * as ir from "maru-ir2";
-import { BasicBlock } from "maru-ir2/dist/ir/cfg";
-import { pp } from "solc-typed-ast";
-import { UIDGenerator, fixTupleType } from "../utils";
 import { BaseSrc, concretizeType, makeSubst, noSrc } from "maru-ir2";
+import { BasicBlock } from "maru-ir2/dist/ir/cfg";
+import * as sol from "solc-typed-ast";
+import { pp } from "solc-typed-ast";
+import { IRTuple2, IRTupleType2 } from "../ir";
+import { ASTSource } from "../ir/source";
+import { UIDGenerator, fixTupleType } from "../utils";
+import { CopyFunCompiler } from "./copy_fun_compiler";
+import { IRFactory } from "./factory";
+import { getGlobalVarName } from "./resolving";
 import {
     balancesMapPtrT,
     boolT,
@@ -13,14 +18,8 @@ import {
     transpileType,
     u256,
     u32,
-    u8,
     u8ArrExcPtr
 } from "./typing";
-import { ASTSource } from "../ir/source";
-import { IRFactory } from "./factory";
-import { CopyFunCompiler } from "./copy_fun_compiler";
-import { IRTuple2, IRTupleType2 } from "../ir";
-import { getGlobalVarName } from "./resolving";
 
 export class CFGBuilder {
     /**
@@ -672,17 +671,7 @@ export class CFGBuilder {
                 noSrc,
                 name,
                 u8ArrExcPtr,
-                this.factory.structLiteral(noSrc, [
-                    ["len", this.factory.numberLiteral(noSrc, BigInt(val.length), 10, u256)],
-                    ["capacity", this.factory.numberLiteral(noSrc, BigInt(val.length), 10, u256)],
-                    [
-                        "arr",
-                        this.factory.arrayLiteral(
-                            noSrc,
-                            val.map((v) => this.factory.numberLiteral(noSrc, v, 10, u8))
-                        )
-                    ]
-                ])
+                this.factory.bytesToArrayStruct(val, src)
             )
         );
 
@@ -699,17 +688,7 @@ export class CFGBuilder {
                 noSrc,
                 name,
                 u8ArrExcPtr,
-                this.factory.structLiteral(noSrc, [
-                    ["len", this.factory.numberLiteral(noSrc, BigInt(val.length), 10, u256)],
-                    ["capacity", this.factory.numberLiteral(noSrc, BigInt(val.length), 10, u256)],
-                    [
-                        "arr",
-                        this.factory.arrayLiteral(
-                            noSrc,
-                            val.map((v) => this.factory.numberLiteral(noSrc, v, 10, u8))
-                        )
-                    ]
-                ])
+                this.factory.bytesToArrayStruct(val, src)
             )
         );
 

@@ -77,16 +77,6 @@ export class EntryPointFunctionCompiler extends BaseFunctionCompiler {
             ir.noSrc
         );
 
-        // Call global constant initialization function
-        builder.call(
-            [],
-            factory.identifier(ir.noSrc, "__init_global_constants__", noType),
-            [],
-            [],
-            [],
-            ir.noSrc
-        );
-
         /**
          * Call main contract constructor and assign to __test__ variable
          */
