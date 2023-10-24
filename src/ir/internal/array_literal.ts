@@ -25,7 +25,7 @@ export class SolArrayLiteral extends InternalExpression {
     copy(): SolArrayLiteral {
         return new SolArrayLiteral(
             this.src,
-            this.elements.map((el) => (el ? el.copy() : el))
+            this.elements.map((el) => (el ? ir.copy(el) : el))
         );
     }
 }

@@ -25,7 +25,7 @@ export class IRTuple2 extends InternalExpression {
     copy(): IRTuple2 {
         return new IRTuple2(
             this.src,
-            this.elements.map((el) => (el ? el.copy() : el))
+            this.elements.map((el) => (el ? ir.copy(el) : el))
         );
     }
 }

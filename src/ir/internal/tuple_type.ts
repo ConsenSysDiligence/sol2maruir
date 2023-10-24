@@ -25,7 +25,7 @@ export class IRTupleType2 extends InternalType {
     copy(): IRTupleType2 {
         return new IRTupleType2(
             this.src,
-            this.elementTypes.map((elT) => (elT ? elT.copy() : elT))
+            this.elementTypes.map((elT) => (elT ? ir.copy(elT) : elT))
         );
     }
 }
