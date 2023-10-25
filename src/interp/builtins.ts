@@ -242,9 +242,8 @@ export function fromWeb3Value(
     if (type instanceof sol.BoolType) {
         assert(
             typeof val === "boolean",
-            'Expected boolean value for ABI type "{0}", got {1} of type "{2}"',
+            `Expected boolean value for ABI type "{0}", got ${val} of type "{1}"`,
             abiType,
-            val,
             typeof val
         );
 
@@ -254,9 +253,8 @@ export function fromWeb3Value(
     if (type instanceof sol.IntType) {
         assert(
             typeof val === "string" || typeof val === "bigint",
-            'Expected string/bigint value for ABI type "{0}", got {1} of type "{2}"',
+            `Expected string/bigint value for ABI type "{0}", got ${val} of type "{1}"`,
             abiType,
-            val,
             typeof val
         );
 
@@ -266,9 +264,8 @@ export function fromWeb3Value(
     if (type instanceof sol.AddressType || type instanceof sol.FixedBytesType) {
         assert(
             typeof val === "string" || typeof val === "bigint",
-            'Expected string/bigint value for ABI type "{0}", got {1} of type "{2}"',
+            `Expected string/bigint value for ABI type "{0}", got ${val} of type "{1}"`,
             abiType,
-            val,
             typeof val
         );
 
@@ -278,9 +275,8 @@ export function fromWeb3Value(
     if (type instanceof sol.StringType) {
         assert(
             typeof val === "string",
-            'Expected string value for ABI type "{0}", got {1} of type "{2}"',
+            `Expected string value for ABI type "{0}", got ${val} of type "{1}"`,
             abiType,
-            val,
             typeof val
         );
 
@@ -290,7 +286,9 @@ export function fromWeb3Value(
     if (type instanceof sol.BytesType) {
         assert(
             typeof val === "string",
-            `Expected string igint value for ABI type "${abiType}", got ${val} of type "${typeof val}"`
+            `Expected string value for ABI type "{0}", got ${val} of type "{1}"`,
+            abiType,
+            typeof val
         );
 
         return defineBytes(state, Buffer.from(val.slice(2), "hex"), "memory");
@@ -299,9 +297,8 @@ export function fromWeb3Value(
     if (type instanceof sol.ArrayType) {
         assert(
             val instanceof Array,
-            'Expected array value for ABI type "{0}", got {1} of type "{2}"',
+            `Expected array value for ABI type "{0}", got ${val} of type "{1}"`,
             abiType,
-            val,
             typeof val
         );
 
@@ -310,7 +307,7 @@ export function fromWeb3Value(
                 irType.toType instanceof ir.UserDefinedType &&
                 irType.toType.name === "ArrWithLen" &&
                 irType.toType.typeArgs.length == 1,
-            "Expected ir type to ArrWithLen not {0}",
+            "Expected ir type to be a pointer type to ArrWithLen not {0}",
             irType
         );
 
@@ -337,10 +334,9 @@ export function fromWeb3Value(
 
     if (type instanceof sol.TupleType) {
         assert(
-            val instanceof Array && val.length === type.elements.length,
-            'Expected array value for ABI type "{0}", got {1} of type "{2}"',
+            val instanceof Object && val.__length__ === type.elements.length,
+            `Expected object value for ABI type "{0}", got ${val} of type "{1}"`,
             abiType,
-            val,
             typeof val
         );
 

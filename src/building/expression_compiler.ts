@@ -501,23 +501,31 @@ export class ExpressionCompiler {
         }
 
         if (expr.kind === sol.LiteralKind.Number) {
-            const val = BigInt(expr.value);
-            const type = transpileType(
-                sol.smallestFittingType(val) as sol.IntType,
-                this.factory
-            ) as ir.IntType;
+            const val = sol.evalLiteral(expr);
+
+            assert(
+                typeof val === "bigint",
+                'NYI compiling non-integer number literals, (got "{0}")',
+                val.toString()
+            );
+
+            const solT = sol.smallestFittingType(val);
+
+            assert(
+                solT !== undefined,
+                "Unable to detect smallest fitting type for number literal {0}",
+                val
+            );
+
+            const type = transpileType(solT, this.factory) as ir.IntType;
+            const isHex = expr.value.startsWith("0x");
 
             // Could be an address literal
-            if (expr.value.startsWith("0x") && expr.value.length === 42) {
+            if (isHex && expr.value.length === 42) {
                 type.md.set("sol_type", "address");
             }
 
-            return this.factory.numberLiteral(
-                src,
-                BigInt(expr.value),
-                expr.value.startsWith("0x") ? 16 : 10,
-                type
-            );
+            return this.factory.numberLiteral(src, val, isHex ? 16 : 10, type);
         }
 
         if (expr.kind === sol.LiteralKind.String) {
