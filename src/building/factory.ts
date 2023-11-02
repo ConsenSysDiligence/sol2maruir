@@ -13,16 +13,25 @@ import { boolT, noType, u256, u8 } from "./typing";
 
 /**
  * The ir node factory class is the only entry point for creating IR nodes.
- * It also contains the mapping from expressions -> types.
+ * It also contains the mapping from expressions -> types,
+ * and node usage by other nodes (if it happends though factory methods).
  */
 export class IRFactory {
     private typeMap = new Map<ir.Expression, ir.Type>();
     private usageSet = new Set<ir.Node>();
 
+    /**
+     * Checks that passed node **is used** (tracked by usage set)
+     */
     isUsed(node: ir.Node): boolean {
         return this.usageSet.has(node);
     }
 
+    /**
+     * Returns node, that **is safe to use** as a child for other nodes:
+     * - If node is not used, then it is marked as "used" and returned.
+     * - If node is already used, then creates its copy, mark copy as used and return it.
+     */
     use<T extends ir.Node>(node: T): T {
         const res = this.isUsed(node) ? this.copy(node) : node;
 
@@ -31,21 +40,25 @@ export class IRFactory {
         return res;
     }
 
+    /**
+     * Creates a copy of passed node.
+     * Associated types are preserved for copied node and its nested nodes.
+     */
     copy<T extends ir.Node>(node: T): T {
         const copy = ir.copy(node);
 
-        const origins = [...ir.traverse(node)];
+        const nodes = [...ir.traverse(node)];
         const copies = [...ir.traverse(copy)];
 
         assert(
-            origins.length === copies.length,
+            nodes.length === copies.length,
             "Node copying: subtree elements amount is different ({0} and {1})",
-            origins.length,
+            nodes.length,
             copies.length
         );
 
-        for (let i = 0; i < origins.length; i++) {
-            const type = this.typeMap.get(origins[i]);
+        for (let i = 0; i < nodes.length; i++) {
+            const type = this.typeMap.get(nodes[i]);
 
             if (type) {
                 this.typeMap.set(copies[i], type);
