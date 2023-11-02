@@ -17,6 +17,43 @@ import { boolT, noType, u256, u8 } from "./typing";
  */
 export class IRFactory {
     private typeMap = new Map<ir.Expression, ir.Type>();
+    private usageSet = new Set<ir.Node>();
+
+    isUsed(node: ir.Node): boolean {
+        return this.usageSet.has(node);
+    }
+
+    use<T extends ir.Node>(node: T): T {
+        const res = this.isUsed(node) ? this.copy(node) : node;
+
+        this.usageSet.add(res);
+
+        return res;
+    }
+
+    copy<T extends ir.Node>(node: T): T {
+        const copy = ir.copy(node);
+
+        const origins = [...ir.traverse(node)];
+        const copies = [...ir.traverse(copy)];
+
+        assert(
+            origins.length === copies.length,
+            "Node copying: subtree elements amount is different ({0} and {1})",
+            origins.length,
+            copies.length
+        );
+
+        for (let i = 0; i < origins.length; i++) {
+            const type = this.typeMap.get(origins[i]);
+
+            if (type) {
+                this.typeMap.set(copies[i], type);
+            }
+        }
+
+        return copy;
+    }
 
     typeOf(expr: ir.Expression): ir.Type {
         const res = this.typeMap.get(expr);
@@ -41,8 +78,10 @@ export class IRFactory {
         rExp: ir.Expression,
         typ: ir.Type
     ): ir.BinaryOperation {
-        const res = new ir.BinaryOperation(src, lExp, op, rExp);
+        const res = new ir.BinaryOperation(src, this.use(lExp), op, this.use(rExp));
+
         this.typeMap.set(res, typ);
+
         return res;
     }
 
@@ -52,7 +91,7 @@ export class IRFactory {
         subExp: ir.Expression,
         typ: ir.Type
     ): ir.UnaryOperation {
-        const res = new ir.UnaryOperation(src, op, subExp);
+        const res = new ir.UnaryOperation(src, op, this.use(subExp));
 
         this.typeMap.set(res, typ);
 
@@ -68,7 +107,7 @@ export class IRFactory {
     }
 
     numberLiteral(src: BaseSrc, val: bigint, radix: number, type: ir.Type): ir.NumberLiteral {
-        assert(type instanceof ir.IntType, `Unexpected type ${type.pp()} for number literal`);
+        assert(type instanceof ir.IntType, "Unexpected type {0} for number literal", type);
 
         const res = new ir.NumberLiteral(src, val, radix, type);
 
@@ -103,15 +142,11 @@ export class IRFactory {
     }
 
     funIdentifier(name: string): ir.Identifier {
-        const res = new ir.Identifier(noSrc, name);
-
-        this.typeMap.set(res, noType);
-
-        return res;
+        return this.identifier(noSrc, name, noType);
     }
 
     cast(src: BaseSrc, toType: ir.Type, expr: ir.Expression): ir.Cast {
-        const res = new ir.Cast(src, toType, expr);
+        const res = new ir.Cast(src, toType, this.use(expr));
 
         this.typeMap.set(res, toType);
 
@@ -119,7 +154,10 @@ export class IRFactory {
     }
 
     tuple(src: BaseSrc, elements: Array<ir.Expression | null>, type: ir.Type): IRTuple2 {
-        const res = new IRTuple2(src, elements);
+        const res = new IRTuple2(
+            src,
+            elements.map((element) => (element ? this.use(element) : null))
+        );
 
         this.typeMap.set(res, type);
 
@@ -131,7 +169,10 @@ export class IRFactory {
         elements: Array<ir.Expression | null>,
         type: ir.Type
     ): SolArrayLiteral {
-        const res = new SolArrayLiteral(src, elements);
+        const res = new SolArrayLiteral(
+            src,
+            elements.map((element) => (element ? this.use(element) : null))
+        );
 
         this.typeMap.set(res, type);
 
@@ -180,7 +221,7 @@ export class IRFactory {
         baseExpr: ir.Expression,
         member: string
     ): ir.LoadField {
-        return new ir.LoadField(src, lhs, baseExpr, member);
+        return new ir.LoadField(src, this.use(lhs), this.use(baseExpr), member);
     }
 
     storeField(
@@ -189,7 +230,7 @@ export class IRFactory {
         member: string,
         rhs: ir.Expression
     ): ir.StoreField {
-        return new ir.StoreField(src, baseExpr, member, rhs);
+        return new ir.StoreField(src, this.use(baseExpr), member, this.use(rhs));
     }
 
     loadIndex(
@@ -198,7 +239,7 @@ export class IRFactory {
         baseExpr: ir.Expression,
         idxExpr: ir.Expression
     ): ir.LoadIndex {
-        return new ir.LoadIndex(src, lhs, baseExpr, idxExpr);
+        return new ir.LoadIndex(src, this.use(lhs), this.use(baseExpr), this.use(idxExpr));
     }
 
     storeIndex(
@@ -207,7 +248,7 @@ export class IRFactory {
         idxExpr: ir.Expression,
         rhs: ir.Expression
     ): ir.StoreIndex {
-        return new ir.StoreIndex(src, baseExpr, idxExpr, rhs);
+        return new ir.StoreIndex(src, this.use(baseExpr), this.use(idxExpr), this.use(rhs));
     }
 
     contains(
@@ -216,11 +257,11 @@ export class IRFactory {
         baseExpr: ir.Expression,
         keyExpr: ir.Expression
     ): ir.Contains {
-        return new ir.Contains(src, lhs, baseExpr, keyExpr);
+        return new ir.Contains(src, this.use(lhs), this.use(baseExpr), this.use(keyExpr));
     }
 
     assignment(src: ir.BaseSrc, lhs: ir.Identifier, rhs: ir.Expression): ir.Assignment {
-        return new ir.Assignment(src, lhs, rhs);
+        return new ir.Assignment(src, this.use(lhs), this.use(rhs));
     }
 
     allocArray(
@@ -230,7 +271,7 @@ export class IRFactory {
         size: ir.Expression,
         mem: ir.MemDesc
     ): ir.AllocArray {
-        return new ir.AllocArray(src, lhs, type, size, mem);
+        return new ir.AllocArray(src, this.use(lhs), type, this.use(size), mem);
     }
 
     allocStruct(
@@ -239,11 +280,11 @@ export class IRFactory {
         type: ir.UserDefinedType,
         mem: ir.MemDesc
     ): ir.AllocStruct {
-        return new ir.AllocStruct(src, lhs, type, mem);
+        return new ir.AllocStruct(src, this.use(lhs), type, mem);
     }
 
     allocMap(src: ir.BaseSrc, lhs: ir.Identifier, type: ir.MapType, mem: ir.MemDesc): ir.AllocMap {
-        return new ir.AllocMap(src, lhs, type, mem);
+        return new ir.AllocMap(src, this.use(lhs), type, mem);
     }
 
     functionCall(
@@ -254,7 +295,14 @@ export class IRFactory {
         typeArgs: ir.Type[],
         args: ir.Expression[]
     ): ir.FunctionCall {
-        return new ir.FunctionCall(src, lhss, callee, memArgs, typeArgs, args);
+        return new ir.FunctionCall(
+            src,
+            lhss.map((lhs) => this.use(lhs)),
+            this.use(callee),
+            memArgs,
+            typeArgs,
+            args.map((arg) => this.use(arg))
+        );
     }
 
     transactionCall(
@@ -265,7 +313,14 @@ export class IRFactory {
         typeArgs: ir.Type[],
         args: ir.Expression[]
     ): ir.TransactionCall {
-        return new ir.TransactionCall(src, lhss, callee, memArgs, typeArgs, args);
+        return new ir.TransactionCall(
+            src,
+            lhss.map((lhs) => this.use(lhs)),
+            this.use(callee),
+            memArgs,
+            typeArgs,
+            args.map((arg) => this.use(arg))
+        );
     }
 
     jump(src: ir.BaseSrc, label: string): ir.Jump {
@@ -278,15 +333,18 @@ export class IRFactory {
         trueLabel: string,
         falseLabel: string
     ): ir.Branch {
-        return new ir.Branch(src, condition, trueLabel, falseLabel);
+        return new ir.Branch(src, this.use(condition), trueLabel, falseLabel);
     }
 
     return(src: ir.BaseSrc, values: ir.Expression[]): ir.Return {
-        return new ir.Return(src, values);
+        return new ir.Return(
+            src,
+            values.map((v) => this.use(v))
+        );
     }
 
     assert(src: ir.BaseSrc, cond: ir.Expression): ir.Assert {
-        return new ir.Assert(src, cond);
+        return new ir.Assert(src, this.use(cond));
     }
 
     // Types

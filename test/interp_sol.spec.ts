@@ -110,7 +110,11 @@ describe("*.config.sol samples", () => {
                 const indentedHelper = (node: ir.Node): string => "    " + helper(node);
 
                 for (const [used, using] of reuses) {
-                    if (used instanceof ir.Type) {
+                    if (
+                        used instanceof ir.Type ||
+                        used instanceof ir.MemConstant ||
+                        used instanceof ir.MemIdentifier
+                    ) {
                         continue;
                     }
 
@@ -139,7 +143,7 @@ describe("*.config.sol samples", () => {
             });
 
             it("IR program is executed by interpreter as expected", async () => {
-                const showOutput = true;
+                const showOutput = false;
 
                 interp.run(entryFunc, showOutput);
 
