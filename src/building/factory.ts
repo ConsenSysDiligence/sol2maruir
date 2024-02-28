@@ -14,7 +14,7 @@ import { boolT, noType, u256, u8 } from "./typing";
 /**
  * The ir node factory class is the only entry point for creating IR nodes.
  * It also contains the mapping from expressions -> types,
- * and node usage by other nodes (if it happends though factory methods).
+ * and node usage by other nodes (if it happends through factory methods).
  */
 export class IRFactory {
     private typeMap = new Map<ir.Expression, ir.Type>();
@@ -32,10 +32,18 @@ export class IRFactory {
      * - If node is not used, then it is marked as "used" and returned.
      * - If node is already used, then creates its copy, mark copy as used and return it.
      */
-    use<T extends ir.Node>(node: T): T {
-        const res = this.isUsed(node) ? this.copy(node) : node;
+    use<T extends ir.Node>(input: T): T;
+    use<T extends ir.Node>(input: T[]): T[];
+    use<T extends ir.Node>(input: T | T[]): T | T[] {
+        if (Array.isArray(input)) {
+            return input.map((node) => this.use(node));
+        }
 
-        this.usageSet.add(res);
+        const res = this.isUsed(input) ? this.copy(input) : input;
+
+        for (const node of ir.traverse(input)) {
+            this.usageSet.add(node);
+        }
 
         return res;
     }
@@ -204,12 +212,12 @@ export class IRFactory {
     ): ir.FunctionDefinition {
         return new ir.FunctionDefinition(
             src,
-            memoryParameters,
-            typeParameters,
+            this.use(memoryParameters),
+            this.use(typeParameters),
             name,
-            params,
-            locals,
-            returns,
+            this.use(params),
+            this.use(locals),
+            this.use(returns),
             body
         );
     }
@@ -221,7 +229,13 @@ export class IRFactory {
         name: string,
         fields: Array<[string, ir.Type]>
     ): ir.StructDefinition {
-        return new ir.StructDefinition(src, memoryParameters, typeParameters, name, fields);
+        return new ir.StructDefinition(
+            src,
+            this.use(memoryParameters),
+            this.use(typeParameters),
+            name,
+            fields
+        );
     }
 
     variableDeclaration(src: ir.BaseSrc, name: string, type: ir.Type): ir.VariableDeclaration {
@@ -293,11 +307,11 @@ export class IRFactory {
         type: ir.UserDefinedType,
         mem: ir.MemDesc
     ): ir.AllocStruct {
-        return new ir.AllocStruct(src, this.use(lhs), type, mem);
+        return new ir.AllocStruct(src, this.use(lhs), type, this.use(mem));
     }
 
     allocMap(src: ir.BaseSrc, lhs: ir.Identifier, type: ir.MapType, mem: ir.MemDesc): ir.AllocMap {
-        return new ir.AllocMap(src, this.use(lhs), type, mem);
+        return new ir.AllocMap(src, this.use(lhs), type, this.use(mem));
     }
 
     functionCall(
@@ -310,11 +324,11 @@ export class IRFactory {
     ): ir.FunctionCall {
         return new ir.FunctionCall(
             src,
-            lhss.map((lhs) => this.use(lhs)),
+            this.use(lhss),
             this.use(callee),
-            memArgs,
+            this.use(memArgs),
             typeArgs,
-            args.map((arg) => this.use(arg))
+            this.use(args)
         );
     }
 
@@ -328,11 +342,11 @@ export class IRFactory {
     ): ir.TransactionCall {
         return new ir.TransactionCall(
             src,
-            lhss.map((lhs) => this.use(lhs)),
+            this.use(lhss),
             this.use(callee),
-            memArgs,
+            this.use(memArgs),
             typeArgs,
-            args.map((arg) => this.use(arg))
+            this.use(args)
         );
     }
 
@@ -350,10 +364,7 @@ export class IRFactory {
     }
 
     return(src: ir.BaseSrc, values: ir.Expression[]): ir.Return {
-        return new ir.Return(
-            src,
-            values.map((v) => this.use(v))
-        );
+        return new ir.Return(src, this.use(values));
     }
 
     assert(src: ir.BaseSrc, cond: ir.Expression): ir.Assert {
@@ -366,7 +377,7 @@ export class IRFactory {
         toType: ir.Type,
         region: ir.MemIdentifier | ir.MemConstant
     ): ir.PointerType {
-        return new ir.PointerType(src, toType, region);
+        return new ir.PointerType(src, toType, this.use(region));
     }
 
     arrayType(src: ir.BaseSrc, elType: ir.Type): ir.ArrayType {
@@ -379,7 +390,7 @@ export class IRFactory {
         memArgs: ir.MemDesc[],
         typeArgs: ir.Type[]
     ): ir.UserDefinedType {
-        return new ir.UserDefinedType(src, name, memArgs, typeArgs);
+        return new ir.UserDefinedType(src, name, this.use(memArgs), typeArgs);
     }
 
     intType(src: ir.BaseSrc, nbits: number, signed: boolean): ir.IntType {
