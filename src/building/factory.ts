@@ -39,7 +39,12 @@ export class IRFactory {
             return input.map((node) => this.use(node));
         }
 
-        const res = this.isUsed(input) ? this.copy(input) : input;
+	if (!this.isUsed(input)) {
+		this.usageSet.add(input);
+		return input;
+	}
+
+        const res = this.copy(input);
 
         for (const node of ir.traverse(input)) {
             this.usageSet.add(node);
