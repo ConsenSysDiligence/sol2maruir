@@ -163,7 +163,7 @@ export class UnitCompiler {
                 transpileType(
                     this.inference.variableDeclarationToTypeNode(decl),
                     this.factory,
-                    new ir.MemIdentifier(ir.noSrc, "M")
+                    this.factory.memIdentifier(ir.noSrc, "M")
                 )
             ]);
         }
@@ -172,7 +172,7 @@ export class UnitCompiler {
 
         const res = this.factory.structDefinition(
             new ASTSource(def),
-            [new ir.MemVariableDeclaration(ir.noSrc, "M")],
+            [this.factory.memVariableDeclaration(ir.noSrc, "M")],
             [],
             name,
             fields

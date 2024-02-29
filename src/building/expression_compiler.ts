@@ -1098,7 +1098,7 @@ export class ExpressionCompiler {
                 exprSrc
             );
 
-            return rets.length === 1 ? rets[0] : new IRTuple2(noSrc, []);
+            return rets.length === 1 ? rets[0] : factory.tuple(noSrc, [], noType);
         }
 
         if (expr.vFunctionName === "call" || expr.vFunctionName === "staticcall") {
@@ -1186,7 +1186,16 @@ export class ExpressionCompiler {
                 exprSrc
             );
 
-            return rets.length === 1 ? rets[0] : new IRTuple2(noSrc, rets);
+            return rets.length === 1
+                ? rets[0]
+                : factory.tuple(
+                      noSrc,
+                      rets,
+                      factory.tupleType(
+                          noSrc,
+                          rets.map((ret) => factory.typeOf(ret))
+                      )
+                  );
         }
 
         if (expr.vFunctionName === "encodePacked") {
@@ -1335,7 +1344,7 @@ export class ExpressionCompiler {
                 exprSrc
             );
 
-            return new IRTuple2(noSrc, []);
+            return factory.tuple(noSrc, [], noType);
         }
 
         throw new Error(`NYI compileBuiltinFunctionCall(${expr.vFunctionName})`);
@@ -2728,7 +2737,7 @@ export class ExpressionCompiler {
                 castedEls.push(castedElExpr);
             }
 
-            return new IRTuple2(src, castedEls);
+            return this.factory.tuple(src, castedEls, toT);
         }
 
         return undefined;

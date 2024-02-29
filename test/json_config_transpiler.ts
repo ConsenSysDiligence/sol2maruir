@@ -231,23 +231,13 @@ export class JSONConfigTranspiler extends BaseFunctionCompiler {
                     factory.userDefinedType(ir.noSrc, "ArrWithLen", [loc], [u8]),
                     loc
                 ),
-                factory.structLiteral(ir.noSrc, [
-                    ["len", factory.numberLiteral(ir.noSrc, BigInt(values.length), 10, u256)],
-                    ["capacity", factory.numberLiteral(ir.noSrc, BigInt(values.length), 10, u256)],
-                    [
-                        "arr",
-                        factory.arrayLiteral(
-                            ir.noSrc,
-                            values.map((v) => factory.numberLiteral(ir.noSrc, v, 10, u8))
-                        )
-                    ]
-                ]),
+                factory.bytesToArrayStruct(values, ir.noSrc),
                 "_arg_"
             );
         }
 
         if (arg.kind === "string") {
-            return builder.getStrLit(arg.value, noSrc);
+            return builder.getStrLit(arg.value, ir.noSrc);
         }
 
         if (arg.kind === "array") {
