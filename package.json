@@ -47,6 +47,6 @@
         "ts-node": "^10.9.2",
         "typescript": "^5.3.3"
     },
-    "repository": "<TODO>",
-    "license": "SEE LICENSE IN <LICENSE>"
+    "repository": "git@github.com:ConsenSysDiligence/sol2maruir.git",
+    "license": "Apache 2.0"
 }
