@@ -1,6 +1,6 @@
 import * as ir from "maru-ir2";
-import * as sol from "solc-typed-ast";
 import { BaseSrc, noSrc } from "maru-ir2";
+import * as sol from "solc-typed-ast";
 import { assert } from "solc-typed-ast";
 import {
     IRTuple2,
@@ -39,10 +39,10 @@ export class IRFactory {
             return input.map((node) => this.use(node));
         }
 
-	if (!this.isUsed(input)) {
-		this.usageSet.add(input);
-		return input;
-	}
+        if (!this.isUsed(input)) {
+            this.usageSet.add(input);
+            return input;
+        }
 
         const res = this.copy(input);
 
